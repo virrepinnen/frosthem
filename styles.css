@@ -370,22 +370,29 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
   100%{box-shadow:0 0 0 0 rgba(224,196,106,0), inset 0 1px 4px rgba(0,0,0,.7)}
 }
 
-/* ---------- attributrutor ---------- */
-.attr-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
-.attr-card{position:relative;padding:11px 10px 9px;text-align:center;border-radius:6px;
+/* ---------- attributbrickor ---------- */
+.attr-grid{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
+.attr-card{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:13px;
+  align-items:center;padding:12px 13px;border-radius:6px;
   border:1px solid var(--border);background:#0a0f18;transition:.14s}
 .attr-card:hover{border-color:#3c5271;background:#121a27}
 .attr-card.pending{border-color:var(--gold);background:rgba(216,178,106,.09)}
-.ac-ico{font-size:20px;line-height:1;margin-bottom:5px}
-.ac-name{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-.ac-val{font-family:var(--mono);font-size:20px;line-height:1.25;color:#e6eef8}
+.ac-ico{width:26px;height:26px;color:#8ea3bd;flex:none}
+.attr-card.pending .ac-ico{color:var(--gold)}
+.ac-ico svg{width:100%;height:100%;display:block}
+.ac-text{min-width:0}
+.ac-text b{display:block;font-size:12.5px;font-weight:600;letter-spacing:.03em}
+.ac-text i{display:block;font-style:normal;font-size:10.5px;color:var(--muted);
+  margin-top:2px;line-height:1.35}
+.ac-val{font-family:var(--mono);font-size:20px;line-height:1;color:#e6eef8;
+  white-space:nowrap;text-align:right}
 .ac-delta{font-size:12px;color:var(--gold);margin-left:3px}
-.ac-btns,.sk-btns{display:flex;gap:5px;justify-content:center;margin-top:6px}
-.ac-btn{width:24px;height:22px;display:grid;place-items:center;cursor:pointer;
-  border:1px solid var(--border);border-radius:4px;font-size:14px;line-height:1;
+.ac-btns,.sk-btns{display:flex;gap:5px;justify-content:center}
+.ac-btn{width:26px;height:24px;display:grid;place-items:center;cursor:pointer;
+  border:1px solid var(--border);border-radius:4px;font-size:15px;line-height:1;
   color:var(--ink);background:#0d131e;transition:.12s;user-select:none}
 .ac-btn:hover{border-color:var(--gold);color:var(--gold);background:#18222f}
-.ac-btn.off{opacity:.22;pointer-events:none}
+.ac-btn.off{opacity:.2;pointer-events:none}
 .ac-btn.plus{color:var(--gold)}
 
 /* ---------- skill-noder med väntande poäng ---------- */

@@ -134,10 +134,15 @@ i sin förälder, och en kapsten som kräver båda mellanstegen. Steg 2 öppnar 
 nivå 6, steg 3 på nivå 12. Plus synergier där skills stärker varandra.
 
 **Nivåhöjning.** Spelet pausar och visar en bred ruta med attributen som fyra
-ikonrutor till vänster och **hela skill-trädet** till höger — inget ligger bakom
-en knapp. Poängen läggs i en väntande hög: du kan plocka tillbaka dem med minus
-och prova om, och först *Lås in* skriver dem till karaktären. Du måste inte
-lägga dem alls; `Esc` kastar det ofärdiga och tar dig rakt tillbaka i striden.
+brickor till vänster och **hela skill-trädet** till höger — inget ligger bakom
+en knapp. Varje bricka säger rakt ut vad ett klick ger. Poängen läggs i en
+väntande hög: du kan plocka tillbaka dem med minus och prova om, och först
+*Lås in* skriver dem till karaktären. Attribut och skills låses in **var för
+sig**, eftersom det är olika beslut. Du måste inte lägga dem alls; `Esc` tar dig
+rakt tillbaka i striden och poängen ligger kvar.
+
+Spelet öppnar inga rutor när du startar — du står i Frosthem direkt, med en
+notis i hörnet i stället för en modal att klicka bort.
 
 **Flera karaktärer.** Huvudmenyn listar dina karaktärer med nivå, antal fällda,
 guld och när du senast spelade — ett klick och du är inne. *Skapa ny karaktär*

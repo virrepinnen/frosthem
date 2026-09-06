@@ -4,8 +4,8 @@ import { SKILL_BY_ID } from '../data/skills.js';
 import { HOTBAR_SIZE } from '../entities/player.js';
 import { showTextTooltip, hideTooltip, escape } from './tooltip.js';
 import { panels, togglePanel, closeAllPanels } from './panels.js';
-import { attributeCards, skillTreeEl, confirmBar, pointsBadge, statPointsLeft, skillPointsLeft, hasPending }
-  from './alloc-ui.js';
+import { attributeCards, skillTreeEl, confirmBar, pointsBadge, statPointsLeft, skillPointsLeft,
+  pendingStats, pendingSkills } from './alloc-ui.js';
 
 import { saveGame } from '../systems/save.js';
 
@@ -265,32 +265,33 @@ export function showLevelUp(game, levels) {
     const host = $('lvl-stats');
     host.innerHTML = '';
 
+    // Varje kolumn har sin egen ångra/lås in-rad. Attribut och skills är
+    // skilda beslut och bekräftas var för sig.
     const left = document.createElement('div');
     left.className = 'lvl-col';
     left.appendChild(pointsBadge(statPointsLeft(p, game.pending), 'attributpoäng', '✦'));
     left.appendChild(attributeCards(game, render));
+    const lbar = confirmBar(game, 'stats', render);
+    if (lbar) left.appendChild(lbar);
 
     const right = document.createElement('div');
     right.className = 'lvl-col';
     right.appendChild(pointsBadge(skillPointsLeft(p, game.pending), 'skillpoäng', '🌟'));
     right.appendChild(skillTreeEl(game, render));
+    const rbar = confirmBar(game, 'skills', render);
+    if (rbar) right.appendChild(rbar);
 
     host.appendChild(left);
     host.appendChild(right);
 
-    // Knappraden byter innehåll: väntar något går det att ångra eller låsa in.
     const actions = $('lvl-actions');
     actions.innerHTML = '';
-    if (hasPending(game.pending)) {
-      const bar = confirmBar(game, render);
-      if (bar) actions.appendChild(bar);
-    } else {
-      const done = document.createElement('button');
-      done.className = 'primary';
-      done.textContent = 'Fortsätt';
-      done.onclick = () => { hideLevelUp(); closeAllPanels(game); game.paused = false; };
-      actions.appendChild(done);
-    }
+    const done = document.createElement('button');
+    done.className = 'primary';
+    const waiting = pendingStats(game.pending) + pendingSkills(game.pending);
+    done.textContent = waiting ? 'Stäng (olåsta poäng sparas)' : 'Fortsätt';
+    done.onclick = () => { game.dropPending(); hideLevelUp(); closeAllPanels(game); game.paused = false; };
+    actions.appendChild(done);
   };
   render();
   box.classList.remove('hidden');

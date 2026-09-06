@@ -187,7 +187,7 @@ function characterPanel(game) {
   d.appendChild(g('Attribut'));
   d.appendChild(pointsBadge(statPointsLeft(p, game.pending), 'attributpoäng att lägga', '✦'));
   d.appendChild(attributeCards(game, () => { game.dirtyUI = true; }));
-  const cbar = confirmBar(game, () => { game.dirtyUI = true; });
+  const cbar = confirmBar(game, 'stats', () => { game.dirtyUI = true; });
   if (cbar) d.appendChild(cbar);
 
   d.appendChild(g('Strid'));
@@ -244,7 +244,7 @@ function skillsPanel(game) {
   const redraw = () => { game.dirtyUI = true; };
   d.appendChild(pointsBadge(skillPointsLeft(p, game.pending), 'skillpoäng att lägga', '🌟'));
   d.appendChild(skillTreeEl(game, redraw));
-  const bar = confirmBar(game, redraw);
+  const bar = confirmBar(game, 'skills', redraw);
   if (bar) d.appendChild(bar);
   return d;
 }

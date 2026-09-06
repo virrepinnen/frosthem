@@ -2,8 +2,8 @@
 import { SKILLS, TREES, TIER_LEVEL } from '../data/skills.js';
 import {
   statWith, rankWith, statPointsLeft, skillPointsLeft, availabilityWith,
-  addStat, removeStat, addSkill, removeSkill, hasPending, pendingCount,
-  commitPending, resetPending,
+  addStat, removeStat, addSkill, removeSkill,
+  pendingStats, pendingSkills, commitStats, commitSkills, resetStats, resetSkills,
 } from '../systems/allocation.js';
 import { skillPower } from '../systems/stats.js';
 import { showTextTooltip, hideTooltip, escape } from './tooltip.js';
@@ -14,13 +14,35 @@ import { showTextTooltip, hideTooltip, escape } from './tooltip.js';
  * kan aldrig stå olika saker på två ställen.
  */
 
+/**
+ * Enkla linjeikoner i stället för emoji: de tar färg från sitt sammanhang,
+ * ser likadana ut på alla system och passar spelets torra ton.
+ * @type {Record<string,string>}
+ */
+const ATTR_ICON = {
+  // hantel
+  str: '<path d="M4 9v6M7.5 6.5v11M16.5 6.5v11M20 9v6M7.5 12h9"/>',
+  // dubbla vinklar — fart
+  dex: '<path d="M6 5.5L12.5 12 6 18.5M13 5.5L19.5 12 13 18.5"/>',
+  // hjärta
+  vit: '<path d="M12 19.5s-6.8-4.2-6.8-9A3.8 3.8 0 0 1 12 8.2a3.8 3.8 0 0 1 6.8 2.3c0 4.8-6.8 9-6.8 9z"/>',
+  // fyruddig gnista
+  will: '<path d="M12 3.8l2.1 6.1 6.1 2.1-6.1 2.1L12 20.2l-2.1-6.1L3.8 12l6.1-2.1z"/>',
+};
+
 /** Nyckeln heter 'will' av bakåtkompatibilitet; etiketten är Intelligens. */
 export const ATTRS = /** @type {const} */ ([
-  { key: 'str', label: 'Styrka', icon: '💪' },
-  { key: 'dex', label: 'Smidighet', icon: '🎯' },
-  { key: 'vit', label: 'Vitalitet', icon: '❤️' },
-  { key: 'will', label: 'Intelligens', icon: '🧠' },
+  { key: 'str', label: 'Styrka', gain: '+1% vapenskada' },
+  { key: 'dex', label: 'Smidighet', gain: '+0,15% attackhastighet · +0,4 rustning' },
+  { key: 'vit', label: 'Vitalitet', gain: '+4 liv · +2 uthållighet' },
+  { key: 'will', label: 'Intelligens', gain: '+4 mana' },
 ]);
+
+/** @param {string} key */
+function lineIcon(key) {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+    stroke-linecap="round" stroke-linejoin="round">${ATTR_ICON[key] ?? ''}</svg>`;
+}
 
 /**
  * Attribut-tooltip som visar vad poängen *gör just nu*, inte bara vad den
@@ -69,7 +91,8 @@ export function pointsBadge(n, label, icon) {
 }
 
 /**
- * Fyra tydliga rutor med ikon, värde och plus/minus.
+ * Fyra breda brickor. Varje bricka säger rakt ut vad *ett klick* ger, så man
+ * inte behöver hovra för att veta vad poängen köper.
  * @param {any} game @param {()=>void} onChange
  */
 export function attributeCards(game, onChange) {
@@ -83,8 +106,8 @@ export function attributeCards(game, onChange) {
     const card = document.createElement('div');
     card.className = 'attr-card' + (pend > 0 ? ' pending' : '');
     card.innerHTML =
-      `<div class="ac-ico">${a.icon}</div>` +
-      `<div class="ac-name">${a.label}</div>` +
+      `<div class="ac-ico">${lineIcon(a.key)}</div>` +
+      `<div class="ac-text"><b>${a.label}</b><i>${a.gain}</i></div>` +
       `<div class="ac-val">${statWith(p, q, a.key)}` +
       (pend > 0 ? `<span class="ac-delta">+${pend}</span>` : '') + '</div>' +
       '<div class="ac-btns"></div>';
@@ -93,12 +116,14 @@ export function attributeCards(game, onChange) {
     const minus = document.createElement('span');
     minus.className = 'ac-btn minus' + (pend > 0 ? '' : ' off');
     minus.textContent = '−';
+    minus.title = 'Ta tillbaka en poäng';
     minus.onclick = (e) => { e.stopPropagation(); if (removeStat(p, q, a.key)) onChange(); };
     btns.appendChild(minus);
 
     const plus = document.createElement('span');
     plus.className = 'ac-btn plus' + (statPointsLeft(p, q) > 0 ? '' : ' off');
     plus.textContent = '+';
+    plus.title = 'Lägg en poäng';
     plus.onclick = (e) => { e.stopPropagation(); if (addStat(p, q, a.key)) onChange(); };
     btns.appendChild(plus);
 
@@ -238,22 +263,29 @@ export function skillTreeEl(game, onChange) {
 }
 
 /**
- * Ångra/bekräfta. Visas bara när det finns något att bekräfta, så knapparna
- * inte blir tapetmönster.
- * @param {any} game @param {()=>void} onChange
+ * Ångra/lås in — en egen rad per sorts poäng. Attribut och skills är olika
+ * beslut och ska inte kunna bekräftas av misstag med varandra.
+ * @param {any} game @param {'stats'|'skills'} kind @param {()=>void} onChange
  */
-export function confirmBar(game, onChange) {
+export function confirmBar(game, kind, onChange) {
   const q = game.pending;
-  if (!hasPending(q)) return null;
+  const n = kind === 'stats' ? pendingStats(q) : pendingSkills(q);
+  if (n <= 0) return null;
+  const what = kind === 'stats' ? 'attributpoäng' : 'skillpoäng';
   const bar = document.createElement('div');
   bar.className = 'confirm-bar';
-  const n = pendingCount(q);
   bar.innerHTML =
     '<button class="cb-undo">Ångra</button>' +
-    `<button class="cb-ok">Lås in ${n} ${n === 1 ? 'poäng' : 'poäng'}</button>`;
-  /** @type {HTMLElement} */ (bar.querySelector('.cb-undo')).onclick = () => { resetPending(q); onChange(); };
-  /** @type {HTMLElement} */ (bar.querySelector('.cb-ok')).onclick = () => { commitPending(game, q); onChange(); };
+    `<button class="cb-ok">Lås in ${n} ${what}</button>`;
+  /** @type {HTMLElement} */ (bar.querySelector('.cb-undo')).onclick = () => {
+    if (kind === 'stats') resetStats(q); else resetSkills(q);
+    onChange();
+  };
+  /** @type {HTMLElement} */ (bar.querySelector('.cb-ok')).onclick = () => {
+    if (kind === 'stats') commitStats(game, q); else commitSkills(game, q);
+    onChange();
+  };
   return bar;
 }
 
-export { statPointsLeft, skillPointsLeft, hasPending };
+export { statPointsLeft, skillPointsLeft, pendingStats, pendingSkills };

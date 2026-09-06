@@ -4,7 +4,7 @@ import { createPlayer } from './entities/player.js';
 import { initInput, endFrameInput, keyPressed } from './core/input.js';
 import { camera } from './render/camera.js';
 import { initRenderer, render, renderMinimap } from './render/renderer.js';
-import { updateHud, rebuildSkillbar, showOverlay, initNav, showTutorial, openHelp } from './ui/hud.js';
+import { updateHud, rebuildSkillbar, initNav, showTutorial, openHelp } from './ui/hud.js';
 import { renderPanels, anyPanelOpen } from './ui/panels.js';
 import { moveTooltip, hideTooltip } from './ui/tooltip.js';
 import { listSaves, deleteSave, playerFromSave, describeSave, saveGame } from './systems/save.js';
@@ -236,20 +236,22 @@ function begin(player, progress, isNew, charId) {
   initNav(game);
   game.paused = true;
 
+  // Skydd: ingen ruta från ett tidigare läge får överleva in i ett nytt spel.
+  for (const id of ['overlay', 'pause', 'levelup', 'tutorial']) $(id).classList.add('hidden');
+
   const resume = () => { if (game) game.paused = false; };
   if (isNew && !localStorage.getItem(TUTORIAL_KEY)) {
     // Första karaktären får den korta genomgången; därefter når man den via ?.
     showTutorial(() => { try { localStorage.setItem(TUTORIAL_KEY, '1'); } catch { /* privat läge */ } resume(); });
-  } else if (isNew) {
-    showOverlay('Frosthem',
-      `${player.name} kommer till byn med en rostig yxa och ingenting annat.<br><br>` +
-      'Följ stigen norrut. Rör vid vägstenen innan du går — då kan du resa tillbaka hit.',
-      'Gå ut i kylan', resume);
   } else {
-    showOverlay('Välkommen tillbaka',
-      `${player.name}, nivå ${player.level}. Härden brinner ännu.`,
-      'Fortsätt', resume);
+    // Ingen modal vid start. Att behöva klicka bort en ruta varje gång man
+    // sätter sig är ren friktion — det som behöver sägas ryms i en notis.
+    resume();
+    game.alert(isNew
+      ? `${player.name} står i Frosthem. Följ stigen norrut.`
+      : `Välkommen tillbaka, ${player.name}. Nivå ${player.level}.`);
   }
+
   const myToken = ++loopToken;
   requestAnimationFrame((t) => frame(t, myToken));
 }

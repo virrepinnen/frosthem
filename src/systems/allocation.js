@@ -26,6 +26,10 @@ export const statPointsLeft = (p, q) => p.statPoints - sum(q.stats);
 /** @param {any} p @param {Pending} q */
 export const skillPointsLeft = (p, q) => p.skillPoints - sum(q.skills);
 /** @param {Pending} q */
+export const pendingStats = (q) => sum(q.stats);
+/** @param {Pending} q */
+export const pendingSkills = (q) => sum(q.skills);
+/** @param {Pending} q */
 export const pendingCount = (q) => sum(q.stats) + sum(q.skills);
 /** @param {Pending} q */
 export const hasPending = (q) => pendingCount(q) > 0;
@@ -96,24 +100,39 @@ export function removeSkill(p, q, id) {
 }
 
 /** @param {Pending} q */
-export function resetPending(q) {
+export function resetStats(q) {
   for (const k in q.stats) q.stats[k] = 0;
+}
+/** @param {Pending} q */
+export function resetSkills(q) {
   for (const k in q.skills) delete q.skills[k];
 }
+/** @param {Pending} q */
+export function resetPending(q) { resetStats(q); resetSkills(q); }
 
 /**
- * Skriver in de väntande poängen i karaktären. Efter det här går de inte att
- * ta tillbaka.
+ * Attribut och skills låses in var för sig. De är olika sorters beslut och
+ * hanteras på olika ställen i gränssnittet — att klumpa ihop dem gjorde att
+ * man kunde råka bekräfta det ena när man menade det andra.
  * @param {any} game @param {Pending} q
  */
-export function commitPending(game, q) {
+export function commitStats(game, q) {
   const p = game.player;
-  if (!hasPending(q)) return false;
+  if (pendingStats(q) <= 0) return false;
   for (const k in q.stats) {
     if (!q.stats[k]) continue;
     p.stats[k] += q.stats[k];
     p.statPoints -= q.stats[k];
   }
+  resetStats(q);
+  after(game);
+  return true;
+}
+
+/** @param {any} game @param {Pending} q */
+export function commitSkills(game, q) {
+  const p = game.player;
+  if (pendingSkills(q) <= 0) return false;
   for (const id in q.skills) {
     const n = q.skills[id];
     if (!n) continue;
@@ -122,11 +141,23 @@ export function commitPending(game, q) {
     const def = SKILL_BY_ID.get(id);
     if (def?.type === 'active') bindToHotbar(p, id, false);
   }
-  resetPending(q);
-  recalc(p);
+  resetSkills(q);
+  after(game);
+  return true;
+}
+
+/** @param {any} game */
+function after(game) {
+  recalc(game.player);
   game.dirtyUI = true;
   game.autosave?.();
-  return true;
+}
+
+/** Bekvämlighet: lås in allt som väntar. @param {any} game @param {Pending} q */
+export function commitPending(game, q) {
+  const a = commitStats(game, q);
+  const b = commitSkills(game, q);
+  return a || b;
 }
 
 export { SKILLS, SKILL_BY_ID };
