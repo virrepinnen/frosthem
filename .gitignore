@@ -1,0 +1,14 @@
+# macOS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# Editorer
+.vscode/
+.idea/
+*.swp
+
+# Om ett byggsteg tillkommer senare
+node_modules/
+dist/

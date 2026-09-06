@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Frosthem — Vandraren</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="ground-labels"></div>
+
+<div id="hud">
+  <div class="orb orb-hp">
+    <div class="orb-fill" id="hp-fill"></div>
+    <div class="orb-text" id="hp-text">0/0</div>
+  </div>
+
+  <div id="center-hud">
+    <div id="zone-name">Frosthem</div>
+    <div id="xp-bar"><div id="xp-fill"></div></div>
+    <div id="skillbar"></div>
+  </div>
+
+  <div class="orb orb-sta">
+    <div class="orb-fill" id="sta-fill"></div>
+    <div class="orb-text" id="sta-text">0/0</div>
+  </div>
+</div>
+
+<div id="topleft">
+  <div id="charline"><span id="char-level">Nivå 1</span> <span class="dim">Vandraren</span></div>
+  <div id="goldline"><span id="gold">0</span> guld</div>
+  <div id="alerts"></div>
+</div>
+
+<div id="topright">
+  <div id="minimap-wrap"><canvas id="minimap" width="180" height="180"></canvas></div>
+  <div id="nav">
+    <div class="navbtn" data-panel="inventory" data-name="Väska &amp; utrustning" data-key="I">🎒</div>
+    <div class="navbtn" data-panel="character" data-name="Karaktär" data-key="C">📜</div>
+    <div class="navbtn" data-panel="skills" data-name="Skill-träd" data-key="K">🌟</div>
+    <div class="navbtn" data-act="pause" data-name="Paus &amp; spara" data-key="Esc"><span class="glyph">❙❙</span></div>
+  </div>
+</div>
+
+<div id="panels"></div>
+<div id="tooltip" class="hidden"></div>
+
+<div id="pause" class="hidden">
+  <div class="menu-box">
+    <h1>Pausat</h1>
+    <button data-act="resume" class="primary">Fortsätt</button>
+    <button data-act="save">Spara nu</button>
+    <button data-act="autoaim">Auto-sikte: På</button>
+    <button data-act="quit">Till startskärmen</button>
+    <div class="menu-note" id="pause-note"></div>
+  </div>
+</div>
+
+<div id="levelup" class="hidden">
+  <div class="menu-box lvl">
+    <div class="lvl-badge" id="lvl-badge">Nivå 2</div>
+    <p class="lvl-sub" id="lvl-sub"></p>
+    <div id="lvl-stats"></div>
+    <div class="lvl-actions">
+      <button data-act="skills">Skill-träd</button>
+      <button data-act="resume" class="primary">Fortsätt</button>
+    </div>
+    <div class="menu-note">Du måste inte lägga poängen nu — de ligger kvar.</div>
+  </div>
+</div>
+
+<div id="tutorial" class="hidden">
+  <div class="menu-box tut">
+    <div class="tut-step" id="tut-step">1 / 4</div>
+    <div class="tut-ico" id="tut-ico">🧭</div>
+    <h1 id="tut-title"></h1>
+    <p id="tut-body"></p>
+    <button data-act="next" class="primary" id="tut-next">Nästa</button>
+  </div>
+</div>
+
+<div id="overlay" class="hidden">
+  <div id="overlay-box">
+    <h1 id="overlay-title"></h1>
+    <p id="overlay-body"></p>
+    <button id="overlay-btn"></button>
+  </div>
+</div>
+
+<div id="hint">
+  <b>← ↑ ↓ →</b><span>gå</span>
+  <b>Klick</b><span>attack (siktar av sig själv)</span>
+  <b>Space</b><span>undanrullning</span>
+  <b>1 – 6</b><span>skills</span>
+  <b>Q</b><span>hälsodryck</span>
+  <b>E</b><span>använd · tala · res</span>
+  <b>T</b><span>stadsportal</span>
+  <b>Esc</b><span>paus &amp; spara</span>
+  <b>F1</b><span>dölj den här listan</span>
+</div>
+
+<div id="start">
+  <div id="start-box">
+    <h1>Frosthem</h1>
+    <p class="sub">En vandrare, en rostig yxa, och vildmarken norrut.</p>
+
+    <div id="continue-card" class="hidden">
+      <button id="btn-continue" class="primary">Fortsätt</button>
+      <div class="save-line" id="save-line"></div>
+      <div class="or">eller</div>
+    </div>
+
+    <div id="create">
+      <label for="hero-name">Vad heter din vandrare?</label>
+      <input id="hero-name" maxlength="18" placeholder="Vandraren" autocomplete="off" spellcheck="false">
+      <div class="class-card">
+        <div class="cc-ico">🪓</div>
+        <div class="cc-t">
+          <b>Vandraren</b>
+          <i>Närstrid · Stål · Frost · Uthållighet</i>
+          <span>Tar smällen på nära håll. Börjar med ingenting och blir det du utrustar den till.</span>
+        </div>
+      </div>
+      <button id="btn-new">Börja vandringen</button>
+      <div id="wipe-note" class="hidden">Detta skriver över din sparade karaktär.</div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

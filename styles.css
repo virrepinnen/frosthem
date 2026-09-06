@@ -1,0 +1,290 @@
+:root{
+  --bg:#060910; --panel:#0d131e; --panel2:#121a27; --border:#27364d;
+  --ink:#cfdcec; --muted:#7b8da8; --gold:#d8b26a; --ice:#7fd4f0; --blood:#a8202a;
+  --r-normal:#cfdcec; --r-magic:#6f9ffb; --r-rare:#e8d15a; --r-unique:#c08a3e;
+  --font: "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --mono: ui-monospace,"SF Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+  font-family:var(--font);user-select:none;-webkit-user-select:none}
+canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
+
+/* ---------- ground item labels ---------- */
+#ground-labels{position:fixed;inset:0;pointer-events:none;z-index:5}
+.glabel{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;
+  font-size:11px;letter-spacing:.02em;padding:2px 7px;border-radius:3px;
+  background:rgba(5,8,14,.82);border:1px solid rgba(255,255,255,.10);
+  text-shadow:0 1px 2px #000;pointer-events:auto;cursor:pointer}
+.glabel:hover{background:rgba(20,28,42,.95);border-color:rgba(255,255,255,.3)}
+.glabel.gold{color:var(--gold)}
+.r-normal{color:var(--r-normal)} .r-magic{color:var(--r-magic)}
+.r-rare{color:var(--r-rare)} .r-unique{color:var(--r-unique)}
+
+/* ---------- HUD ---------- */
+#hud{position:fixed;left:0;right:0;bottom:0;height:132px;z-index:10;
+  display:flex;align-items:flex-end;justify-content:center;gap:24px;pointer-events:none}
+.orb{position:relative;width:104px;height:104px;flex:none;border-radius:50%;margin-bottom:10px;
+  background:radial-gradient(circle at 35% 30%,#1b2536,#070b12 70%);
+  border:2px solid var(--border);overflow:hidden;box-shadow:0 0 24px rgba(0,0,0,.8), inset 0 0 20px rgba(0,0,0,.7)}
+.orb-fill{position:absolute;left:0;right:0;bottom:0;transition:height .12s linear}
+.orb-hp .orb-fill{background:linear-gradient(180deg,#e0303c,#6b0f18)}
+.orb-sta .orb-fill{background:linear-gradient(180deg,#63c8ec,#12496b)}
+.orb-text{position:absolute;inset:0;display:grid;place-items:center;font-size:12px;
+  font-family:var(--mono);text-shadow:0 1px 3px #000;letter-spacing:.03em}
+#center-hud{display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:14px;
+  width:min(420px,52vw)}
+#zone-name{font-size:13px;color:var(--muted);letter-spacing:.18em;text-transform:uppercase}
+#xp-bar{width:100%;height:7px;background:#0b1019;border:1px solid var(--border);border-radius:3px;overflow:hidden}
+#xp-fill{height:100%;width:0%;background:linear-gradient(90deg,#5a7fbf,#a9d6f2);transition:width .2s}
+#skillbar{display:flex;gap:8px}
+.slot{width:46px;height:46px;border:1px solid var(--border);border-radius:5px;background:var(--panel2);
+  position:relative;display:grid;place-items:center;pointer-events:auto;cursor:pointer;
+  box-shadow:inset 0 0 12px rgba(0,0,0,.6)}
+.slot.active{border-color:var(--gold);box-shadow:0 0 10px rgba(216,178,106,.35), inset 0 0 12px rgba(0,0,0,.6)}
+.slot.locked{opacity:.32;cursor:default}
+.slot .ico{font-size:20px;line-height:1}
+.slot .key{position:absolute;top:1px;left:3px;font-size:9px;color:var(--muted);font-family:var(--mono)}
+.slot .cd{position:absolute;inset:0;background:rgba(4,8,14,.75);border-radius:4px;
+  display:grid;place-items:center;font-family:var(--mono);font-size:12px}
+
+/* ---------- corners ---------- */
+#topleft{position:fixed;top:14px;left:16px;z-index:10;font-size:13px;pointer-events:none}
+#charline{letter-spacing:.06em}
+.dim{color:var(--muted)}
+#goldline{color:var(--gold);font-size:12px;margin-top:2px}
+#alerts{margin-top:12px;display:flex;flex-direction:column;gap:4px;max-width:340px}
+.alert{font-size:12px;padding:4px 9px;background:rgba(8,12,20,.82);border-left:2px solid var(--gold);
+  animation:fade 5s forwards}
+@keyframes fade{0%{opacity:0;transform:translateX(-8px)}8%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
+#topright{position:fixed;top:14px;right:16px;z-index:10}
+#minimap-wrap{border:1px solid var(--border);border-radius:4px;overflow:hidden;
+  background:rgba(6,10,17,.7);box-shadow:0 0 18px rgba(0,0,0,.6)}
+#minimap{display:block;opacity:.85}
+/* Hjälptexten ligger i nedre vänstra hörnet, utanför både orbarna och
+   skillfältet. På smala fönster finns ingen sådan ficka — då göms den, och
+   F1 tvingar fram den igen. */
+#hint{position:fixed;bottom:14px;left:16px;z-index:9;pointer-events:none;
+  display:grid;grid-template-columns:auto auto;gap:4px 12px;align-items:baseline;
+  font-size:12px;line-height:1.5;color:#93a6c0;letter-spacing:.01em;transition:opacity .5s;
+  background:rgba(6,10,17,.55);border:1px solid rgba(39,54,77,.6);border-radius:6px;
+  padding:11px 14px;backdrop-filter:blur(2px)}
+#hint b{color:var(--gold);font-weight:600;font-family:var(--mono);font-size:11px;
+  justify-self:end;white-space:nowrap}
+#hint span{white-space:nowrap}
+@media (max-width:1180px){ #hint{display:none} }
+#hint.show{display:grid !important;opacity:1}
+#hint.faded{opacity:.6}
+
+/* ---------- panels ---------- */
+#panels{position:fixed;inset:0;z-index:20;pointer-events:none}
+.panel{position:absolute;top:58px;width:min(330px,40vw);max-height:calc(100vh - 180px);overflow-y:auto;
+  background:linear-gradient(180deg,var(--panel),#080d15);border:1px solid var(--border);
+  border-radius:6px;padding:14px;pointer-events:auto;box-shadow:0 18px 50px rgba(0,0,0,.75)}
+.panel.left{left:22px} .panel.right{right:22px} .panel.wide{width:min(392px,46vw)}
+.panel h2{margin:0 0 12px;font-size:13px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--gold);font-weight:600;border-bottom:1px solid var(--border);padding-bottom:8px}
+.panel .close{position:absolute;top:10px;right:12px;color:var(--muted);cursor:pointer;font-size:16px;line-height:1}
+.panel .close:hover{color:var(--ink)}
+
+/* Utrustningsdocka: platserna sitter där de sitter på en kropp, som i D2.
+   Hjälm överst, vapen till vänster, sköld till höger, stövlar nederst. */
+#equip-doll{position:relative;display:grid;gap:6px;margin-bottom:16px;
+  grid-template-columns:1fr 1.15fr 1fr;
+  grid-template-rows:auto auto auto auto auto}
+#equip-doll::before{content:'';position:absolute;left:34%;right:34%;top:6%;bottom:16%;
+  border-radius:44% 44% 30% 30%;background:radial-gradient(ellipse at 50% 35%,
+    rgba(120,150,190,.07),rgba(120,150,190,0) 70%);pointer-events:none}
+.eq{min-height:48px;border:1px solid var(--border);border-radius:4px;background:#0a0f18;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  font-size:8.5px;color:#42506a;position:relative;cursor:default;text-align:center;padding:3px;
+  letter-spacing:.05em;text-transform:uppercase}
+.eq.filled{background:#131c2b;cursor:pointer}
+.eq.filled:hover{border-color:var(--gold);background:#1a2536}
+.eq .ic{font-size:17px;line-height:1}
+.eq .nm{font-size:9px;line-height:1.15;overflow:hidden;text-transform:none;letter-spacing:0}
+.eq[data-slot="helm"]   {grid-column:2;grid-row:1}
+.eq[data-slot="amulet"] {grid-column:3;grid-row:1}
+.eq[data-slot="weapon"] {grid-column:1;grid-row:2/span 2}
+.eq[data-slot="chest"]  {grid-column:2;grid-row:2/span 2}
+.eq[data-slot="shield"] {grid-column:3;grid-row:2/span 2}
+.eq[data-slot="gloves"] {grid-column:1;grid-row:4}
+.eq[data-slot="belt"]   {grid-column:2;grid-row:4}
+.eq[data-slot="boots"]  {grid-column:3;grid-row:4}
+.eq[data-slot="ring1"]  {grid-column:1;grid-row:5}
+.eq[data-slot="ring2"]  {grid-column:3;grid-row:5}
+
+/* bag */
+#bag{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}
+.cell{aspect-ratio:1;border:1px solid #1c2635;border-radius:3px;background:#090e17;
+  display:grid;place-items:center;cursor:pointer;font-size:15px;position:relative}
+.cell.has:hover{border-color:var(--gold)}
+.cell.rn{box-shadow:inset 0 0 0 1px rgba(207,220,236,.25)}
+.cell.rm{box-shadow:inset 0 0 0 1px rgba(111,159,251,.5)}
+.cell.rr{box-shadow:inset 0 0 0 1px rgba(232,209,90,.5)}
+.cell.ru{box-shadow:inset 0 0 0 1px rgba(192,138,62,.65)}
+
+/* stat rows */
+.row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;
+  border-bottom:1px solid rgba(39,54,77,.35)}
+.row span:last-child{font-family:var(--mono);color:#e6eef8}
+.grp{margin:12px 0 4px;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.plus{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:6px;
+  border:1px solid var(--gold);color:var(--gold);border-radius:3px;cursor:pointer;font-size:12px;line-height:1}
+.plus:hover{background:var(--gold);color:#0b0f17}
+
+/* Skill-träd. Grenarna ritas som linjer mellan raderna så att kraven syns
+   innan man läser dem: en nod är låst tills föräldern har en poäng. */
+.tree{margin-bottom:20px;padding-bottom:6px;border-bottom:1px solid rgba(39,54,77,.35)}
+.tree:last-of-type{border-bottom:0}
+.tree-name{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ice);
+  margin-bottom:10px;display:flex;justify-content:space-between}
+.tree-name span{color:var(--muted);letter-spacing:.04em;text-transform:none}
+.tier{display:grid;grid-template-columns:1fr 1fr;gap:10px;position:relative}
+.tier.cap{grid-template-columns:1fr;padding:0 25%}
+.branch{height:20px;position:relative}
+.branch i{position:absolute;background:#2c3d55;display:block}
+.branch i.v{width:2px;top:0;bottom:0}
+.branch i.h{height:2px;left:25%;right:25%;top:9px}
+.branch i.on{background:#5d7ea6}
+.node{display:flex;gap:8px;align-items:center;padding:7px 8px;border:1px solid var(--border);
+  border-radius:5px;background:#0c121c;cursor:pointer;position:relative}
+.node:hover{background:#141d2b;border-color:#3c5271}
+.node.avail{border-color:#4a638a;background:#101927}
+.node.ready{border-color:var(--gold);box-shadow:0 0 8px rgba(216,178,106,.2)}
+.node.locked{opacity:.34;cursor:default;border-style:dashed}
+.node .ico{width:28px;height:28px;display:grid;place-items:center;border:1px solid var(--border);
+  border-radius:4px;background:#080d15;font-size:15px;flex:none}
+/* Trädnoder står på höjden: ikonen bär igenkänningen, texten får plats även
+   i en smal kolumn, och rutnätet läser som ett träd i stället för en lista. */
+.node.sk{flex-direction:column;align-items:center;text-align:center;gap:4px;padding:9px 5px 7px}
+.node.sk .ico{width:34px;height:34px;font-size:18px}
+.node.sk .t{width:100%}
+.node.sk .t b{font-size:10.5px;line-height:1.22;hyphens:auto}
+.node.sk .t i{font-size:8.5px;letter-spacing:.02em}
+.node.sk .rk{font-size:10px}
+.node.maxed .ico{border-color:var(--gold)}
+.node .t{flex:1;min-width:0}
+.node .t b{font-size:11px;font-weight:600;display:block;line-height:1.25}
+.node .t i{font-size:9.5px;color:var(--muted);font-style:normal}
+.node .rk{font-family:var(--mono);font-size:10.5px;color:var(--gold);flex:none}
+.node .hk{position:absolute;top:-6px;right:-6px;width:15px;height:15px;border-radius:3px;
+  background:var(--panel2);border:1px solid var(--gold);color:var(--gold);
+  font-family:var(--mono);font-size:9px;display:grid;place-items:center}
+
+/* tooltip */
+#tooltip{position:fixed;z-index:60;max-width:290px;pointer-events:none;
+  background:linear-gradient(180deg,#0f1724,#070b12);border:1px solid var(--border);
+  border-radius:5px;padding:10px 12px;font-size:12px;line-height:1.45;
+  box-shadow:0 14px 40px rgba(0,0,0,.85)}
+#tooltip .tt-name{font-size:13px;margin-bottom:1px}
+#tooltip .tt-base{color:var(--muted);font-size:11px;margin-bottom:7px}
+#tooltip .tt-core{font-family:var(--mono);font-size:11.5px;color:#dbe6f4}
+#tooltip .tt-mod{color:var(--r-magic);font-size:11.5px}
+#tooltip .tt-req{color:var(--muted);font-size:10.5px;margin-top:7px}
+#tooltip .tt-req.bad{color:var(--blood)}
+#tooltip hr{border:0;border-top:1px solid rgba(39,54,77,.6);margin:7px 0}
+#tooltip .tt-hint{color:var(--gold);font-size:10.5px;margin-top:7px;font-style:italic}
+#tooltip .tt-cmp{color:var(--muted);font-size:10.5px;margin-top:6px}
+.up{color:#69c17a} .down{color:#c1697a}
+
+/* overlay */
+#overlay{position:fixed;inset:0;z-index:80;background:rgba(3,5,9,.86);display:grid;place-items:center}
+#overlay-box{text-align:center;max-width:440px;padding:32px}
+#overlay-box h1{font-size:30px;margin:0 0 10px;letter-spacing:.06em;color:var(--ink)}
+#overlay-box p{color:var(--muted);font-size:14px;line-height:1.6;margin:0 0 22px}
+#overlay-btn{background:none;border:1px solid var(--gold);color:var(--gold);font-family:var(--font);
+  font-size:13px;letter-spacing:.14em;text-transform:uppercase;padding:11px 26px;border-radius:4px;cursor:pointer}
+#overlay-btn:hover{background:var(--gold);color:#0b0f17}
+.hidden{display:none !important}
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-track{background:#080d15}
+::-webkit-scrollbar-thumb{background:#243349;border-radius:4px}
+
+/* ---------- startskärm / karaktärsskapande ---------- */
+#start{position:fixed;inset:0;z-index:90;display:grid;place-items:center;
+  background:radial-gradient(ellipse at 50% 30%,#0d1622,#04070d 75%)}
+#start-box{width:min(440px,90vw);padding:34px 32px;text-align:center;
+  border:1px solid var(--border);border-radius:8px;
+  background:linear-gradient(180deg,rgba(16,24,36,.9),rgba(6,10,17,.95));
+  box-shadow:0 30px 90px rgba(0,0,0,.8)}
+#start-box h1{margin:0 0 6px;font-size:34px;letter-spacing:.1em;font-weight:500}
+#start-box .sub{margin:0 0 26px;color:var(--muted);font-size:12.5px;line-height:1.6}
+#start-box label{display:block;text-align:left;font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+#hero-name{width:100%;padding:11px 13px;margin-bottom:16px;border-radius:5px;
+  border:1px solid var(--border);background:#080d15;color:var(--ink);
+  font-family:var(--font);font-size:15px;letter-spacing:.03em}
+#hero-name:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 2px rgba(216,178,106,.15)}
+.class-card{display:flex;gap:13px;text-align:left;padding:13px;margin-bottom:20px;
+  border:1px solid var(--gold);border-radius:6px;background:rgba(216,178,106,.06)}
+.cc-ico{font-size:26px;line-height:1;flex:none}
+.cc-t b{display:block;font-size:14px;margin-bottom:2px}
+.cc-t i{display:block;font-style:normal;font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+.cc-t span{font-size:11.5px;color:var(--muted);line-height:1.5}
+#start-box button{width:100%;background:none;border:1px solid var(--gold);color:var(--gold);
+  font-family:var(--font);font-size:13px;letter-spacing:.14em;text-transform:uppercase;
+  padding:12px;border-radius:5px;cursor:pointer;transition:background .15s}
+#start-box button:hover{background:var(--gold);color:#0b0f17}
+#start-box button.primary{background:var(--gold);color:#0b0f17}
+#start-box button.primary:hover{filter:brightness(1.12)}
+.save-line{font-size:11.5px;color:var(--muted);margin:9px 0 0}
+.or{margin:20px 0;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#3d4a5e;
+  display:flex;align-items:center;gap:12px}
+.or::before,.or::after{content:'';flex:1;height:1px;background:var(--border)}
+#wipe-note{margin-top:9px;font-size:11px;color:var(--blood)}
+
+/* ---------- navigeringsikoner ---------- */
+#nav{display:flex;gap:6px;margin-top:8px;justify-content:flex-end}
+.navbtn{position:relative;width:38px;height:38px;display:grid;place-items:center;font-size:17px;cursor:pointer;
+  border:1px solid var(--border);border-radius:5px;background:rgba(24,34,49,.94);
+  transition:border-color .12s, background .12s;color:var(--gold)}
+.navbtn .glyph{font-size:13px;letter-spacing:1px;color:var(--gold)}
+.navbtn:hover{border-color:var(--gold);background:#18222f}
+.navbtn.on{border-color:var(--gold);box-shadow:0 0 9px rgba(216,178,106,.28)}
+.navbtn .dot{position:absolute}
+/* OBS: klassen får inte heta .alert — det namnet bär HUD-meddelandenas
+   fade-animation, som annars gör ikonen osynlig. */
+.navbtn.pending::after{content:'';position:absolute;width:7px;height:7px;border-radius:50%;
+  background:var(--gold);transform:translate(15px,-13px);box-shadow:0 0 6px var(--gold)}
+
+/* ---------- meny-, nivå- och tutorialrutor ---------- */
+#pause,#levelup,#tutorial{position:fixed;inset:0;z-index:85;display:grid;place-items:center}
+#pause,#tutorial{background:rgba(3,5,9,.8)}
+/* Nivårutan får inte låsa panelerna — man ska kunna öppna skill-trädet bakom den. */
+#levelup{background:none;pointer-events:none}
+.menu-box{width:min(360px,88vw);padding:26px 26px 20px;text-align:center;pointer-events:auto;
+  border:1px solid var(--border);border-radius:8px;
+  background:linear-gradient(180deg,rgba(17,25,38,.97),rgba(6,10,17,.98));
+  box-shadow:0 26px 80px rgba(0,0,0,.85)}
+.menu-box h1{margin:0 0 18px;font-size:23px;letter-spacing:.09em;font-weight:500}
+.menu-box button{width:100%;margin-bottom:8px;background:none;border:1px solid var(--border);
+  color:var(--ink);font-family:var(--font);font-size:12.5px;letter-spacing:.12em;
+  text-transform:uppercase;padding:11px;border-radius:5px;cursor:pointer;transition:.14s}
+.menu-box button:hover{border-color:var(--gold);color:var(--gold)}
+.menu-box button.primary{background:var(--gold);border-color:var(--gold);color:#0b0f17}
+.menu-box button.primary:hover{filter:brightness(1.12);color:#0b0f17}
+.menu-note{margin-top:12px;font-size:11px;color:var(--muted);line-height:1.55}
+
+/* nivåhöjning */
+.menu-box.lvl{width:min(320px,86vw);border-color:var(--gold);
+  box-shadow:0 0 0 1px rgba(216,178,106,.18),0 26px 80px rgba(0,0,0,.85)}
+.lvl-badge{font-size:15px;letter-spacing:.26em;text-transform:uppercase;color:var(--gold);
+  margin-bottom:4px}
+.lvl-sub{margin:0 0 16px;font-size:12px;color:var(--muted)}
+#lvl-stats{margin-bottom:16px}
+#lvl-stats .row{padding:5px 0}
+#lvl-stats .row span:first-child{display:flex;align-items:center}
+.lvl-actions{display:flex;gap:8px}
+.lvl-actions button{margin-bottom:0}
+@keyframes lvlpop{0%{transform:scale(.9);opacity:0}60%{transform:scale(1.02)}100%{transform:scale(1);opacity:1}}
+.menu-box.lvl{animation:lvlpop .28s ease-out}
+
+/* tutorial */
+.menu-box.tut{width:min(400px,90vw)}
+.tut-step{font-size:10px;letter-spacing:.22em;color:var(--muted);margin-bottom:14px}
+.tut-ico{font-size:36px;line-height:1;margin-bottom:12px}
+.menu-box.tut h1{font-size:19px;margin-bottom:10px}
+.menu-box.tut p{margin:0 0 20px;color:var(--muted);font-size:13px;line-height:1.65}
+.menu-box.tut b{color:var(--gold);font-weight:600}
