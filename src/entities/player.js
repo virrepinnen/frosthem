@@ -20,7 +20,9 @@ export function slotsFor(s) {
   return s === 'ring' ? ['ring1', 'ring2'] : [s];
 }
 
-export const BAG_SIZE = 40;
+/** Väskans rutnät. Rutorna är fler än förr, men föremålen tar olika mycket plats. */
+export const BAG_COLS = 10;
+export const BAG_ROWS = 6;
 export const HOTBAR_SIZE = 6;
 
 /**
@@ -56,7 +58,7 @@ export function createPlayer(name) {
   };
 
   const p = {
-    name: name || 'Vandraren',
+    name: name || 'Barbaren',
     pos: { x: 0, y: 0 }, vel: { x: 0, y: 0 }, facing: 0, radius: 14,
 
     level: 1, xp: 0, xpNext: xpToNext(1),

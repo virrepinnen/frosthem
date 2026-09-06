@@ -1,11 +1,12 @@
 // @ts-check
 import { camera } from '../render/camera.js';
-import { SKILL_BY_ID, SKILLS, TREES, skillAvailability } from '../data/skills.js';
-import { HOTBAR_SIZE, bindToHotbar } from '../entities/player.js';
+import { SKILL_BY_ID } from '../data/skills.js';
+import { HOTBAR_SIZE } from '../entities/player.js';
 import { showTextTooltip, hideTooltip, escape } from './tooltip.js';
-import { skillPower } from '../systems/stats.js';
-import { panels, togglePanel, closeAllPanels, attrTooltip } from './panels.js';
-import { recalc, rank } from '../systems/stats.js';
+import { panels, togglePanel, closeAllPanels } from './panels.js';
+import { attributeCards, skillTreeEl, confirmBar, pointsBadge, statPointsLeft, skillPointsLeft, hasPending }
+  from './alloc-ui.js';
+
 import { saveGame } from '../systems/save.js';
 
 const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (document.getElementById(id));
@@ -246,13 +247,10 @@ export function showPauseMenu(game) {
 /* Nivåhöjning                                                         */
 /* ------------------------------------------------------------------ */
 
-const ATTRS = /** @type {const} */ (['str', 'dex', 'vit', 'will']);
-const ATTR_LABEL = { str: 'Styrka', dex: 'Smidighet', vit: 'Vitalitet', will: 'Vilja' };
-
 /**
- * Nivårutan visar *båda* poängslagen i samma fönster. Tidigare låg skillpoängen
- * bakom en knapp till en separat panel, vilket gjorde dem lätta att missa —
- * och panelen uppdaterade inte rutans räknare när man la ut dem.
+ * Nivårutan. Bred nog att rymma både attributrutorna och *hela* skill-trädet,
+ * så inget ligger bakom en knapp. Poängen läggs i en väntande hög som går att
+ * plocka tillbaka — först "Lås in" skriver dem till karaktären.
  * @param {any} game @param {number} levels
  */
 export function showLevelUp(game, levels) {
@@ -263,102 +261,38 @@ export function showLevelUp(game, levels) {
     ? `${levels} nivåer på en gång`
     : 'Du känner dig stadigare på benen.';
 
-  /** @param {number} n @param {string} label */
-  const badge = (n, label) => {
-    const b = document.createElement('div');
-    b.className = 'points' + (n > 0 ? ' has' : '');
-    b.innerHTML = `<span class="n">${n}</span><span class="l">${label}</span>`;
-    return b;
-  };
-
   const render = () => {
     const host = $('lvl-stats');
     host.innerHTML = '';
 
-    // ---- attribut --------------------------------------------------------
-    host.appendChild(badge(p.statPoints, 'attributpoäng att lägga'));
-    for (const key of ATTRS) {
-      const r = document.createElement('div');
-      r.className = 'row';
-      r.innerHTML = `<span>${ATTR_LABEL[key]}</span><span>${p.eff[key]}</span>`;
-      if (p.statPoints > 0) {
-        const b = document.createElement('span');
-        b.className = 'plus'; b.textContent = '+';
-        b.onclick = () => { p.statPoints--; p.stats[key]++; recalc(p); game.dirtyUI = true; render(); };
-        /** @type {HTMLElement} */ (r.children[0]).appendChild(b);
-      }
-      r.onmouseenter = () => showTextTooltip(attrTooltip(p, key));
-      r.onmouseleave = hideTooltip;
-      host.appendChild(r);
-    }
+    const left = document.createElement('div');
+    left.className = 'lvl-col';
+    left.appendChild(pointsBadge(statPointsLeft(p, game.pending), 'attributpoäng', '✦'));
+    left.appendChild(attributeCards(game, render));
 
-    // ---- skills ----------------------------------------------------------
-    const sep = document.createElement('div');
-    sep.style.height = '14px';
-    host.appendChild(sep);
-    host.appendChild(badge(p.skillPoints, 'skillpoäng att lägga'));
+    const right = document.createElement('div');
+    right.className = 'lvl-col';
+    right.appendChild(pointsBadge(skillPointsLeft(p, game.pending), 'skillpoäng', '🌟'));
+    right.appendChild(skillTreeEl(game, render));
 
-    const open = SKILLS.filter(sk =>
-      skillAvailability(p.skills, p.level, sk).ok && rank(p, sk.id) < sk.maxRank);
+    host.appendChild(left);
+    host.appendChild(right);
 
-    if (!open.length) {
-      const none = document.createElement('div');
-      none.className = 'tt-req';
-      none.textContent = 'Inga skills är öppna än — nästa steg kräver högre nivå.';
-      host.appendChild(none);
+    // Knappraden byter innehåll: väntar något går det att ångra eller låsa in.
+    const actions = $('lvl-actions');
+    actions.innerHTML = '';
+    if (hasPending(game.pending)) {
+      const bar = confirmBar(game, render);
+      if (bar) actions.appendChild(bar);
     } else {
-      let lastTree = '';
-      for (const sk of open) {
-        if (sk.tree !== lastTree) {
-          lastTree = sk.tree;
-          const h = document.createElement('div');
-          h.className = 'grp';
-          h.textContent = TREES[sk.tree];
-          host.appendChild(h);
-        }
-        const r = rank(p, sk.id);
-        const row = document.createElement('div');
-        row.className = 'row lvl-skill';
-        row.innerHTML = `<span><i class="si">${sk.icon}</i>${sk.name}</span>` +
-          `<span>${r}/${sk.maxRank}</span>`;
-        if (p.skillPoints > 0) {
-          const b = document.createElement('span');
-          b.className = 'plus'; b.textContent = '+';
-          b.onclick = () => {
-            p.skillPoints--;
-            p.skills[sk.id] = (p.skills[sk.id] || 0) + 1;
-            if (sk.type === 'active') bindToHotbar(p, sk.id, false);
-            recalc(p);
-            game.dirtyUI = true;
-            render();          // rutan ritas om direkt, så räknarna stämmer
-          };
-          /** @type {HTMLElement} */ (row.children[0]).appendChild(b);
-        }
-        row.onmouseenter = () => {
-          const { synergy } = skillPower(p, sk.id);
-          const next = Math.min(r + 1, sk.maxRank);
-          showTextTooltip(
-            `<div class="tt-name" style="color:#d8b26a">${sk.icon} ${escape(sk.name)}</div>` +
-            `<div class="tt-base">${TREES[sk.tree]} · ${sk.type === 'passive' ? 'passiv'
-              : sk.mana ? `${sk.mana} mana` : `${sk.stamina ?? 0} uthållighet`} · rank ${r}/${sk.maxRank}</div>` +
-            `<div class="tt-mod"><b>${r > 0 ? 'Nästa rank' : 'Rank 1'}:</b><br>` +
-            `${escape(sk.desc(next, synergy)).replace(/\n/g, '<br>')}</div>`);
-        };
-        row.onmouseleave = hideTooltip;
-        host.appendChild(row);
-      }
+      const done = document.createElement('button');
+      done.className = 'primary';
+      done.textContent = 'Fortsätt';
+      done.onclick = () => { hideLevelUp(); closeAllPanels(game); game.paused = false; };
+      actions.appendChild(done);
     }
   };
   render();
-
-  for (const b of /** @type {HTMLElement[]} */ ([...box.querySelectorAll('button')])) {
-    b.onclick = () => {
-      if (b.dataset.act === 'skills') { panels.skills = true; game.dirtyUI = true; return; }
-      hideLevelUp();
-      closeAllPanels(game);
-      game.paused = false;
-    };
-  }
   box.classList.remove('hidden');
 }
 

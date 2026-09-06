@@ -297,13 +297,31 @@ export const STAT_INFO = /** @type {Record<string,{label:string, fmt:(v:number)=
   str:         { label: 'Styrka',            fmt: v => `+${v}`,         order: 17 },
   dex:         { label: 'Smidighet',         fmt: v => `+${v}`,         order: 18 },
   vit:         { label: 'Vitalitet',         fmt: v => `+${v}`,         order: 19 },
-  will:        { label: 'Vilja',             fmt: v => `+${v}`,         order: 20 },
+  will:        { label: 'Intelligens',       fmt: v => `+${v}`,         order: 20 },
   resCold:     { label: 'Köldmotstånd',      fmt: v => `+${v}%`,        order: 21 },
   resFire:     { label: 'Eldmotstånd',       fmt: v => `+${v}%`,        order: 22 },
   resLight:    { label: 'Blixtmotstånd',     fmt: v => `+${v}%`,        order: 23 },
   resAll:      { label: 'Alla motstånd',     fmt: v => `+${v}%`,        order: 24 },
   magicFind:   { label: 'Bättre fynd',       fmt: v => `+${v}%`,        order: 25 },
 });
+
+/**
+ * Hur många rutor ett föremål tar i väskan, som i D2. Ett slagsvärd ska kosta
+ * plats; en ring ska inte. Det är den avvägningen som gör väskan till ett val
+ * i stället för en lista.
+ * @type {Record<Slot,[number,number]>}
+ */
+export const SLOT_SIZE = {
+  weapon: [2, 3], chest: [2, 3], shield: [2, 3],
+  helm: [2, 2], gloves: [2, 2], boots: [2, 2],
+  belt: [2, 1], ring: [1, 1], amulet: [1, 1],
+};
+
+/** @param {BaseItem} base @returns {{w:number,h:number}} */
+export function itemSize(base) {
+  const [w, h] = SLOT_SIZE[base.slot] ?? [1, 1];
+  return { w, h };
+}
 
 export const RARITY_COLOR = /** @type {Record<Rarity,string>} */ ({
   normal: '#cfdcec', magic: '#6f9ffb', rare: '#e8d15a', unique: '#c08a3e',

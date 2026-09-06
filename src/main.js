@@ -46,9 +46,9 @@ canvas.addEventListener('mouseenter', hideTooltip);
 /** @type {ReturnType<typeof createGame>|null} */
 let game = null;
 
-/** Klasser. Bara Vandraren finns — de andra visas för att visa vart det bär. */
+/** Klasser. Bara Barbaren finns — de andra visas för att visa vart det bär. */
 const CLASSES = [
-  { id: 'wanderer', icon: '🪓', name: 'Vandraren', tag: 'Närstrid · Stål · Frost · Uthållighet',
+  { id: 'barbarian', icon: '🪓', name: 'Barbar', tag: 'Närstrid · Stål · Frost · Uthållighet',
     desc: 'Tar smällen på nära håll. Börjar med ingenting och blir det du utrustar den till.',
     ready: true },
   { id: 'hunter', icon: '🏹', name: 'Jägaren', tag: 'Distans · kommer senare',
@@ -91,7 +91,7 @@ function renderCharList() {
     row.className = 'char-row';
     row.innerHTML =
       `<div class="char-lvl">${rec.level ?? 1}</div>` +
-      `<div class="char-t"><b>${escapeHtml(rec.name ?? 'Vandraren')}</b>` +
+      `<div class="char-t"><b>${escapeHtml(rec.name ?? 'Barbaren')}</b>` +
       `<i>${info.kills} fällda · ${info.gold} guld · ${info.deaths} dödsfall<br>Senast spelad ${info.rel}</i></div>` +
       '<div class="char-del" title="Radera">✕</div>';
     row.onclick = () => {
@@ -147,7 +147,7 @@ function escapeHtml(t) {
 nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') startNew(); });
 
 function startNew() {
-  const name = nameInput.value.trim() || 'Vandraren';
+  const name = nameInput.value.trim() || 'Barbaren';
   begin(createPlayer(name), undefined, true);
 }
 

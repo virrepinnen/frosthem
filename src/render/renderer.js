@@ -115,6 +115,7 @@ export function render(ctx, game, dt) {
 
   drawAimTarget(ctx, game);
   drawProjectiles(ctx, game);
+  drawInteractPrompt(ctx, game);
   drawParticles(ctx);
   drawFloatTexts(ctx);
 
@@ -260,17 +261,9 @@ function drawWaypoint(ctx, game) {
   ctx.moveTo(0, -38); ctx.lineTo(-9, -30);
   ctx.stroke();
 
-  const near = Math.hypot(game.player.pos.x - w.x, game.player.pos.y - w.y) < w.r + 60;
-  ctx.textAlign = 'center';
-  ctx.font = '600 11px system-ui, sans-serif';
-  ctx.fillStyle = known ? '#bfe4f6' : '#7b8da8';
-  ctx.fillText(known ? 'Vägsten' : 'Vägsten (orörd)', 0, -92);
-  if (near) {
-    ctx.font = '10px system-ui, sans-serif';
-    ctx.fillStyle = '#8fa3bd';
-    ctx.fillText('[E] res', 0, -80);
-  }
   ctx.restore();
+  worldLabel(ctx, known ? 'Vägsten' : 'Vägsten (orörd)', w.x, w.y - 92,
+    known ? '#c8ecfb' : '#93a6c0', 13);
 }
 
 /** @param {CanvasRenderingContext2D} ctx @param {any} game */
@@ -297,16 +290,8 @@ function drawPortal(ctx, game) {
     ctx.stroke();
   }
   ctx.globalAlpha = 1;
-  ctx.textAlign = 'center';
-  ctx.font = '600 11px system-ui, sans-serif';
-  ctx.fillStyle = '#bfe4f6';
-  ctx.fillText(game.zone.isTown ? portal.zoneName : 'Frosthem', 0, -88);
-  if (Math.hypot(game.player.pos.x - here.x, game.player.pos.y - here.y) < 70) {
-    ctx.font = '10px system-ui, sans-serif';
-    ctx.fillStyle = '#8fa3bd';
-    ctx.fillText('[E] stig igenom', 0, -76);
-  }
   ctx.restore();
+  worldLabel(ctx, game.zone.isTown ? portal.zoneName : 'Frosthem', here.x, here.y - 88, '#c8ecfb', 13);
 }
 
 /** @param {CanvasRenderingContext2D} ctx @param {any} game */
@@ -329,16 +314,9 @@ function drawChests(ctx, game) {
     else ctx.fillRect(-26, -32, 52, 14);
     ctx.fillStyle = c.opened ? '#5a4a30' : '#d8b26a';
     ctx.fillRect(-4, -26, 8, 14);
-    ctx.textAlign = 'center';
-    ctx.font = '600 11px system-ui, sans-serif';
-    ctx.fillStyle = c.opened ? '#5f6d82' : '#e0c288';
-    ctx.fillText(c.opened ? 'Tömd kista' : 'Kista', 0, -44);
-    if (!c.opened && Math.hypot(game.player.pos.x - c.x, game.player.pos.y - c.y) < 70) {
-      ctx.font = '10px system-ui, sans-serif';
-      ctx.fillStyle = '#8fa3bd';
-      ctx.fillText('[E] öppna', 0, -32);
-    }
     ctx.restore();
+    worldLabel(ctx, c.opened ? 'Tömd kista' : 'Kista', c.x, c.y - 44,
+      c.opened ? '#8b98ab' : '#f0cf94', 13);
   }
 }
 
@@ -411,6 +389,58 @@ function drawObstacle(ctx, o) {
     case 'quarryblock': drawQuarryBlock(ctx, o); break;
     case 'rubble': drawRock(ctx, o); break;
   }
+}
+
+/**
+ * Text i världen med mörk kontur. Utan konturen försvinner den mot snön —
+ * det var därför skyltarna kändes otydliga.
+ * @param {CanvasRenderingContext2D} ctx @param {string} text
+ * @param {number} x @param {number} y @param {string} color @param {number} [size] @param {number} [weight]
+ */
+function worldLabel(ctx, text, x, y, color, size = 13, weight = 600) {
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.font = `${weight} ${size}px system-ui, sans-serif`;
+  ctx.lineWidth = 3.5;
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(4,7,12,0.9)';
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+  ctx.restore();
+}
+
+/**
+ * Den enda [E]-prompten. Ritas ovanför det spelaren faktiskt kan använda,
+ * med tangenten som en egen tydlig knapp.
+ * @param {CanvasRenderingContext2D} ctx @param {any} game
+ */
+function drawInteractPrompt(ctx, game) {
+  const it = game.interact;
+  if (!it || game.player.dead) return;
+  const t = performance.now() / 1000;
+  const y = it.y + Math.sin(t * 2.4) * 2;
+  ctx.save();
+  ctx.font = '600 13px system-ui, sans-serif';
+  const tw = ctx.measureText(it.label).width;
+  const boxW = tw + 46, boxH = 26;
+  const x = it.x - boxW / 2;
+  ctx.fillStyle = 'rgba(6,10,17,0.88)';
+  ctx.strokeStyle = 'rgba(216,178,106,0.85)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.roundRect(x, y - boxH, boxW, boxH, 5); ctx.fill(); ctx.stroke();
+  // tangentkapsel
+  ctx.fillStyle = '#d8b26a';
+  ctx.beginPath(); ctx.roundRect(x + 6, y - boxH + 5, 17, 16, 3); ctx.fill();
+  ctx.fillStyle = '#0b0f17';
+  ctx.font = '700 11px ui-monospace, monospace';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('E', x + 14.5, y - boxH + 13.5);
+  ctx.fillStyle = '#f0e6cf';
+  ctx.font = '600 13px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(it.label, x + 30, y - boxH + 13.5);
+  ctx.restore();
 }
 
 /** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} rx @param {number} ry @param {number} [a] */
@@ -594,18 +624,8 @@ function drawNpc(ctx, n, game) {
   ctx.beginPath(); ctx.arc(0, -29, 7, Math.PI, 0); ctx.fill();
   ctx.restore();
 
-  const near = Math.hypot(game.player.pos.x - n.x, game.player.pos.y - n.y) < 110;
-  ctx.save();
-  ctx.textAlign = 'center';
-  ctx.font = '600 11px system-ui, sans-serif';
-  ctx.fillStyle = near ? '#d8b26a' : 'rgba(200,214,232,0.55)';
-  ctx.fillText(n.name, n.x, n.y - 44);
-  if (near) {
-    ctx.font = '10px system-ui, sans-serif';
-    ctx.fillStyle = '#8fa3bd';
-    ctx.fillText('[E] tala', n.x, n.y - 32);
-  }
-  ctx.restore();
+  const near = Math.hypot(game.player.pos.x - n.x, game.player.pos.y - n.y) < 115;
+  worldLabel(ctx, n.name, n.x, n.y - 44, near ? '#e8c88a' : '#c2d2e6', 13);
 }
 
 /** @param {CanvasRenderingContext2D} ctx @param {any} game */
@@ -642,12 +662,8 @@ function drawExits(ctx, game) {
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, e.r * 1.5, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = 'rgba(170,226,250,0.75)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(0, 0, e.r, e.r * 0.5, 0, 0, Math.PI * 2); ctx.stroke();
-    ctx.textAlign = 'center'; ctx.font = '600 12px system-ui, sans-serif';
-    ctx.fillStyle = '#bfe4f6';
-    ctx.fillText(e.label, 0, -e.r * 0.5 - 16);
-    const near = Math.hypot(game.player.pos.x - e.x, game.player.pos.y - e.y) < e.r + 30;
-    if (near) { ctx.font = '10px system-ui, sans-serif'; ctx.fillStyle = '#8fa3bd'; ctx.fillText('[E] res dit', 0, -e.r * 0.5 - 4); }
     ctx.restore();
+    worldLabel(ctx, e.label, e.x, e.y - e.r * 0.5 - 16, '#c8ecfb', 13);
   }
 }
 
@@ -1017,63 +1033,80 @@ function drawVignette(ctx, W, H, zone) {
 /**
  * Minimap med fog of war.
  *
- * Ordningen spelar roll: allt ritas först, sedan målas de rutor du ännu inte
- * besökt över. Fienderna ritas *efter* dimman men bara nära dig — kartan minns
- * terräng, inte var monstren står.
+ * Ritas i skärmens faktiska upplösning (annars blir den suddig på en
+ * retina-panel) och med tre tydligt skilda toner: utforskad mark, dimma, och
+ * utanför zonen. Ordningen spelar roll — allt ritas först, sedan målas det du
+ * inte besökt över. Fienderna ritas *efter* dimman men bara nära dig: kartan
+ * minns terräng, inte var monstren står.
  * @param {CanvasRenderingContext2D} ctx @param {any} game
  */
 export function renderMinimap(ctx, game) {
-  const S = 180;
+  const canvas = ctx.canvas;
+  const S = canvas.clientWidth || 180;
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  if (canvas.width !== Math.round(S * dpr)) {
+    canvas.width = canvas.height = Math.round(S * dpr);
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
   const zone = game.zone;
   const sc = Math.min(S / zone.w, S / zone.h);
   const offX = (S - zone.w * sc) / 2, offY = (S - zone.h * sc) / 2;
+  const wx = (/** @type {number} */ x) => offX + x * sc;
+  const wy = (/** @type {number} */ y) => offY + y * sc;
+
   ctx.clearRect(0, 0, S, S);
-  ctx.fillStyle = '#070b12'; ctx.fillRect(0, 0, S, S);
-  ctx.fillStyle = '#1a2634';
+  ctx.fillStyle = '#05080e';           // utanför zonen
+  ctx.fillRect(0, 0, S, S);
+  ctx.fillStyle = '#243448';           // utforskad mark
   ctx.fillRect(offX, offY, zone.w * sc, zone.h * sc);
 
-  ctx.fillStyle = '#2a3a4d';
+  // hinder, skalade efter sin verkliga storlek
+  ctx.fillStyle = '#3d5271';
   for (const o of zone.obstacles) {
-    if (o.kind === 'circle') ctx.fillRect(offX + o.x * sc - 1, offY + o.y * sc - 1, 2, 2);
-    else ctx.fillRect(offX + o.x * sc, offY + o.y * sc, o.w * sc, o.h * sc);
+    if (o.type === 'drift') continue;
+    if (o.kind === 'circle') {
+      const r = Math.max(0.7, o.r * sc);
+      ctx.fillRect(wx(o.x) - r, wy(o.y) - r, r * 2, r * 2);
+    } else ctx.fillRect(wx(o.x), wy(o.y), Math.max(1, o.w * sc), Math.max(1, o.h * sc));
   }
   if (zone.roads) {
-    ctx.strokeStyle = 'rgba(150,168,190,0.55)';
+    ctx.strokeStyle = 'rgba(186,204,228,0.7)';
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     for (const road of zone.roads) {
-      ctx.lineWidth = road.main ? 2.4 : 1.5;
+      ctx.lineWidth = road.main ? 2.6 : 1.6;
       ctx.beginPath();
       road.pts.forEach((/** @type {any} */ pt, /** @type {number} */ i) =>
-        i ? ctx.lineTo(offX + pt.x * sc, offY + pt.y * sc) : ctx.moveTo(offX + pt.x * sc, offY + pt.y * sc));
+        i ? ctx.lineTo(wx(pt.x), wy(pt.y)) : ctx.moveTo(wx(pt.x), wy(pt.y)));
       ctx.stroke();
     }
   }
+  /** @param {number} x @param {number} y @param {string} color @param {number} r */
+  const pip = (x, y, color, r) => {
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(wx(x), wy(y), r, 0, 6.3); ctx.fill();
+  };
+  for (const e of zone.exits) pip(e.x, e.y, '#7fd4f0', 3);
+  for (const sh of zone.shrines) if (!sh.used) pip(sh.x, sh.y, '#e0a86a', 2.5);
+  for (const c of zone.chests ?? []) if (!c.opened) pip(c.x, c.y, '#d8b26a', 2.8);
   if (zone.waypoint) {
     ctx.fillStyle = game.waypoints.has(zone.index) ? '#a8e4f8' : '#5a6a80';
-    ctx.fillRect(offX + zone.waypoint.x * sc - 2.5, offY + zone.waypoint.y * sc - 2.5, 5, 5);
+    ctx.fillRect(wx(zone.waypoint.x) - 2.5, wy(zone.waypoint.y) - 2.5, 5, 5);
   }
-  ctx.fillStyle = '#d8b26a';
-  for (const c of zone.chests ?? []) if (!c.opened) {
-    ctx.fillRect(offX + c.x * sc - 2, offY + c.y * sc - 2, 4, 4);
-  }
-  ctx.fillStyle = '#7fd4f0';
-  for (const e of zone.exits) { ctx.beginPath(); ctx.arc(offX + e.x * sc, offY + e.y * sc, 3, 0, 6.3); ctx.fill(); }
-  ctx.fillStyle = '#e0a86a';
-  for (const s2 of zone.shrines) if (!s2.used) { ctx.beginPath(); ctx.arc(offX + s2.x * sc, offY + s2.y * sc, 2.5, 0, 6.3); ctx.fill(); }
 
   // ---- dimman: måla över det du inte sett ---------------------------------
   if (zone.fog) {
     const cw = FOG_CELL * sc;
-    ctx.fillStyle = '#070b12';
+    ctx.fillStyle = '#0a0f18';
     for (let gy = 0; gy < zone.fogH; gy++) {
-      let runStart = -1;
+      let run = -1;
       for (let gx = 0; gx <= zone.fogW; gx++) {
         const hidden = gx < zone.fogW && zone.fog[gy * zone.fogW + gx] === 0;
-        if (hidden && runStart < 0) runStart = gx;
-        else if (!hidden && runStart >= 0) {
-          // Rita hela sjok i taget i stället för ruta för ruta.
-          ctx.fillRect(offX + runStart * cw, offY + gy * cw, (gx - runStart) * cw + 0.5, cw + 0.5);
-          runStart = -1;
+        if (hidden) { if (run < 0) run = gx; }
+        else if (run >= 0) {
+          // Hela sjok i taget i stället för ruta för ruta.
+          ctx.fillRect(wx(run * FOG_CELL), wy(gy * FOG_CELL), (gx - run) * cw + 0.6, cw + 0.6);
+          run = -1;
         }
       }
     }
@@ -1084,11 +1117,17 @@ export function renderMinimap(ctx, game) {
   for (const m of game.monsters) {
     if (m.dead) continue;
     if (Math.hypot(m.pos.x - px, m.pos.y - py) > 620) continue;
-    ctx.fillStyle = m.isBoss ? '#ff4a5a' : m.elite ? m.elite.color : '#a8404a';
-    const r = m.isBoss ? 4 : m.elite ? 3 : 1.6;
-    ctx.beginPath(); ctx.arc(offX + m.pos.x * sc, offY + m.pos.y * sc, r, 0, 6.3); ctx.fill();
+    pip(m.pos.x, m.pos.y, m.isBoss ? '#ff4a5a' : m.elite ? m.elite.color : '#c04a54',
+      m.isBoss ? 4 : m.elite ? 3 : 1.8);
   }
 
-  ctx.fillStyle = '#eef6ff';
-  ctx.beginPath(); ctx.arc(offX + px * sc, offY + py * sc, 3, 0, 6.3); ctx.fill();
+  // ---- du själv, med blickriktning ---------------------------------------
+  ctx.save();
+  ctx.translate(wx(px), wy(py));
+  ctx.rotate(game.player.facing);
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.moveTo(6, 0); ctx.lineTo(-3.5, -3.6); ctx.lineTo(-1.5, 0); ctx.lineTo(-3.5, 3.6);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
 }

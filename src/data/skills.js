@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * Vandrarens tre skill-träd.
+ * Barbarens tre skill-träd.
  *
  * Träden är riktiga träd: varje gren har tre nivåer, och en skill låses upp
  * först när dess föräldrar har minst en rank. Det är D2:s viktigaste

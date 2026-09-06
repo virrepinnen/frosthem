@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Frosthem — Vandraren</title>
+<title>Frosthem — Barbaren</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -34,20 +34,20 @@
 </div>
 
 <div id="topleft">
-  <div id="charline"><span id="char-level">Nivå 1</span> <span class="dim">Vandraren</span></div>
+  <div id="charline"><span id="char-level">Nivå 1</span> <span class="dim">Barbar</span></div>
   <div id="goldline"><span id="gold">0</span> guld</div>
   <div id="alerts"></div>
 </div>
 
 <div id="topright">
   <div id="minimap-wrap"><canvas id="minimap" width="180" height="180"></canvas></div>
-  <div id="nav">
-    <div class="navbtn" data-panel="inventory" data-name="Väska &amp; utrustning" data-key="I">🎒</div>
-    <div class="navbtn" data-panel="character" data-name="Karaktär" data-key="C">📜</div>
-    <div class="navbtn" data-panel="skills" data-name="Skill-träd" data-key="K">🌟</div>
-    <div class="navbtn" data-act="help" data-name="Hur man spelar" data-key="F1"><span class="glyph">?</span></div>
-    <div class="navbtn" data-act="pause" data-name="Paus &amp; spara" data-key="Esc"><span class="glyph">❙❙</span></div>
-  </div>
+</div>
+
+<div id="nav">
+  <div class="navbtn" data-panel="inventory" data-name="Väska &amp; utrustning" data-key="I">🎒</div>
+  <div class="navbtn" data-panel="character" data-name="Karaktär" data-key="C">📜</div>
+  <div class="navbtn" data-panel="skills" data-name="Skill-träd" data-key="K">🌟</div>
+  <div class="navbtn" data-act="help" data-name="Hur man spelar" data-key="F1"><span class="glyph">?</span></div>
 </div>
 
 <div id="panels"></div>
@@ -70,11 +70,8 @@
     <div class="lvl-badge" id="lvl-badge">Nivå 2</div>
     <p class="lvl-sub" id="lvl-sub"></p>
     <div id="lvl-stats"></div>
-    <div class="lvl-actions">
-      <button data-act="skills">Hela trädet</button>
-      <button data-act="resume" class="primary">Fortsätt</button>
-    </div>
-    <div class="menu-note">Du måste inte lägga poängen nu — de ligger kvar.</div>
+    <div class="lvl-actions" id="lvl-actions"></div>
+    <div class="menu-note">Du måste inte lägga poängen nu — de ligger kvar tills du vill.</div>
   </div>
 </div>
 
@@ -113,19 +110,19 @@
   <canvas id="menu-bg"></canvas>
   <div id="start-box">
     <h1>Frosthem</h1>
-    <p class="sub">En vandrare, en rostig yxa, och vildmarken norrut.</p>
+    <p class="sub">En barbar, en rostig yxa, och vildmarken norrut.</p>
 
     <div id="char-list-view">
-      <div class="menu-grp">Dina vandrare</div>
+      <div class="menu-grp">Dina karaktärer</div>
       <div id="char-list"></div>
       <button id="btn-newchar">Skapa ny karaktär</button>
     </div>
 
     <div id="create-view" class="hidden">
-      <div class="menu-grp">Välj vandrare</div>
+      <div class="menu-grp">Välj klass</div>
       <div id="class-list"></div>
-      <label for="hero-name">Vad ska hon eller han heta?</label>
-      <input id="hero-name" maxlength="18" placeholder="Vandraren" autocomplete="off" spellcheck="false">
+      <label for="hero-name">Vad ska barbaren heta?</label>
+      <input id="hero-name" maxlength="18" placeholder="Barbaren" autocomplete="off" spellcheck="false">
       <button id="btn-new" class="primary">Börja vandringen</button>
       <button id="btn-back">Tillbaka</button>
     </div>

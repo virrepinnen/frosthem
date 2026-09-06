@@ -114,15 +114,21 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
 .eq[data-slot="ring1"]  {grid-column:1;grid-row:5}
 .eq[data-slot="ring2"]  {grid-column:3;grid-row:5}
 
-/* bag */
-#bag{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}
-.cell{aspect-ratio:1;border:1px solid #1c2635;border-radius:3px;background:#090e17;
-  display:grid;place-items:center;cursor:pointer;font-size:15px;position:relative}
-.cell.has:hover{border-color:var(--gold)}
-.cell.rn{box-shadow:inset 0 0 0 1px rgba(207,220,236,.25)}
-.cell.rm{box-shadow:inset 0 0 0 1px rgba(111,159,251,.5)}
-.cell.rr{box-shadow:inset 0 0 0 1px rgba(232,209,90,.5)}
-.cell.ru{box-shadow:inset 0 0 0 1px rgba(192,138,62,.65)}
+/* Väska: tetris-rutnät. Bakgrundsrutor i ett lager, föremål i ett annat,
+   så ett tvåhandssvärd kan spänna över sex rutor utan att flytta något. */
+#bag{position:relative;width:100%;aspect-ratio:10 / 6}
+.bag-grid{position:absolute;inset:0;display:grid;gap:3px;
+  grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(6,1fr)}
+.bag-grid.backdrop > div{border:1px solid #1c2635;border-radius:3px;background:#090e17}
+.bag-grid.items{pointer-events:none}
+.bag-item{pointer-events:auto;display:grid;place-items:center;border-radius:3px;cursor:pointer;
+  background:#131c2b;border:1px solid #2a3a52;transition:.12s}
+.bag-item:hover{border-color:var(--gold);background:#1b2637;z-index:2}
+.bi-ico{font-size:17px;line-height:1}
+.bag-item.rn{box-shadow:inset 0 0 0 1px rgba(207,220,236,.22)}
+.bag-item.rm{box-shadow:inset 0 0 0 1px rgba(111,159,251,.55);border-color:#2f4a7a}
+.bag-item.rr{box-shadow:inset 0 0 0 1px rgba(232,209,90,.55);border-color:#6b6030}
+.bag-item.ru{box-shadow:inset 0 0 0 1px rgba(192,138,62,.7);border-color:#6d4c22}
 
 /* stat rows */
 .row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;
@@ -260,7 +266,8 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
 .cc-t span{font-size:11.5px;color:var(--muted);line-height:1.5}
 
 /* ---------- navigeringsikoner ---------- */
-#nav{display:flex;gap:6px;margin-top:8px;justify-content:flex-end}
+/* Knapparna sitter nere till höger om manaklotet, där handen redan är. */
+#nav{position:fixed;right:16px;bottom:20px;z-index:11;display:flex;gap:6px}
 .navbtn{position:relative;width:38px;height:38px;display:grid;place-items:center;font-size:17px;cursor:pointer;
   border:1px solid var(--border);border-radius:5px;background:rgba(24,34,49,.94);
   transition:border-color .12s, background .12s;color:var(--gold)}
@@ -292,13 +299,18 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
 .menu-note{margin-top:12px;font-size:11px;color:var(--muted);line-height:1.55}
 
 /* nivåhöjning */
-.menu-box.lvl{width:min(360px,88vw);border-color:var(--gold);
+.menu-box.lvl{width:min(840px,95vw);border-color:var(--gold);
   box-shadow:0 0 0 1px rgba(216,178,106,.18),0 26px 80px rgba(0,0,0,.85)}
 .lvl-badge{font-size:15px;letter-spacing:.26em;text-transform:uppercase;color:var(--gold);
   margin-bottom:4px}
 .lvl-sub{margin:0 0 16px;font-size:12px;color:var(--muted)}
 /* Bara listan rullar — rubrik, räknare och knappar ska aldrig hamna utanför bild. */
-#lvl-stats{margin-bottom:16px;text-align:left;max-height:44vh;overflow-y:auto;padding-right:4px}
+/* Två kolumner: attributen till vänster, hela trädet till höger. Ingenting
+   ligger bakom en knapp, och kolumnerna rullar var för sig. */
+#lvl-stats{margin-bottom:16px;text-align:left;display:grid;gap:20px;
+  grid-template-columns:minmax(0,0.85fr) minmax(0,1.15fr)}
+.lvl-col{min-width:0;max-height:56vh;overflow-y:auto;padding-right:6px}
+@media (max-width:760px){ #lvl-stats{grid-template-columns:1fr} .lvl-col{max-height:32vh} }
 #lvl-stats .row{padding:5px 0}
 #lvl-stats .row span:first-child{display:flex;align-items:center}
 #lvl-stats .grp{margin:10px 0 2px}
@@ -357,3 +369,46 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
   0%{box-shadow:0 0 0 3px rgba(224,196,106,.8), inset 0 1px 4px rgba(0,0,0,.7)}
   100%{box-shadow:0 0 0 0 rgba(224,196,106,0), inset 0 1px 4px rgba(0,0,0,.7)}
 }
+
+/* ---------- attributrutor ---------- */
+.attr-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+.attr-card{position:relative;padding:11px 10px 9px;text-align:center;border-radius:6px;
+  border:1px solid var(--border);background:#0a0f18;transition:.14s}
+.attr-card:hover{border-color:#3c5271;background:#121a27}
+.attr-card.pending{border-color:var(--gold);background:rgba(216,178,106,.09)}
+.ac-ico{font-size:20px;line-height:1;margin-bottom:5px}
+.ac-name{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.ac-val{font-family:var(--mono);font-size:20px;line-height:1.25;color:#e6eef8}
+.ac-delta{font-size:12px;color:var(--gold);margin-left:3px}
+.ac-btns,.sk-btns{display:flex;gap:5px;justify-content:center;margin-top:6px}
+.ac-btn{width:24px;height:22px;display:grid;place-items:center;cursor:pointer;
+  border:1px solid var(--border);border-radius:4px;font-size:14px;line-height:1;
+  color:var(--ink);background:#0d131e;transition:.12s;user-select:none}
+.ac-btn:hover{border-color:var(--gold);color:var(--gold);background:#18222f}
+.ac-btn.off{opacity:.22;pointer-events:none}
+.ac-btn.plus{color:var(--gold)}
+
+/* ---------- skill-noder med väntande poäng ---------- */
+.node.sk .rk{display:flex;align-items:baseline;gap:1px;font-family:var(--mono)}
+.node.sk .rk b{font-size:13px;color:#e6eef8;font-weight:600}
+.node.sk .rk .rk-delta{color:var(--gold);font-size:11px}
+.node.sk .rk .rk-max{color:var(--muted);font-size:10px}
+.node.sk.pending{border-color:var(--gold);background:rgba(216,178,106,.10)}
+.node.sk .sk-btns{margin-top:5px}
+.node.sk .ac-btn{width:26px;height:20px;font-size:13px}
+
+/* ---------- ångra / lås in ---------- */
+.confirm-bar{position:sticky;bottom:0;display:grid;grid-template-columns:auto 1fr;gap:8px;
+  margin-top:14px;padding-top:12px;background:linear-gradient(180deg,rgba(8,13,21,0),rgba(8,13,21,.96) 32%)}
+.confirm-bar button{font-family:var(--font);font-size:12px;letter-spacing:.1em;
+  text-transform:uppercase;padding:11px 14px;border-radius:5px;cursor:pointer;transition:.14s;border:1px solid}
+.confirm-bar .cb-undo{background:none;border-color:var(--border);color:var(--muted)}
+.confirm-bar .cb-undo:hover{border-color:var(--blood);color:var(--blood)}
+.confirm-bar .cb-ok{background:var(--gold);border-color:var(--gold);color:#0b0f17;font-weight:600}
+.confirm-bar .cb-ok:hover{filter:brightness(1.12)}
+.lvl-actions{display:block}
+.lvl-actions .confirm-bar{margin-top:0;background:none}
+.lvl-actions > button{width:100%;background:var(--gold);border:1px solid var(--gold);color:#0b0f17;
+  font-family:var(--font);font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;
+  padding:12px;border-radius:5px;cursor:pointer}
+.lvl-actions > button:hover{filter:brightness(1.12)}

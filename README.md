@@ -33,7 +33,7 @@ måste serveras över HTTP — att öppna `index.html` direkt från disk fungera
 
 | Tangent | Effekt |
 | --- | --- |
-| `←` `↑` `↓` `→` | Gå (`WASD` fungerar också) |
+| `←` `↑` `↓` `→` | Gå |
 | — | Attacken sköter sig själv när en fiende är inom räckhåll |
 | `1`–`6` | Skills |
 | `Q` | Hälsodryck |
@@ -46,7 +46,8 @@ måste serveras över HTTP — att öppna `index.html` direkt från disk fungera
 | `Esc` | Stäng paneler, annars paus- och sparmeny |
 
 Styrningen är byggd för bärbar dator och **kräver ingen mus alls**: högerhanden
-på piltangenterna, vänsterhanden på `1`–`6` och `Q`. Du siktar automatiskt på
+på piltangenterna, vänsterhanden på `1`–`6` och `Q`. WASD är medvetet borttaget
+så att vänsterhanden tillhör skillsen. Du siktar automatiskt på
 närmaste fiende med fri sikt, och slår av dig själv så fort någon kommer inom
 räckhåll — en markör visar vem som står i tur. Både auto-sikte och auto-attack
 kan stängas av i pausmenyn, och vänsterklick fungerar fortfarande som manuell
@@ -113,6 +114,11 @@ distans och tunga varelser. De är avsiktligt aggressiva — det driver tempot.
 Kraftfull, Frostbunden, Pansrad, Blodtörstig, Skyddad* — som kombineras fritt.
 Det ger oförutsägbara svårighetsspikar utan att någon designar dem för hand.
 
+**Väskan.** Rutnätet är 10 × 6, och föremål tar olika mycket plats: vapen,
+rustningar och sköldar 2 × 3, hjälmar och handskar 2 × 2, bälten 2 × 1, ringar
+och amuletter en enda ruta. Väskan packas om automatiskt — plockandet sker ändå
+av sig självt, så manuell tetris vore bara pyssel.
+
 **Loot.** Föremål droppar sällan — ungefär ett per tolv fällda vanliga fiender —
 men allt plockas upp automatiskt när du går över det. Elitmonster, kistor och
 bossen är de verkliga källorna. Full affix-motor: bastyp → sällsynthet → slumpade prefix/suffix, där
@@ -127,13 +133,13 @@ vardera i tre steg: två ingångar, två mellansteg som var för sig kräver en 
 i sin förälder, och en kapsten som kräver båda mellanstegen. Steg 2 öppnar på
 nivå 6, steg 3 på nivå 12. Plus synergier där skills stärker varandra.
 
-**Nivåhöjning.** Spelet pausar och visar en ruta med **både** attributpoäng och
-skillpoäng i samma fönster, så inget går att missa — skills du kan lägga en poäng
-i listas per träd med varsin plusknapp, och räknarna uppdateras direkt. Du
-*måste* inte lägga dem: poängen ligger kvar, och `Esc` eller *Fortsätt* tar dig
-rakt tillbaka in i striden.
+**Nivåhöjning.** Spelet pausar och visar en bred ruta med attributen som fyra
+ikonrutor till vänster och **hela skill-trädet** till höger — inget ligger bakom
+en knapp. Poängen läggs i en väntande hög: du kan plocka tillbaka dem med minus
+och prova om, och först *Lås in* skriver dem till karaktären. Du måste inte
+lägga dem alls; `Esc` kastar det ofärdiga och tar dig rakt tillbaka i striden.
 
-**Flera karaktärer.** Huvudmenyn listar dina vandrare med nivå, antal fällda,
+**Flera karaktärer.** Huvudmenyn listar dina karaktärer med nivå, antal fällda,
 guld och när du senast spelade — ett klick och du är inne. *Skapa ny karaktär*
 öppnar klasslistan (Vandraren är byggd; Jägaren och Frostkallaren står som
 kommande). Allt sparas i webbläsarens `localStorage`, automatiskt vid

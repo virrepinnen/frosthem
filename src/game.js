@@ -1,10 +1,10 @@
 // @ts-check
-import { createPlayer, HOTBAR_SIZE, BAG_SIZE } from './entities/player.js';
+import { createPlayer, HOTBAR_SIZE, bindToHotbar } from './entities/player.js';
 import { generateZone, resolveCollision, lineBlocked, revealFog, ZONE_DEFS } from './systems/world.js';
 import { populateZone } from './systems/spawn.js';
 import { updateMonsters, updateProjectiles } from './systems/ai.js';
 import { performSwing, useSkill, drinkPotion, hitMonster, applyFreeze, spawnGround } from './systems/combat.js';
-import { pickup } from './systems/inventory.js';
+import { pickup, canAdd } from './systems/inventory.js';
 import { rollItem } from './systems/loot.js';
 import { SKILL_BY_ID } from './data/skills.js';
 import { input, keyPressed, keyDown } from './core/input.js';
@@ -15,6 +15,7 @@ import { pushAlert, showOverlay, showLevelUp, hideLevelUp, levelUpOpen,
 import { panels, togglePanel, closeAllPanels, anyPanelOpen } from './ui/panels.js';
 import { hideTooltip } from './ui/tooltip.js';
 import { saveGame } from './systems/save.js';
+import { createPending, hasPending, resetPending } from './systems/allocation.js';
 import { COMBAT_REGEN, COMBAT_WINDOW } from './systems/stats.js';
 import { rng } from './core/rng.js';
 import { clamp } from './core/math.js';
@@ -47,11 +48,15 @@ export function createGame(existing, progress) {
     skillDefs: SKILL_BY_ID,
     aim: { x: 0, y: 0 },
     /** @type {any} */ aimTarget: null,
+    /** @type {any} */ interact: null,
     time: 0,
     paused: false,
     saveT: 0,
     levelUpPending: 0,
     settings: { autoAim: true, autoAttack: true },
+    /** Väntande poängfördelning — bekräftas eller ångras av spelaren. */
+    pending: createPending(),
+    /** @type {'stal'|'frost'|'uthallighet'} */ skillTab: 'stal',
 
     /** @param {string} t */
     alert(t) { pushAlert(t); },
@@ -74,6 +79,10 @@ export function createGame(existing, progress) {
       }));
     },
     save() { const ok = saveGame(game); if (ok) game.alert('Sparat.'); return ok; },
+    /** @param {string} id Flyttar en skill till nästa snabbfack. */
+    bindNext(id) { bindToHotbar(game.player, id, true); game.dirtyUI = true; },
+    /** Kastar väntande poäng — används när man stänger utan att låsa in. */
+    dropPending() { if (hasPending(game.pending)) { resetPending(game.pending); game.dirtyUI = true; } },
     togglePause() {
       if (pauseMenuOpen()) { hidePauseMenu(); game.paused = false; }
       else { game.paused = true; showPauseMenu(game); }
@@ -272,8 +281,8 @@ function handleUiKeys(game) {
   if (keyPressed('escape')) {
     // Esc städar först undan det som ligger överst, och pausar först när
     // skärmen är ren.
-    if (levelUpOpen()) { hideLevelUp(); closeAllPanels(game); game.paused = false; }
-    else if (anyPanelOpen()) closeAllPanels(game);
+    if (levelUpOpen()) { game.dropPending(); hideLevelUp(); closeAllPanels(game); game.paused = false; }
+    else if (anyPanelOpen()) { game.dropPending(); closeAllPanels(game); }
     else game.togglePause();
   }
 }
@@ -328,10 +337,12 @@ function updatePlayer(game, dt) {
 
   // ---- rörelse -------------------------------------------------------------
   let mx = 0, my = 0;
-  if (keyDown('arrowup') || keyDown('w')) my -= 1;
-  if (keyDown('arrowdown') || keyDown('s')) my += 1;
-  if (keyDown('arrowleft') || keyDown('a')) mx -= 1;
-  if (keyDown('arrowright') || keyDown('d')) mx += 1;
+  // Bara piltangenter. WASD är borttaget med flit: vänsterhanden ska tillhöra
+  // 1–6 och Q, inte konkurrera med rörelsen.
+  if (keyDown('arrowup')) my -= 1;
+  if (keyDown('arrowdown')) my += 1;
+  if (keyDown('arrowleft')) mx -= 1;
+  if (keyDown('arrowright')) mx += 1;
 
   // ---- sikte ---------------------------------------------------------------
   // Med auto-sikte behöver högerhanden bara sköta rörelsen: figuren vänder sig
@@ -422,6 +433,18 @@ function updatePlayer(game, dt) {
     if (Math.hypot(p.pos.x - s.x, p.pos.y - s.y) > s.r + p.radius) continue;
     activateShrine(game, s);
   }
+  // Går man ifrån Gerd stängs handeln av sig själv — man ska inte behöva
+  // klicka bort en panel man redan lämnat.
+  if (panels.vendor) {
+    const gerd = zone.npcs.find(n => n.id === 'gerd');
+    if (!gerd || Math.hypot(p.pos.x - gerd.x, p.pos.y - gerd.y) > 190) {
+      panels.vendor = false;
+      panels.inventory = false;
+      game.dirtyUI = true;
+    }
+  }
+  game.interact = findInteract(game);
+
   const wp = zone.waypoint;
   if (wp && !game.waypoints.has(zone.index)
       && Math.hypot(p.pos.x - wp.x, p.pos.y - wp.y) < wp.r + p.radius + 10) {
@@ -490,10 +513,10 @@ function dodgeRoll(game) {
   if ((p.rollCd ?? 0) > 0) return;
   if (p.stamina < 16) { game.alert('För lite uthållighet för att rulla.'); return; }
   let mx = 0, my = 0;
-  if (keyDown('arrowup') || keyDown('w')) my -= 1;
-  if (keyDown('arrowdown') || keyDown('s')) my += 1;
-  if (keyDown('arrowleft') || keyDown('a')) mx -= 1;
-  if (keyDown('arrowright') || keyDown('d')) mx += 1;
+  if (keyDown('arrowup')) my -= 1;
+  if (keyDown('arrowdown')) my += 1;
+  if (keyDown('arrowleft')) mx -= 1;
+  if (keyDown('arrowright')) mx += 1;
   const dir = (mx || my) ? Math.atan2(my, mx) : p.facing;
   p.stamina -= 16;
   p.rollCd = 0.85;
@@ -533,44 +556,75 @@ function activateShrine(game, s) {
   game.dirtyUI = true;
 }
 
-/** @param {Game} game */
-function interact(game) {
+/**
+ * Vad står spelaren i närheten av just nu? Samma funktion driver både
+ * E-tangenten och prompten som ritas i världen, så de aldrig kan säga emot
+ * varandra.
+ * @param {Game} game
+ * @returns {{kind:string, obj:any, x:number, y:number, label:string}|null}
+ */
+export function findInteract(game) {
   const p = game.player;
   const near = (/** @type {{x:number,y:number}} */ o, /** @type {number} */ r) =>
     Math.hypot(p.pos.x - o.x, p.pos.y - o.y) < r;
 
-  // portal före allt annat — den ligger ofta ovanpå annat i byn
+  // Portalen först — den ligger ofta ovanpå annat i byn.
   if (game.portal) {
     const here = game.zone.isTown ? game.portal.townPos
       : (game.zone.index === game.portal.zoneIndex ? game.portal.fromPos : null);
-    if (here && near(here, 60)) {
-      if (game.zone.isTown) returnThroughPortal(game);
-      else { travel(game, 0, undefined, { keepPortal: true }); game.portal.townPos = { x: p.pos.x + 70, y: p.pos.y - 40 }; }
-      return;
+    if (here && near(here, 70)) {
+      return { kind: 'portal', obj: here, x: here.x, y: here.y - 108,
+        label: game.zone.isTown ? `Res till ${game.portal.zoneName}` : 'Res till Frosthem' };
     }
   }
   const wp = game.zone.waypoint;
-  if (wp && near(wp, wp.r + 40)) {
-    game.waypoints.add(game.zone.index);
-    panels.waypoint = true;
-    game.dirtyUI = true;
-    return;
+  if (wp && near(wp, wp.r + 46)) {
+    return { kind: 'waypoint', obj: wp, x: wp.x, y: wp.y - 112, label: 'Använd vägstenen' };
   }
   for (const c of game.zone.chests) {
-    if (c.opened || !near(c, c.r + 40)) continue;
-    openChest(game, c);
-    return;
+    if (!c.opened && near(c, c.r + 46)) {
+      return { kind: 'chest', obj: c, x: c.x, y: c.y - 64, label: 'Öppna kistan' };
+    }
   }
   for (const e of game.zone.exits) {
-    if (near(e, e.r + 30)) { travel(game, e.to, game.zone.index); return; }
+    if (near(e, e.r + 34)) {
+      return { kind: 'exit', obj: e, x: e.x, y: e.y - e.r * 0.5 - 40, label: `Gå till ${e.label}` };
+    }
   }
   for (const n of game.zone.npcs) {
-    if (!near(n, 110)) continue;
-    if (n.id === 'gerd') { panels.vendor = true; panels.inventory = true; game.dirtyUI = true; }
-    else game.alert(`${n.name}: ${n.line}`);
-    return;
+    if (near(n, 115)) {
+      return { kind: 'npc', obj: n, x: n.x, y: n.y - 64,
+        label: n.id === 'gerd' ? 'Handla med Gerd' : `Tala med ${n.name}` };
+    }
   }
-  game.alert('Inget att göra här.');
+  return null;
+}
+
+/** @param {Game} game */
+function interact(game) {
+  const hit = findInteract(game);
+  if (!hit) { game.alert('Inget att göra här.'); return; }
+  const p = game.player;
+  switch (hit.kind) {
+    case 'portal':
+      if (game.zone.isTown) returnThroughPortal(game);
+      else {
+        travel(game, 0, undefined, { keepPortal: true });
+        if (game.portal) game.portal.townPos = { x: p.pos.x + 70, y: p.pos.y - 40 };
+      }
+      break;
+    case 'waypoint':
+      game.waypoints.add(game.zone.index);
+      panels.waypoint = true;
+      game.dirtyUI = true;
+      break;
+    case 'chest': openChest(game, hit.obj); break;
+    case 'exit': travel(game, hit.obj.to, game.zone.index); break;
+    case 'npc':
+      if (hit.obj.id === 'gerd') { panels.vendor = true; panels.inventory = true; game.dirtyUI = true; }
+      else game.alert(`${hit.obj.name}: ${hit.obj.line}`);
+      break;
+  }
 }
 
 /** @param {Game} game @param {any} c */
@@ -603,7 +657,7 @@ function updateGround(game, dt) {
     const reach = g.kind === 'item' ? p.radius + 42 : p.radius + 30;
     // Full väska: låt föremålet ligga kvar tyst i stället för att larma varje
     // bildruta man står ovanpå det. Etiketten finns kvar att klicka på.
-    if (g.kind === 'item' && p.inventory.length >= BAG_SIZE) continue;
+    if (g.kind === 'item' && !canAdd(p.inventory, g.item)) continue;
     if (Math.hypot(g.x - p.pos.x, g.y - p.pos.y) < reach) {
       if (pickup(game, g)) { game.ground.splice(i, 1); changed = true; }
     }
