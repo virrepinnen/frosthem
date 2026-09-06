@@ -19,14 +19,17 @@
 
   <div id="center-hud">
     <div id="zone-name">Frosthem</div>
-    <div id="xp-bar"><div id="xp-fill"></div></div>
+    <div id="xp-bar" title="Erfarenhet"><div id="xp-fill"></div></div>
+    <div id="stamina-bar">
+      <div id="stamina-fill"></div>
+      <div id="stamina-text"><span class="lbl">Uthållighet</span><span class="val" id="sta-text">0/0</span></div>
+    </div>
     <div id="skillbar"></div>
   </div>
 
-  <div class="orb orb-sta" id="sta-orb">
-    <div class="orb-fill" id="sta-fill"></div>
-    <div class="orb-text" id="sta-text">0/0</div>
-    <div class="orb-hint">Utmattad</div>
+  <div class="orb orb-mana" id="mana-orb">
+    <div class="orb-fill" id="mana-fill"></div>
+    <div class="orb-text" id="mana-text">0/0</div>
   </div>
 </div>
 
@@ -68,7 +71,7 @@
     <p class="lvl-sub" id="lvl-sub"></p>
     <div id="lvl-stats"></div>
     <div class="lvl-actions">
-      <button data-act="skills">Skill-träd</button>
+      <button data-act="skills">Hela trädet</button>
       <button data-act="resume" class="primary">Fortsätt</button>
     </div>
     <div class="menu-note">Du måste inte lägga poängen nu — de ligger kvar.</div>
@@ -107,29 +110,24 @@
 </div>
 
 <div id="start">
+  <canvas id="menu-bg"></canvas>
   <div id="start-box">
     <h1>Frosthem</h1>
     <p class="sub">En vandrare, en rostig yxa, och vildmarken norrut.</p>
 
-    <div id="continue-card" class="hidden">
-      <button id="btn-continue" class="primary">Fortsätt</button>
-      <div class="save-line" id="save-line"></div>
-      <div class="or">eller</div>
+    <div id="char-list-view">
+      <div class="menu-grp">Dina vandrare</div>
+      <div id="char-list"></div>
+      <button id="btn-newchar">Skapa ny karaktär</button>
     </div>
 
-    <div id="create">
-      <label for="hero-name">Vad heter din vandrare?</label>
+    <div id="create-view" class="hidden">
+      <div class="menu-grp">Välj vandrare</div>
+      <div id="class-list"></div>
+      <label for="hero-name">Vad ska hon eller han heta?</label>
       <input id="hero-name" maxlength="18" placeholder="Vandraren" autocomplete="off" spellcheck="false">
-      <div class="class-card">
-        <div class="cc-ico">🪓</div>
-        <div class="cc-t">
-          <b>Vandraren</b>
-          <i>Närstrid · Stål · Frost · Uthållighet</i>
-          <span>Tar smällen på nära håll. Börjar med ingenting och blir det du utrustar den till.</span>
-        </div>
-      </div>
-      <button id="btn-new">Börja vandringen</button>
-      <div id="wipe-note" class="hidden">Detta skriver över din sparade karaktär.</div>
+      <button id="btn-new" class="primary">Börja vandringen</button>
+      <button id="btn-back">Tillbaka</button>
     </div>
   </div>
 </div>

@@ -236,12 +236,14 @@ export function useSkill(game, id) {
   const r = rank(p, id);
   if (r <= 0) return false;
   if ((p.cooldowns[id] ?? 0) > 0) return false;
-  if (p.stamina < (def.stamina ?? 0)) { game.alert('För lite uthållighet.'); return false; }
   if (p.whirl || p.dash) return false;
+  // Varje skill drar sin egen resurs: Frost kostar mana, resten uthållighet.
+  if (def.mana && p.mana < def.mana) { game.alert('För lite mana.'); p.manaFlash = 0.45; return false; }
+  if (def.stamina && p.stamina < def.stamina) { game.alert('För lite uthållighet.'); p.staminaFlash = 0.45; return false; }
 
   const { synergy } = skillPower(p, id);
-  p.stamina -= def.stamina ?? 0;
-  p.combatT = 1.5;
+  if (def.stamina) { p.stamina -= def.stamina; p.combatT = 1.5; }
+  if (def.mana) p.mana -= def.mana;
   p.cooldowns[id] = def.cooldown ?? 0;
 
   switch (id) {

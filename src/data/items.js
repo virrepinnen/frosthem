@@ -237,6 +237,11 @@ export const SUFFIXES = [
     { label: 'av uthålligheten', ilvl: 1,  min: 4,  max: 10 },
     { label: 'av uthålligheten', ilvl: 13, min: 11, max: 22 },
   ]},
+  { id: 'mana', kind: 'suffix', stat: 'mana', slots: [...GROUPS.armor, ...GROUPS.jewel], tiers: [
+    { label: 'av visdomen', ilvl: 1,  min: 5,  max: 12 },
+    { label: 'av visdomen', ilvl: 13, min: 13, max: 26 },
+    { label: 'av visdomen', ilvl: 25, min: 27, max: 44 },
+  ]},
   { id: 'mf', kind: 'suffix', stat: 'magicFind', slots: [...GROUPS.jewel, 'helm', 'boots'], tiers: [
     { label: 'av skatten', ilvl: 4,  min: 6,  max: 16 },
     { label: 'av skatten', ilvl: 16, min: 17, max: 34, w: 6 },
@@ -287,6 +292,7 @@ export const STAT_INFO = /** @type {Record<string,{label:string, fmt:(v:number)=
   life:        { label: 'Liv',               fmt: v => `+${v}`,         order: 13 },
   lifeRegen:   { label: 'Livsåterhämtning',  fmt: v => `+${v.toFixed(1)}/s`, order: 14 },
   stamina:     { label: 'Uthållighet',       fmt: v => `+${v}`,         order: 15 },
+  mana:        { label: 'Mana',              fmt: v => `+${v}`,         order: 15.5 },
   moveSpeed:   { label: 'Gånghastighet',     fmt: v => `${v >= 0 ? '+' : ''}${v}%`, order: 16 },
   str:         { label: 'Styrka',            fmt: v => `+${v}`,         order: 17 },
   dex:         { label: 'Smidighet',         fmt: v => `+${v}`,         order: 18 },

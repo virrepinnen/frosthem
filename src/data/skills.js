@@ -24,6 +24,7 @@
  * @property {number} maxRank
  * @property {string[]} requires   Skill-id:n som måste ha minst rank 1
  * @property {number} [stamina]
+ * @property {number} [mana]
  * @property {number} [cooldown]
  * @property {{skill:string, pct:number}} [synergy]
  * @property {(r:number, syn:number)=>string} desc
@@ -82,7 +83,7 @@ Synergi: +5% skada per rank i Klyvande hugg.`,
   /* ----------------------------------------------------------------- Frost */
   {
     id: 'icenova', tree: 'frost', tier: 1, name: 'Isnova', icon: '❄️', type: 'active',
-    reqLevel: 1, maxRank: 10, requires: [], stamina: 14, cooldown: 6,
+    reqLevel: 1, maxRank: 10, requires: [], mana: 14, cooldown: 6,
     synergy: { skill: 'rimeaura', pct: 9 },
     desc: (r, syn) => `En köldvåg spränger ut från dig.
 ${Math.round(14 + r * 9 + syn)} köldskada i 175 px radie, saktar ner i 3 s.
@@ -96,7 +97,7 @@ Synergi: +9% skada per rank i Rimfrostaura.`,
   },
   {
     id: 'shatter', tree: 'frost', tier: 2, name: 'Krosshugg', icon: '🧊', type: 'active',
-    reqLevel: 6, maxRank: 10, requires: ['icenova'], stamina: 12, cooldown: 3.5,
+    reqLevel: 6, maxRank: 10, requires: ['icenova'], mana: 12, cooldown: 3.5,
     desc: (r) => `Rusa framåt och krossa den första fienden du når.
 ${Math.round(130 + r * 20)}% vapenskada + ${Math.round(8 + r * 6)} köldskada.
 ${Math.min(15 + r * 5, 65)}% chans att frysa målet i 2 s.`,
@@ -110,7 +111,7 @@ Du får +${r * 4}% köldmotstånd.`,
   },
   {
     id: 'wintergrasp', tree: 'frost', tier: 3, name: 'Vinterns grepp', icon: '🌨️', type: 'active',
-    reqLevel: 12, maxRank: 10, requires: ['shatter', 'rimeaura'], stamina: 30, cooldown: 20,
+    reqLevel: 12, maxRank: 10, requires: ['shatter', 'rimeaura'], mana: 30, cooldown: 20,
     synergy: { skill: 'frostbite', pct: 7 },
     desc: (r, syn) => `Marken fryser fast allt inom 300 px.
 ${Math.round(30 + r * 16 + syn)} köldskada och frysning i ${(2.4 + r * 0.2).toFixed(1)} s.

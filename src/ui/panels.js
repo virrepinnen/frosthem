@@ -60,18 +60,18 @@ export function attrTooltip(p, key) {
         `<br>Kritisk träff: <b>${p.critChance.toFixed(1)}%</b>`) +
         `<div class="tt-req">Vissa vapen kräver smidighet.</div>`;
     case 'vit':
-      return head('Vitalitet', `Varje poäng ger <b>+4 max liv</b>.` +
-        `<hr>Nu: ${p.eff.vit} vitalitet → <b>${p.maxHp} liv</b>` +
-        `<br>Nästa poäng: ${p.maxHp} → ${p.maxHp + 4}`) +
-        `<div class="tt-req">Det enda attributet som direkt håller dig vid liv.</div>`;
-    case 'will':
-      return head('Vilja', `Varje poäng ger <b>+3 uthållighet</b>, snabbare ` +
-        `återhämtning och en aning billigare svep.` +
-        `<hr>Nu: ${p.eff.will} vilja → <b>${p.maxStamina} uthållighet</b>` +
-        `<br>Återhämtning: <b>${p.staminaRegen.toFixed(1)}/s</b> i vila` +
-        `<br>Kostnad per svep: <b>${(p.attackCost ?? 8).toFixed(1)}</b>` +
+      return head('Vitalitet', `Varje poäng ger <b>+4 max liv</b> och <b>+2 uthållighet</b>.` +
+        `<hr>Nu: ${p.eff.vit} vitalitet` +
+        `<br>Liv: <b>${p.maxHp}</b> → ${p.maxHp + 4} med nästa poäng` +
+        `<br>Uthållighet: <b>${p.maxStamina}</b> · återhämtning ${p.staminaRegen.toFixed(1)}/s` +
         `<br>Svep innan du är slut: <b>~${Math.floor(p.maxStamina / (p.attackCost || 8))}</b>`) +
-        `<div class="tt-req">Avgör hur länge du orkar stå kvar i en flock.</div>`;
+        `<div class="tt-req">Närstridarens attribut: både hur mycket du tål och hur länge du orkar.</div>`;
+    case 'will':
+      return head('Vilja', `Varje poäng ger <b>+4 mana</b> och snabbare manaåterhämtning.` +
+        `<hr>Nu: ${p.eff.will} vilja → <b>${p.maxMana} mana</b>` +
+        `<br>Återhämtning: <b>${p.manaRegen.toFixed(1)}/s</b>`) +
+        `<div class="tt-req">Bara Frost-skills drar mana. Bygger du på stål och stryk ` +
+        `räcker det med lite vilja.</div>`;
   }
   return '';
 }
@@ -264,6 +264,13 @@ function characterPanel(game) {
   d.appendChild(row('Kostnad per svep', (p.attackCost ?? 8).toFixed(1)));
   d.appendChild(row('Återhämtning', `${p.staminaRegen.toFixed(1)}/s · ${(p.staminaRegen * 0.4).toFixed(1)}/s i strid`));
 
+  d.appendChild(g('Mana'));
+  d.appendChild(row('Max mana', String(p.maxMana), undefined,
+    '<div class="tt-name">Mana</div><div class="tt-core">Bara Frost-skills drar mana. ' +
+    'Den återhämtar sig i jämn takt och bryr sig inte om huruvida du slåss.</div>' +
+    '<div class="tt-req">Vilja är det enda attributet som höjer den.</div>'));
+  d.appendChild(row('Återhämtning', `${p.manaRegen.toFixed(1)}/s`));
+
   d.appendChild(g('Övrigt'));
   d.appendChild(row('Gånghastighet', `${Math.round(p.moveSpeed)}`));
   d.appendChild(row('Bättre fynd', `+${p.magicFind}%`));
@@ -308,7 +315,8 @@ function skillNode(game, s) {
   n.innerHTML =
     `<div class="ico">${s.icon}</div>` +
     `<div class="t"><b>${s.name}</b><i>${!avail.ok ? avail.reason
-      : s.type === 'passive' ? 'Passiv' : `${s.stamina ?? 0} uth · ${s.cooldown ?? 0}s`}</i></div>` +
+      : s.type === 'passive' ? 'Passiv'
+      : `${s.mana ? s.mana + ' mana' : (s.stamina ?? 0) + ' uth'} · ${s.cooldown ?? 0}s`}</i></div>` +
     `<div class="rk">${r}/${s.maxRank}${canSpend ? ' +' : ''}</div>` +
     (slot >= 0 ? `<div class="hk">${slot + 1}</div>` : '');
 
@@ -317,7 +325,8 @@ function skillNode(game, s) {
     const next = Math.min(r + 1, s.maxRank);
     showTextTooltip(
       `<div class="tt-name" style="color:#d8b26a">${s.icon} ${escape(s.name)}</div>` +
-      `<div class="tt-base">${TREES[s.tree]} · steg ${s.tier} · ${s.type === 'passive' ? 'passiv' : 'aktiv'} · rank ${r}/${s.maxRank}</div>` +
+      `<div class="tt-base">${TREES[s.tree]} · steg ${s.tier} · ${s.type === 'passive' ? 'passiv'
+        : s.mana ? `${s.mana} mana` : `${s.stamina ?? 0} uthållighet`} · rank ${r}/${s.maxRank}</div>` +
       (r > 0 ? `<div class="tt-core">${escape(s.desc(r, synergy)).replace(/\n/g, '<br>')}</div><hr>` : '') +
       `<div class="tt-mod"><b>${r > 0 ? 'Nästa rank' : 'Rank 1'}:</b><br>${escape(s.desc(next, synergy)).replace(/\n/g, '<br>')}</div>` +
       (!avail.ok ? `<div class="tt-req bad">${escape(avail.reason)}</div>`

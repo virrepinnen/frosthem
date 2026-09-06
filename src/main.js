@@ -7,7 +7,7 @@ import { initRenderer, render, renderMinimap } from './render/renderer.js';
 import { updateHud, rebuildSkillbar, showOverlay, initNav, showTutorial, openHelp } from './ui/hud.js';
 import { renderPanels, anyPanelOpen } from './ui/panels.js';
 import { moveTooltip, hideTooltip } from './ui/tooltip.js';
-import { readSave, clearSave, playerFromSave, describeSave, saveGame } from './systems/save.js';
+import { listSaves, deleteSave, playerFromSave, describeSave, saveGame } from './systems/save.js';
 
 const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (document.getElementById(id));
 const TUTORIAL_KEY = 'frosthem.tutorial.v1';
@@ -40,46 +40,187 @@ addEventListener('mousemove', (e) => moveTooltip(e.clientX, e.clientY));
 canvas.addEventListener('mouseenter', hideTooltip);
 
 /* ------------------------------------------------------------------ */
-/* Startskärm                                                          */
+/* Startskärm: karaktärslista och klassval                             */
 /* ------------------------------------------------------------------ */
 
 /** @type {ReturnType<typeof createGame>|null} */
 let game = null;
 
-const save = readSave();
-if (save) {
-  $('continue-card').classList.remove('hidden');
-  $('save-line').textContent = describeSave(save);
-  $('wipe-note').classList.remove('hidden');
-  /** @type {HTMLButtonElement} */ ($('btn-continue')).onclick = () => {
-    begin(playerFromSave(save), {
-      waypoints: save.waypoints ?? [0],
-      bossDefeated: save.bossDefeated ?? false,
-    }, false);
-  };
+/** Klasser. Bara Vandraren finns — de andra visas för att visa vart det bär. */
+const CLASSES = [
+  { id: 'wanderer', icon: '🪓', name: 'Vandraren', tag: 'Närstrid · Stål · Frost · Uthållighet',
+    desc: 'Tar smällen på nära håll. Börjar med ingenting och blir det du utrustar den till.',
+    ready: true },
+  { id: 'hunter', icon: '🏹', name: 'Jägaren', tag: 'Distans · kommer senare',
+    desc: 'Håller avstånd och lever på att aldrig bli omringad.', ready: false },
+  { id: 'frostcaller', icon: '❄️', name: 'Frostkallaren', tag: 'Magi · kommer senare',
+    desc: 'Vänder vintern mot dem som lever i den.', ready: false },
+];
+
+const listView = $('char-list-view');
+const createView = $('create-view');
+const nameInput = /** @type {HTMLInputElement} */ ($('hero-name'));
+
+function showList() {
+  renderCharList();
+  listView.classList.remove('hidden');
+  createView.classList.add('hidden');
 }
 
-const nameInput = /** @type {HTMLInputElement} */ ($('hero-name'));
+function showCreate() {
+  renderClassList();
+  listView.classList.add('hidden');
+  createView.classList.remove('hidden');
+  setTimeout(() => nameInput.focus(), 60);
+}
+
+function renderCharList() {
+  const host = $('char-list');
+  host.innerHTML = '';
+  const saves = listSaves();
+  if (!saves.length) {
+    const empty = document.createElement('div');
+    empty.className = 'char-empty';
+    empty.textContent = 'Ingen vandrare än. Skapa en så börjar vi i Frosthem.';
+    host.appendChild(empty);
+    return;
+  }
+  for (const rec of saves) {
+    const info = describeSave(rec);
+    const row = document.createElement('div');
+    row.className = 'char-row';
+    row.innerHTML =
+      `<div class="char-lvl">${rec.level ?? 1}</div>` +
+      `<div class="char-t"><b>${escapeHtml(rec.name ?? 'Vandraren')}</b>` +
+      `<i>${info.kills} fällda · ${info.gold} guld · ${info.deaths} dödsfall<br>Senast spelad ${info.rel}</i></div>` +
+      '<div class="char-del" title="Radera">✕</div>';
+    row.onclick = () => {
+      begin(playerFromSave(rec), {
+        waypoints: rec.waypoints ?? [0],
+        bossDefeated: rec.bossDefeated ?? false,
+      }, false, rec.id);
+    };
+    /** @type {HTMLElement} */ (row.querySelector('.char-del')).onclick = (e) => {
+      e.stopPropagation();
+      // Att radera en karaktär går inte att ångra, så det kräver ett andra klick.
+      const el = /** @type {HTMLElement} */ (e.currentTarget);
+      if (el.dataset.armed !== '1') {
+        el.dataset.armed = '1';
+        el.textContent = 'Säker?';
+        el.style.width = 'auto';
+        el.style.padding = '0 7px';
+        el.style.fontSize = '10px';
+        setTimeout(() => {
+          if (!el.isConnected) return;
+          el.dataset.armed = ''; el.textContent = '✕';
+          el.style.width = ''; el.style.padding = ''; el.style.fontSize = '';
+        }, 3000);
+        return;
+      }
+      deleteSave(rec.id);
+      renderCharList();
+    };
+    host.appendChild(row);
+  }
+}
+
+function renderClassList() {
+  const host = $('class-list');
+  host.innerHTML = '';
+  for (const c of CLASSES) {
+    const card = document.createElement('div');
+    card.className = 'class-card' + (c.ready ? ' on' : ' locked');
+    card.innerHTML = `<div class="cc-ico">${c.icon}</div><div class="cc-t">` +
+      `<b>${c.name}</b><i>${c.tag}</i><span>${c.desc}</span></div>`;
+    host.appendChild(card);
+  }
+}
+
+/** @param {string} t */
+function escapeHtml(t) {
+  return String(t).replace(/[&<>"]/g, c => /** @type {any} */ ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+}
+
+/** @type {HTMLButtonElement} */ ($('btn-newchar')).onclick = showCreate;
+/** @type {HTMLButtonElement} */ ($('btn-back')).onclick = showList;
 /** @type {HTMLButtonElement} */ ($('btn-new')).onclick = startNew;
 nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') startNew(); });
-if (!save) setTimeout(() => nameInput.focus(), 60);
 
 function startNew() {
-  clearSave();
   const name = nameInput.value.trim() || 'Vandraren';
   begin(createPlayer(name), undefined, true);
 }
+
+// Finns inga karaktärer är listan bara ett tomt rum — gå direkt till skapandet.
+if (listSaves().length) showList(); else showCreate();
+
+/* ------------------------------------------------------------------ */
+/* Snöstorm bakom menyn                                                */
+/* ------------------------------------------------------------------ */
+
+const menuCanvas = /** @type {HTMLCanvasElement} */ ($('menu-bg'));
+const mbx = /** @type {CanvasRenderingContext2D} */ (menuCanvas.getContext('2d'));
+/** @type {{x:number,y:number,z:number,r:number}[]} */
+let menuFlakes = [];
+
+function menuStorm() {
+  if ($('start').classList.contains('hidden')) return; // menyn stängd: sluta rita
+  requestAnimationFrame(menuStorm);
+  const w = menuCanvas.width = menuCanvas.clientWidth;
+  const h = menuCanvas.height = menuCanvas.clientHeight;
+  if (!w || !h) return;
+  if (menuFlakes.length !== 420) {
+    menuFlakes = Array.from({ length: 420 }, () => ({
+      x: Math.random() * w, y: Math.random() * h,
+      z: 0.25 + Math.random() * 0.75, r: 0.7 + Math.random() * 2.6,
+    }));
+  }
+  const t = performance.now() / 1000;
+  // Byiga vindar: två sinusvågor i olika takt ger stötar i stället för jämn drift.
+  const wind = 210 + Math.sin(t * 0.31) * 150 + Math.sin(t * 0.11) * 90;
+
+  mbx.clearRect(0, 0, w, h);
+  // draggande slöjor av yrsnö längst bak
+  mbx.save();
+  for (let i = 0; i < 3; i++) {
+    const y = ((t * (24 + i * 16) + i * h / 3) % (h + 300)) - 150;
+    const g = mbx.createLinearGradient(0, y - 90, 0, y + 90);
+    g.addColorStop(0, 'rgba(190,208,232,0)');
+    g.addColorStop(0.5, `rgba(190,208,232,${0.035 + i * 0.012})`);
+    g.addColorStop(1, 'rgba(190,208,232,0)');
+    mbx.fillStyle = g;
+    mbx.fillRect(0, y - 90, w, 180);
+  }
+  mbx.restore();
+
+  mbx.fillStyle = '#e8f2fb';
+  for (const f of menuFlakes) {
+    f.y += (26 + f.z * 70) * 0.016;
+    f.x += wind * f.z * 0.016;
+    if (f.y > h + 6) { f.y = -6; f.x = Math.random() * (w + 200) - 100; }
+    if (f.x > w + 8) f.x = -8;
+    if (f.x < -8) f.x = w + 8;
+    mbx.globalAlpha = 0.12 + f.z * 0.5;
+    // Strecken lutar med vinden, så snön ser driven ut i stället för fallande.
+    mbx.beginPath();
+    mbx.ellipse(f.x, f.y, f.r * f.z * 2.4, f.r * f.z, Math.atan2(1, wind / 90), 0, Math.PI * 2);
+    mbx.fill();
+  }
+  mbx.globalAlpha = 1;
+}
+requestAnimationFrame(menuStorm);
 
 /**
  * @param {ReturnType<typeof createPlayer>} player
  * @param {{waypoints?:number[], bossDefeated?:boolean}} [progress]
  * @param {boolean} isNew
+ * @param {string} [charId]
  */
-function begin(player, progress, isNew) {
+function begin(player, progress, isNew, charId) {
   $('start').classList.add('hidden');
   // Man återvänder alltid till Frosthem — byn är den enda plats som inte
   // genereras om, och därför den enda som går att spara en position i.
-  game = createGame(player, { ...progress, zoneIndex: 0 });
+  game = createGame(player, { ...progress, zoneIndex: 0, charId });
   /** @type {any} */ (window).game = game;
   rebuildSkillbar(game);
   initNav(game);
@@ -87,7 +228,7 @@ function begin(player, progress, isNew) {
 
   const resume = () => { if (game) game.paused = false; };
   if (isNew && !localStorage.getItem(TUTORIAL_KEY)) {
-    // Första karaktären får den korta genomgången; därefter aldrig igen.
+    // Första karaktären får den korta genomgången; därefter når man den via ?.
     showTutorial(() => { try { localStorage.setItem(TUTORIAL_KEY, '1'); } catch { /* privat läge */ } resume(); });
   } else if (isNew) {
     showOverlay('Frosthem',

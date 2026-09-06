@@ -64,15 +64,20 @@ export function recalc(p) {
   p.eff = { str, dex, vit, will };
 
   p.maxHp = Math.round(45 + vit * 4 + p.level * 5 + (g.life || 0) + rSecond * 9);
-  p.maxStamina = Math.round(40 + will * 3 + (g.stamina || 0) + rSecond * 6);
   p.lifeRegen = 0.35 + (g.lifeRegen || 0) + rSecond * 0.5;
-  // Vilo-återhämtning. Under strid går den ner till en bråkdel (se COMBAT_REGEN),
-  // vilket är hela poängen: du måste bryta kontakten för att fylla på.
-  p.staminaRegen = 9 + will * 0.22;
-  // Varje grundattack kostar. Tunga vapen svingar långsammare men tar mer per
-  // svep, så att ett stort vapen inte blir gratis uthållighetsmässigt.
+
+  // Två skilda resurser, som D2:s vitality/energy:
+  //   Uthållighet = kroppen. Vitalitet bär den, den dräneras av svep och rullar.
+  //   Mana = viljan. Bara magi drar den, så en närstridsbyggd bryr sig knappt.
+  p.maxStamina = Math.round(40 + vit * 2 + (g.stamina || 0) + rSecond * 6);
+  p.staminaRegen = 8 + vit * 0.18;
+  p.maxMana = Math.round(25 + will * 4 + (g.mana || 0));
+  p.manaRegen = 3 + will * 0.3;
+
+  // Varje grundattack kostar uthållighet. Tunga vapen svingar långsammare men
+  // tar mer per svep, så att ett stort vapen inte blir gratis.
   const wSpeed = w?.base.speed ?? 1.15;
-  p.attackCost = Math.max(3.5, ATTACK_COST_BASE / wSpeed - will * 0.04);
+  p.attackCost = Math.max(3.5, ATTACK_COST_BASE / wSpeed);
 
   // rustning: bas från utrustning, skalad av procentmods och Härdad hud
   let baseArmor = 0;
@@ -113,6 +118,7 @@ export function recalc(p) {
 
   p.hp = Math.min(p.hp, p.maxHp);
   p.stamina = Math.min(p.stamina, p.maxStamina);
+  p.mana = Math.min(p.mana ?? p.maxMana, p.maxMana);
 }
 
 /**

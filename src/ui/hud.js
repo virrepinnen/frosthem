@@ -1,13 +1,27 @@
 // @ts-check
 import { camera } from '../render/camera.js';
-import { SKILL_BY_ID } from '../data/skills.js';
-import { HOTBAR_SIZE } from '../entities/player.js';
+import { SKILL_BY_ID, SKILLS, TREES, skillAvailability } from '../data/skills.js';
+import { HOTBAR_SIZE, bindToHotbar } from '../entities/player.js';
 import { showTextTooltip, hideTooltip, escape } from './tooltip.js';
+import { skillPower } from '../systems/stats.js';
 import { panels, togglePanel, closeAllPanels, attrTooltip } from './panels.js';
-import { recalc } from '../systems/stats.js';
+import { recalc, rank } from '../systems/stats.js';
 import { saveGame } from '../systems/save.js';
 
 const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (document.getElementById(id));
+
+/**
+ * Startar om en blinkning bara när den faktiskt är ny — annars skulle
+ * animationen aldrig hinna spela klart mellan bildrutorna.
+ * @param {string} id @param {number|undefined} flash
+ */
+function flashOnce(id, flash) {
+  const el = $(id);
+  if ((flash ?? 0) > 0.4 && !el.classList.contains('flash')) {
+    el.classList.add('flash');
+    setTimeout(() => el.classList.remove('flash'), 460);
+  }
+}
 
 let lastGroundVersion = -1;
 let lastHotbar = '';
@@ -18,15 +32,13 @@ export function updateHud(game) {
 
   $('hp-fill').style.height = `${Math.max(0, (p.hp / p.maxHp) * 100)}%`;
   $('hp-text').textContent = `${Math.ceil(p.hp)}/${p.maxHp}`;
-  $('sta-fill').style.height = `${Math.max(0, (p.stamina / p.maxStamina) * 100)}%`;
+  $('mana-fill').style.height = `${Math.max(0, (p.mana / p.maxMana) * 100)}%`;
+  $('mana-text').textContent = `${Math.ceil(p.mana)}/${p.maxMana}`;
+  $('stamina-fill').style.width = `${Math.max(0, (p.stamina / p.maxStamina) * 100)}%`;
   $('sta-text').textContent = `${Math.ceil(p.stamina)}/${p.maxStamina}`;
-  const orb = $('sta-orb');
-  orb.classList.toggle('low', !!p.exhausted);
-  // Blinket startas om varje gång man försöker slå utan att orka.
-  if (p.staminaFlash > 0.4 && !orb.classList.contains('flash')) {
-    orb.classList.add('flash');
-    setTimeout(() => orb.classList.remove('flash'), 460);
-  }
+  $('stamina-bar').classList.toggle('low', !!p.exhausted);
+  flashOnce('stamina-bar', p.staminaFlash);
+  flashOnce('mana-orb', p.manaFlash);
   $('xp-fill').style.width = `${(p.xp / p.xpNext) * 100}%`;
   $('zone-name').textContent = game.zone.name;
   $('char-level').textContent = `Nivå ${p.level}`;
@@ -77,7 +89,9 @@ function updateCooldowns(game) {
     if (t > 0.05) { cd.classList.remove('hidden'); cd.textContent = t.toFixed(1); }
     else cd.classList.add('hidden');
     const def = SKILL_BY_ID.get(id);
-    const usable = t <= 0 && p.stamina >= (def?.stamina ?? 0);
+    const usable = t <= 0
+      && p.stamina >= (def?.stamina ?? 0)
+      && p.mana >= (def?.mana ?? 0);
     el.classList.toggle('active', usable);
   }
   const pot = document.getElementById('potion-slot');
@@ -235,7 +249,12 @@ export function showPauseMenu(game) {
 const ATTRS = /** @type {const} */ (['str', 'dex', 'vit', 'will']);
 const ATTR_LABEL = { str: 'Styrka', dex: 'Smidighet', vit: 'Vitalitet', will: 'Vilja' };
 
-/** @param {any} game @param {number} levels */
+/**
+ * Nivårutan visar *båda* poängslagen i samma fönster. Tidigare låg skillpoängen
+ * bakom en knapp till en separat panel, vilket gjorde dem lätta att missa —
+ * och panelen uppdaterade inte rutans räknare när man la ut dem.
+ * @param {any} game @param {number} levels
+ */
 export function showLevelUp(game, levels) {
   const p = game.player;
   const box = $('levelup');
@@ -244,18 +263,20 @@ export function showLevelUp(game, levels) {
     ? `${levels} nivåer på en gång`
     : 'Du känner dig stadigare på benen.';
 
+  /** @param {number} n @param {string} label */
+  const badge = (n, label) => {
+    const b = document.createElement('div');
+    b.className = 'points' + (n > 0 ? ' has' : '');
+    b.innerHTML = `<span class="n">${n}</span><span class="l">${label}</span>`;
+    return b;
+  };
+
   const render = () => {
     const host = $('lvl-stats');
     host.innerHTML = '';
-    for (const [n, label] of /** @type {[number,string][]} */ ([
-      [p.statPoints, 'attributpoäng att lägga'], [p.skillPoints, 'skillpoäng att lägga'],
-    ])) {
-      const b = document.createElement('div');
-      b.className = 'points' + (n > 0 ? ' has' : '');
-      b.innerHTML = `<span class="n">${n}</span><span class="l">${label}</span>`;
-      host.appendChild(b);
-    }
 
+    // ---- attribut --------------------------------------------------------
+    host.appendChild(badge(p.statPoints, 'attributpoäng att lägga'));
     for (const key of ATTRS) {
       const r = document.createElement('div');
       r.className = 'row';
@@ -269,6 +290,63 @@ export function showLevelUp(game, levels) {
       r.onmouseenter = () => showTextTooltip(attrTooltip(p, key));
       r.onmouseleave = hideTooltip;
       host.appendChild(r);
+    }
+
+    // ---- skills ----------------------------------------------------------
+    const sep = document.createElement('div');
+    sep.style.height = '14px';
+    host.appendChild(sep);
+    host.appendChild(badge(p.skillPoints, 'skillpoäng att lägga'));
+
+    const open = SKILLS.filter(sk =>
+      skillAvailability(p.skills, p.level, sk).ok && rank(p, sk.id) < sk.maxRank);
+
+    if (!open.length) {
+      const none = document.createElement('div');
+      none.className = 'tt-req';
+      none.textContent = 'Inga skills är öppna än — nästa steg kräver högre nivå.';
+      host.appendChild(none);
+    } else {
+      let lastTree = '';
+      for (const sk of open) {
+        if (sk.tree !== lastTree) {
+          lastTree = sk.tree;
+          const h = document.createElement('div');
+          h.className = 'grp';
+          h.textContent = TREES[sk.tree];
+          host.appendChild(h);
+        }
+        const r = rank(p, sk.id);
+        const row = document.createElement('div');
+        row.className = 'row lvl-skill';
+        row.innerHTML = `<span><i class="si">${sk.icon}</i>${sk.name}</span>` +
+          `<span>${r}/${sk.maxRank}</span>`;
+        if (p.skillPoints > 0) {
+          const b = document.createElement('span');
+          b.className = 'plus'; b.textContent = '+';
+          b.onclick = () => {
+            p.skillPoints--;
+            p.skills[sk.id] = (p.skills[sk.id] || 0) + 1;
+            if (sk.type === 'active') bindToHotbar(p, sk.id, false);
+            recalc(p);
+            game.dirtyUI = true;
+            render();          // rutan ritas om direkt, så räknarna stämmer
+          };
+          /** @type {HTMLElement} */ (row.children[0]).appendChild(b);
+        }
+        row.onmouseenter = () => {
+          const { synergy } = skillPower(p, sk.id);
+          const next = Math.min(r + 1, sk.maxRank);
+          showTextTooltip(
+            `<div class="tt-name" style="color:#d8b26a">${sk.icon} ${escape(sk.name)}</div>` +
+            `<div class="tt-base">${TREES[sk.tree]} · ${sk.type === 'passive' ? 'passiv'
+              : sk.mana ? `${sk.mana} mana` : `${sk.stamina ?? 0} uthållighet`} · rank ${r}/${sk.maxRank}</div>` +
+            `<div class="tt-mod"><b>${r > 0 ? 'Nästa rank' : 'Rank 1'}:</b><br>` +
+            `${escape(sk.desc(next, synergy)).replace(/\n/g, '<br>')}</div>`);
+        };
+        row.onmouseleave = hideTooltip;
+        host.appendChild(row);
+      }
     }
   };
   render();

@@ -5,11 +5,22 @@ import { recalc, xpToNext } from './stats.js';
 
 /** @typedef {import('./loot.js').Item} Item */
 
-export const SAVE_KEY = 'frosthem.save.v1';
+const LEGACY_KEY = 'frosthem.save.v1';
+export const SAVE_KEY = 'frosthem.saves.v2';
+
+/**
+ * Sparningen är en *lista* av karaktärer, inte en enda plats. Varje vandrare
+ * har ett eget id, så man kan ha flera på gång och välja i huvudmenyn.
+ * @typedef {Object} SaveRecord
+ * @property {string} id
+ * @property {number} t   Senast sparad (ms)
+ * @property {string} name
+ * @property {number} level
+ */
 
 /**
  * Föremål serialiseras via bastypens id — bas-objekten är delade referenser och
- * ska aldrig hamna i JSON. Allt annat är redan enkla värden.
+ * ska aldrig hamna i JSON.
  * @param {Item|null} it
  */
 function packItem(it) {
@@ -31,24 +42,33 @@ function unpackItem(o) {
   };
 }
 
-/** @param {any} game */
-export function saveGame(game) {
-  const p = game.player;
-  /** @type {Record<string, any>} */
-  const equipment = {};
-  for (const k in p.equipment) equipment[k] = packItem(p.equipment[k]);
+/** @returns {any} hela sparfilen, alltid med en chars-array */
+function readAll() {
+  /** @type {{v:number, chars:any[]}} */
+  let data = { v: 2, chars: [] };
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      if (d && Array.isArray(d.chars)) data = d;
+    }
+    // Enstaka karaktär från det gamla formatet flyttas in i listan en gång.
+    const legacy = localStorage.getItem(LEGACY_KEY);
+    if (legacy) {
+      const old = JSON.parse(legacy);
+      if (old && old.v === 1) {
+        old.id = old.id || newId();
+        if (!data.chars.some(c => c.id === old.id)) data.chars.push(old);
+      }
+      localStorage.removeItem(LEGACY_KEY);
+      writeAll(data);
+    }
+  } catch { /* trasig eller otillgänglig lagring — börja om tomt */ }
+  return data;
+}
 
-  const data = {
-    v: 1, t: Date.now(),
-    name: p.name, level: p.level, xp: p.xp,
-    stats: p.stats, statPoints: p.statPoints, skillPoints: p.skillPoints,
-    skills: p.skills, hotbar: p.hotbar,
-    potions: p.potions, gold: p.gold, kills: p.kills, deaths: p.deaths,
-    equipment, inventory: p.inventory.map(packItem),
-    waypoints: [...game.waypoints],
-    zoneIndex: game.zone?.isTown ? 0 : (game.zone?.index ?? 0),
-    bossDefeated: game.bossDefeated,
-  };
+/** @param {any} data */
+function writeAll(data) {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     return true;
@@ -58,18 +78,55 @@ export function saveGame(game) {
   }
 }
 
-/** @returns {any|null} */
-export function readSave() {
-  try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return null;
-    const d = JSON.parse(raw);
-    return d && d.v === 1 ? d : null;
-  } catch { return null; }
+function newId() {
+  return 'c' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
 }
 
-export function clearSave() {
-  try { localStorage.removeItem(SAVE_KEY); } catch { /* strunt samma */ }
+/** Alla sparade karaktärer, senast spelad först. @returns {any[]} */
+export function listSaves() {
+  return readAll().chars.slice().sort((a, b) => (b.t ?? 0) - (a.t ?? 0));
+}
+
+/** @param {string} id */
+export function readSave(id) {
+  return readAll().chars.find(c => c.id === id) ?? null;
+}
+
+/** @param {string} id */
+export function deleteSave(id) {
+  const data = readAll();
+  data.chars = data.chars.filter(c => c.id !== id);
+  return writeAll(data);
+}
+
+/**
+ * Sparar den aktiva karaktären. `game.charId` sätts första gången.
+ * @param {any} game
+ */
+export function saveGame(game) {
+  const p = game.player;
+  if (!game.charId) game.charId = newId();
+
+  /** @type {Record<string, any>} */
+  const equipment = {};
+  for (const k in p.equipment) equipment[k] = packItem(p.equipment[k]);
+
+  const rec = {
+    v: 1, id: game.charId, t: Date.now(),
+    name: p.name, level: p.level, xp: p.xp,
+    stats: p.stats, statPoints: p.statPoints, skillPoints: p.skillPoints,
+    skills: p.skills, hotbar: p.hotbar,
+    potions: p.potions, gold: p.gold, kills: p.kills, deaths: p.deaths,
+    equipment, inventory: p.inventory.map(packItem),
+    waypoints: [...game.waypoints],
+    zoneIndex: game.zone?.isTown ? 0 : (game.zone?.index ?? 0),
+    bossDefeated: game.bossDefeated,
+  };
+
+  const data = readAll();
+  const i = data.chars.findIndex(c => c.id === rec.id);
+  if (i >= 0) data.chars[i] = rec; else data.chars.push(rec);
+  return writeAll(data);
 }
 
 /**
@@ -100,12 +157,18 @@ export function playerFromSave(d) {
   recalc(p);
   p.hp = p.maxHp;
   p.stamina = p.maxStamina;
+  p.mana = p.maxMana;
   return p;
 }
 
-/** Kort sammanfattning till startskärmen. @param {any} d */
+/** Kort sammanfattning till karaktärslistan. @param {any} d */
 export function describeSave(d) {
   const when = new Date(d.t ?? Date.now());
-  const date = when.toLocaleDateString('sv-SE') + ' ' + when.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
-  return `${d.name ?? 'Vandraren'} · nivå ${d.level ?? 1} · ${d.kills ?? 0} fällda · ${date}`;
+  const now = Date.now();
+  const mins = Math.round((now - when.getTime()) / 60000);
+  const rel = mins < 2 ? 'nyss'
+    : mins < 60 ? `för ${mins} min sedan`
+    : mins < 60 * 24 ? `för ${Math.round(mins / 60)} h sedan`
+    : when.toLocaleDateString('sv-SE');
+  return { rel, kills: d.kills ?? 0, gold: d.gold ?? 0, deaths: d.deaths ?? 0 };
 }

@@ -22,7 +22,7 @@ import { clamp } from './core/math.js';
 /**
  * Central speltillstånd + uppdateringsloop.
  * @param {ReturnType<typeof createPlayer>} [existing] Laddad karaktär, annars ny
- * @param {{waypoints?:number[], zoneIndex?:number, bossDefeated?:boolean}} [progress]
+ * @param {{waypoints?:number[], zoneIndex?:number, bossDefeated?:boolean, charId?:string}} [progress]
  */
 export function createGame(existing, progress) {
   const game = {
@@ -37,6 +37,8 @@ export function createGame(existing, progress) {
     dirtyUI: true,
     playerSlow: 0,
     bossDefeated: progress?.bossDefeated ?? false,
+    /** @type {string|undefined} Sparplatsens id; sätts vid första sparningen. */
+    charId: progress?.charId,
     victoryT: 3,
     /** Upptäckta vägstenar. Byn räknas alltid som känd. */
     waypoints: new Set(progress?.waypoints ?? [0]),
@@ -143,7 +145,7 @@ function travel(game, to, from, opts = {}) {
   camera.y = p.pos.y - camera.h / 2;
 
   if (game.zone.isTown) {
-    p.hp = p.maxHp; p.stamina = p.maxStamina;
+    p.hp = p.maxHp; p.stamina = p.maxStamina; p.mana = p.maxMana;
     game.waypoints.add(0);
     game.alert('Frosthem. Härden brinner ännu.');
   } else {
@@ -292,7 +294,7 @@ function updatePlayer(game, dt) {
         'Vakna i Frosthem',
         () => {
           p.dead = false;
-          p.hp = p.maxHp; p.stamina = p.maxStamina;
+          p.hp = p.maxHp; p.stamina = p.maxStamina; p.mana = p.maxMana;
           p.swing = null; p.dash = null; p.whirl = null;
           game.paused = false;
           travel(game, 0, undefined, { keepPortal: true });
@@ -319,6 +321,10 @@ function updatePlayer(game, dt) {
   const regen = p.staminaRegen * (p.combatT > 0 ? COMBAT_REGEN : 1);
   p.stamina = Math.min(p.maxStamina, p.stamina + regen * dt);
   p.exhausted = p.stamina < p.attackCost;
+  // Mana bryr sig inte om strid — den fyller på i jämn takt, så de två
+  // resurserna känns olika i handen i stället för att vara samma sak i två färger.
+  p.mana = Math.min(p.maxMana, p.mana + p.manaRegen * dt);
+  p.manaFlash = Math.max(0, (p.manaFlash ?? 0) - dt);
 
   // ---- rörelse -------------------------------------------------------------
   let mx = 0, my = 0;
@@ -519,7 +525,7 @@ function activateShrine(game, s) {
     case 'speed': p.speedBuff = 0.3; p.speedBuffT = 40; game.alert('Helgedom: +30% gånghastighet i 40 s'); break;
     case 'xp': p.xpBuff = 0.25; p.xpBuffT = 60; game.alert('Helgedom: +25% erfarenhet i 60 s'); break;
     case 'heal':
-      p.hp = p.maxHp; p.stamina = p.maxStamina;
+      p.hp = p.maxHp; p.stamina = p.maxStamina; p.mana = p.maxMana;
       floatText(p.pos.x, p.pos.y - 34, 'Återställd', '#7ce39a', 15);
       game.alert('Helgedom: helt återställd');
       break;

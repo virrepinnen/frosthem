@@ -64,8 +64,8 @@ export function createPlayer(name) {
     eff: { str: 20, dex: 18, vit: 22, will: 12 },
     statPoints: 0, skillPoints: 1,
 
-    hp: 100, maxHp: 100, stamina: 60, maxStamina: 60,
-    lifeRegen: 0.35, staminaRegen: 9,
+    hp: 100, maxHp: 100, stamina: 60, maxStamina: 60, mana: 40, maxMana: 40,
+    lifeRegen: 0.35, staminaRegen: 9, manaRegen: 5,
     armor: 0, dmgMin: 1, dmgMax: 3, attackSpeed: 1,
     critChance: 5, critMult: 150,
     coldDmg: 0, fireDmg: 0, lightDmg: 0, freezeChance: 0,
@@ -103,7 +103,7 @@ export function createPlayer(name) {
   };
 
   recalc(p);
-  p.hp = p.maxHp; p.stamina = p.maxStamina;
+  p.hp = p.maxHp; p.stamina = p.maxStamina; p.mana = p.maxMana;
   return p;
 }
 
@@ -127,6 +127,7 @@ export function grantXp(p, amount) {
     recalc(p);
     p.hp = p.maxHp;
     p.stamina = p.maxStamina;
+    p.mana = p.maxMana;
   }
   return levels;
 }
