@@ -254,11 +254,11 @@ function wilderness(index, seed, d) {
 
   const THEME = {
     moor:   { treeClusters: 16, clusterSize: [3, 9],  rocks: 55, ponds: 5, elites: 2, density: 0.55,
-              packs: 9,  pack: [6, 9], poi: { kind: 'quarry', name: 'Stenbrottet' } },
+              packs: 9,  pack: [4, 7], poi: { kind: 'quarry', name: 'Stenbrottet' } },
     pass:   { treeClusters: 26, clusterSize: [5, 14], rocks: 70, ponds: 3, elites: 3, density: 0.78,
-              packs: 11, pack: [8, 12], poi: { kind: 'camp',   name: 'Det övergivna lägret' } },
+              packs: 11, pack: [7, 11], poi: { kind: 'camp',   name: 'Det övergivna lägret' } },
     barrow: { treeClusters: 10, clusterSize: [2, 6],  rocks: 90, ponds: 8, elites: 4, density: 0.62,
-              packs: 10, pack: [7, 11], poi: { kind: 'offering', name: 'Offerplatsen' } },
+              packs: 10, pack: [6, 10], poi: { kind: 'offering', name: 'Offerplatsen' } },
   };
   const params = THEME[/** @type {'moor'|'pass'|'barrow'} */ (d.theme)];
 
