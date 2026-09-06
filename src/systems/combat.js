@@ -1,7 +1,7 @@
 // @ts-check
 import { rng } from '../core/rng.js';
 import { angleDiff, clamp } from '../core/math.js';
-import { armorReduction, skillPower, rank } from './stats.js';
+import { armorReduction, skillPower, rank, KILL_STAMINA } from './stats.js';
 import { rollItem } from './loot.js';
 import { burst, floatText, decal, shake, screenFlash } from '../render/fx.js';
 import { lineBlocked } from './world.js';
@@ -90,6 +90,9 @@ export function killMonster(game, m) {
   m.dead = true;
   m.corpseT = 14;
   game.player.kills++;
+  // Ett fällt byte ger andrum. Det gör flockrensning hållbar samtidigt som
+  // bomsvep straffas — precis den avvägning uthålligheten ska skapa.
+  game.player.stamina = Math.min(game.player.maxStamina, game.player.stamina + KILL_STAMINA);
 
   decal(m.pos.x, m.pos.y, m.radius * (m.isBoss ? 3.2 : 1.5), 'rgba(120,20,30,0.5)');
   burst(m.pos.x, m.pos.y, m.isBoss ? 90 : 18, { color: '#a8202a', speed: m.isBoss ? 320 : 190, life: 0.75, size: 3.2 });
@@ -238,6 +241,7 @@ export function useSkill(game, id) {
 
   const { synergy } = skillPower(p, id);
   p.stamina -= def.stamina ?? 0;
+  p.combatT = 1.5;
   p.cooldowns[id] = def.cooldown ?? 0;
 
   switch (id) {

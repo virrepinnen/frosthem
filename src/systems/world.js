@@ -37,6 +37,9 @@ import { clamp, smoothNoise, wrapAngle } from '../core/math.js';
  * @property {{x:number,y:number,r:number}|null} waypoint
  * @property {{x:number,y:number,r:number,opened:boolean,tier:number}[]} chests
  * @property {Obstacle[]} [_walls] Cache: hinder som blockerar sikt
+ * @property {Uint8Array} [fog] Utforskningsrutnät (1 = sedd)
+ * @property {number} [fogW]
+ * @property {number} [fogH]
  * @property {number} [bossAt]
  * @property {{x:number,y:number}} [bossPos]
  */
@@ -118,7 +121,58 @@ function pointAlong(pts, t) {
  */
 export function generateZone(index, seed) {
   const d = ZONE_DEFS[index];
-  return d.theme === 'town' ? village(index, seed, d) : wilderness(index, seed, d);
+  const zone = d.theme === 'town' ? village(index, seed, d) : wilderness(index, seed, d);
+  initFog(zone);
+  return zone;
+}
+
+/* ------------------------------------------------------------------ */
+/* Fog of war                                                          */
+/* ------------------------------------------------------------------ */
+
+/** Rutstorlek för utforskningsrutnätet, i världsenheter. */
+export const FOG_CELL = 40;
+/** Hur långt omkring sig spelaren avtäcker kartan. */
+export const FOG_RADIUS = 430;
+
+/**
+ * Byn är känd från början — den är hem. Vildmarken börjar svart och avtäcks
+ * medan man går, som D2:s automap.
+ * @param {Zone} zone
+ */
+export function initFog(zone) {
+  zone.fogW = Math.ceil(zone.w / FOG_CELL);
+  zone.fogH = Math.ceil(zone.h / FOG_CELL);
+  zone.fog = new Uint8Array(zone.fogW * zone.fogH);
+  if (zone.isTown) zone.fog.fill(1);
+}
+
+/**
+ * Avtäcker rutorna kring en punkt. Anropas varje bildruta; den kvadrerade
+ * jämförelsen håller det billigt nog att inte märkas.
+ * @param {Zone} zone @param {number} x @param {number} y @param {number} [radius]
+ */
+export function revealFog(zone, x, y, radius = FOG_RADIUS) {
+  if (!zone.fog) initFog(zone);
+  const r2 = radius * radius;
+  const cx = x / FOG_CELL, cy = y / FOG_CELL;
+  const span = Math.ceil(radius / FOG_CELL);
+  const x0 = Math.max(0, Math.floor(cx - span)), x1 = Math.min(zone.fogW - 1, Math.ceil(cx + span));
+  const y0 = Math.max(0, Math.floor(cy - span)), y1 = Math.min(zone.fogH - 1, Math.ceil(cy + span));
+  for (let gy = y0; gy <= y1; gy++) {
+    for (let gx = x0; gx <= x1; gx++) {
+      const wx = (gx + 0.5) * FOG_CELL - x, wy = (gy + 0.5) * FOG_CELL - y;
+      if (wx * wx + wy * wy <= r2) zone.fog[gy * zone.fogW + gx] = 1;
+    }
+  }
+}
+
+/** @param {Zone} zone @param {number} x @param {number} y */
+export function isRevealed(zone, x, y) {
+  if (!zone.fog) return false;
+  const gx = Math.floor(x / FOG_CELL), gy = Math.floor(y / FOG_CELL);
+  if (gx < 0 || gy < 0 || gx >= zone.fogW || gy >= zone.fogH) return false;
+  return zone.fog[gy * zone.fogW + gx] === 1;
 }
 
 /** @param {number} index @param {number} seed @param {any} d @returns {Zone} */
@@ -200,11 +254,11 @@ function wilderness(index, seed, d) {
 
   const THEME = {
     moor:   { treeClusters: 16, clusterSize: [3, 9],  rocks: 55, ponds: 5, elites: 2, density: 0.55,
-              packs: 9,  pack: [4, 6], poi: { kind: 'quarry', name: 'Stenbrottet' } },
+              packs: 9,  pack: [6, 9], poi: { kind: 'quarry', name: 'Stenbrottet' } },
     pass:   { treeClusters: 26, clusterSize: [5, 14], rocks: 70, ponds: 3, elites: 3, density: 0.78,
-              packs: 11, pack: [5, 8], poi: { kind: 'camp',   name: 'Det övergivna lägret' } },
+              packs: 11, pack: [8, 12], poi: { kind: 'camp',   name: 'Det övergivna lägret' } },
     barrow: { treeClusters: 10, clusterSize: [2, 6],  rocks: 90, ponds: 8, elites: 4, density: 0.62,
-              packs: 10, pack: [4, 7], poi: { kind: 'offering', name: 'Offerplatsen' } },
+              packs: 10, pack: [7, 11], poi: { kind: 'offering', name: 'Offerplatsen' } },
   };
   const params = THEME[/** @type {'moor'|'pass'|'barrow'} */ (d.theme)];
 

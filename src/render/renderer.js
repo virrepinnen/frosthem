@@ -4,6 +4,7 @@ import { fx } from './fx.js';
 import { rng } from '../core/rng.js';
 import { hashNoise, clamp } from '../core/math.js';
 import { RARITY_COLOR } from '../data/items.js';
+import { FOG_CELL } from '../systems/world.js';
 
 /**
  * All världsrendering. Canvas 2D, top-down, med djupsortering på y så att
@@ -1014,7 +1015,11 @@ function drawVignette(ctx, W, H, zone) {
 }
 
 /**
- * Minimap: hinder som prickar, monster som röda punkter, utgångar som blå.
+ * Minimap med fog of war.
+ *
+ * Ordningen spelar roll: allt ritas först, sedan målas de rutor du ännu inte
+ * besökt över. Fienderna ritas *efter* dimman men bara nära dig — kartan minns
+ * terräng, inte var monstren står.
  * @param {CanvasRenderingContext2D} ctx @param {any} game
  */
 export function renderMinimap(ctx, game) {
@@ -1023,7 +1028,7 @@ export function renderMinimap(ctx, game) {
   const sc = Math.min(S / zone.w, S / zone.h);
   const offX = (S - zone.w * sc) / 2, offY = (S - zone.h * sc) / 2;
   ctx.clearRect(0, 0, S, S);
-  ctx.fillStyle = '#0b1119'; ctx.fillRect(0, 0, S, S);
+  ctx.fillStyle = '#070b12'; ctx.fillRect(0, 0, S, S);
   ctx.fillStyle = '#1a2634';
   ctx.fillRect(offX, offY, zone.w * sc, zone.h * sc);
 
@@ -1053,14 +1058,37 @@ export function renderMinimap(ctx, game) {
   }
   ctx.fillStyle = '#7fd4f0';
   for (const e of zone.exits) { ctx.beginPath(); ctx.arc(offX + e.x * sc, offY + e.y * sc, 3, 0, 6.3); ctx.fill(); }
-  ctx.fillStyle = '#d8b26a';
-  for (const s of zone.shrines) if (!s.used) { ctx.beginPath(); ctx.arc(offX + s.x * sc, offY + s.y * sc, 2.5, 0, 6.3); ctx.fill(); }
+  ctx.fillStyle = '#e0a86a';
+  for (const s2 of zone.shrines) if (!s2.used) { ctx.beginPath(); ctx.arc(offX + s2.x * sc, offY + s2.y * sc, 2.5, 0, 6.3); ctx.fill(); }
+
+  // ---- dimman: måla över det du inte sett ---------------------------------
+  if (zone.fog) {
+    const cw = FOG_CELL * sc;
+    ctx.fillStyle = '#070b12';
+    for (let gy = 0; gy < zone.fogH; gy++) {
+      let runStart = -1;
+      for (let gx = 0; gx <= zone.fogW; gx++) {
+        const hidden = gx < zone.fogW && zone.fog[gy * zone.fogW + gx] === 0;
+        if (hidden && runStart < 0) runStart = gx;
+        else if (!hidden && runStart >= 0) {
+          // Rita hela sjok i taget i stället för ruta för ruta.
+          ctx.fillRect(offX + runStart * cw, offY + gy * cw, (gx - runStart) * cw + 0.5, cw + 0.5);
+          runStart = -1;
+        }
+      }
+    }
+  }
+
+  // ---- fiender: bara de du rimligen kan uppfatta just nu ------------------
+  const px = game.player.pos.x, py = game.player.pos.y;
   for (const m of game.monsters) {
     if (m.dead) continue;
+    if (Math.hypot(m.pos.x - px, m.pos.y - py) > 620) continue;
     ctx.fillStyle = m.isBoss ? '#ff4a5a' : m.elite ? m.elite.color : '#a8404a';
     const r = m.isBoss ? 4 : m.elite ? 3 : 1.6;
     ctx.beginPath(); ctx.arc(offX + m.pos.x * sc, offY + m.pos.y * sc, r, 0, 6.3); ctx.fill();
   }
+
   ctx.fillStyle = '#eef6ff';
-  ctx.beginPath(); ctx.arc(offX + game.player.pos.x * sc, offY + game.player.pos.y * sc, 3, 0, 6.3); ctx.fill();
+  ctx.beginPath(); ctx.arc(offX + px * sc, offY + py * sc, 3, 0, 6.3); ctx.fill();
 }

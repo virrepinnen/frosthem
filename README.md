@@ -34,20 +34,23 @@ måste serveras över HTTP — att öppna `index.html` direkt från disk fungera
 | Tangent | Effekt |
 | --- | --- |
 | `←` `↑` `↓` `→` | Gå (`WASD` fungerar också) |
-| Vänsterklick | Attack — siktar automatiskt på närmaste fiende |
+| — | Attacken sköter sig själv när en fiende är inom räckhåll |
 | `1`–`6` | Skills |
 | `Q` | Hälsodryck |
 | `E` | Använd: tala, res, vägsten, portal, kista |
 | `Mellanslag` | Undanrullning (osårbar mitt i rullningen) |
 | `T` | Öppna stadsportal (och tillbaka igen) |
 | `I` / `C` / `K` | Väska · Karaktär · Skills |
-| `F5` / `F1` | Spara nu · dölj hjälptexten |
+| `F5` | Spara nu |
+| `F1` / `F2` | Hur man spelar · dölj snabblistan |
 | `Esc` | Stäng paneler, annars paus- och sparmeny |
 
-Styrningen är byggd för bärbar dator: **högerhanden på piltangenterna**,
-vänsterhanden fri för `1`–`6`, `Q` och musen. Du **siktar automatiskt** på
-närmaste fiende med fri sikt, så attacken kräver ingen precision — en markör
-visar vem som står i tur. Auto-siktet kan stängas av i pausmenyn.
+Styrningen är byggd för bärbar dator och **kräver ingen mus alls**: högerhanden
+på piltangenterna, vänsterhanden på `1`–`6` och `Q`. Du siktar automatiskt på
+närmaste fiende med fri sikt, och slår av dig själv så fort någon kommer inom
+räckhåll — en markör visar vem som står i tur. Både auto-sikte och auto-attack
+kan stängas av i pausmenyn, och vänsterklick fungerar fortfarande som manuell
+utlösare.
 
 Ikonerna under minimapen öppnar samma vyer med musen; håll pekaren över dem för
 att se genvägen. En gyllene prick betyder att du har oanvända poäng.
@@ -76,9 +79,21 @@ tar dig till Frosthem och tillbaka till exakt samma plats — den bevarar zonen 
 lämnade, inklusive monster och loot på marken, vilket är hela poängen när zoner
 annars genereras om vid varje besök.
 
+**Uthållighet.** Varje svep och varje skill kostar uthållighet, och *under strid
+återhämtar du dig bara till 40 % av normal takt* — bryt kontakten så fyller den
+på snabbt. Varje fälld fiende ger 8 tillbaka. Det gör hela stridsekonomin till
+en avvägning: du kan rensa en flock om du träffar effektivt, men bomsvep och
+tåligare fiender tvingar dig att backa och andas. Vilja höjer taket, snabbar upp
+återhämtningen och gör svepen något billigare; tunga vapen kostar mer per svep.
+
+**Fog of war.** Vildmarken börjar svart på kartan och avtäcks medan du går.
+Minimapen minns terräng, stigar och det du hittat — men visar bara fiender som
+är nära dig just nu. Byn är känd från början.
+
 **Strid.** Svep med båge och räckvidd, omedelbar träffdetektion (responsivitet
 före windup), knockback, kritiska träffar, blödning, frysning, bedövning och
-livsdräneri. Fienderna har fem arketyper med olika AI: laddare, närstrid,
+livsdräneri. Flockarna är många och små — en hop snövargar är ett dussin
+individer, inte fyra klumpar. Fienderna har fem arketyper med olika AI: laddare, närstrid,
 distans och tunga varelser. De är avsiktligt aggressiva — det driver tempot.
 
 **Bossen.** Jarl Hravn kör en egen AI med fyra **telegraferade** attacker:
@@ -99,7 +114,7 @@ fasta specialegenskaper, attributkrav som gatear vad du kan bära, och en
 handlare som köper skräpet.
 
 **Progression.** Nivåer 1 och uppåt, fyra attributpoäng och en skillpoäng per
-nivå. Tre riktiga **skill-träd** (Stål, Frost, Uthållighet) med fem skills
+nivå. Tre riktiga **skill-träd** (Stål, Frost, Uthållighet) — ett per flik — med fem skills
 vardera i tre steg: två ingångar, två mellansteg som var för sig kräver en poäng
 i sin förälder, och en kapsten som kräver båda mellanstegen. Steg 2 öppnar på
 nivå 6, steg 3 på nivå 12. Plus synergier där skills stärker varandra.
@@ -110,7 +125,8 @@ Du *måste* inte lägga dem: poängen ligger kvar, och `Esc` eller *Fortsätt* t
 rakt tillbaka in i striden.
 
 **Karaktär och sparning.** Du namnger din vandrare vid start, och första
-karaktären får en fyrastegs genomgång av det man behöver för att komma igång. Allt sparas i
+karaktären får en kort genomgång i fem steg. Frågetecknet uppe till höger (eller
+`F1`) tar upp den igen när som helst. Allt sparas i
 webbläsarens `localStorage` — automatiskt vid nivåhöjning, zonbyte, köp och när
 du lämnar fliken, eller manuellt med `F5`. Startskärmen erbjuder *Fortsätt* när
 ett sparläge finns. Du återvänder alltid till Frosthem, eftersom byn är den enda
@@ -180,7 +196,8 @@ lätt att skärpa i `updatePlayer` i `src/game.js` när balansen sitter.
 Rimlig ordning, med det som ger mest per timme först:
 
 1. **Ljud.** Det största som saknas. Träffar, dödsljud och en vindslinga gör
-   mer för känslan än någon grafisk uppgradering.
+   mer för känslan än någon grafisk uppgradering — särskilt nu när
+   uthålligheten har en rytm som skulle må bra av att höras.
 2. **Telegraferade specialattacker för vanliga elitmonster.** Bossen har dem nu;
    samma grepp på elitpacken skulle lyfta hela mittensegmentet.
 3. **Sockets och runor**, som ger loot ett andra lager att gräva i.

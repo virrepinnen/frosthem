@@ -3,7 +3,7 @@ import { camera } from '../render/camera.js';
 import { SKILL_BY_ID } from '../data/skills.js';
 import { HOTBAR_SIZE } from '../entities/player.js';
 import { showTextTooltip, hideTooltip, escape } from './tooltip.js';
-import { panels, togglePanel, closeAllPanels } from './panels.js';
+import { panels, togglePanel, closeAllPanels, attrTooltip } from './panels.js';
 import { recalc } from '../systems/stats.js';
 import { saveGame } from '../systems/save.js';
 
@@ -20,6 +20,13 @@ export function updateHud(game) {
   $('hp-text').textContent = `${Math.ceil(p.hp)}/${p.maxHp}`;
   $('sta-fill').style.height = `${Math.max(0, (p.stamina / p.maxStamina) * 100)}%`;
   $('sta-text').textContent = `${Math.ceil(p.stamina)}/${p.maxStamina}`;
+  const orb = $('sta-orb');
+  orb.classList.toggle('low', !!p.exhausted);
+  // Blinket startas om varje gång man försöker slå utan att orka.
+  if (p.staminaFlash > 0.4 && !orb.classList.contains('flash')) {
+    orb.classList.add('flash');
+    setTimeout(() => orb.classList.remove('flash'), 460);
+  }
   $('xp-fill').style.width = `${(p.xp / p.xpNext) * 100}%`;
   $('zone-name').textContent = game.zone.name;
   $('char-level').textContent = `Nivå ${p.level}`;
@@ -164,6 +171,7 @@ export function initNav(game) {
     el.onclick = () => {
       hideTooltip();
       if (el.dataset.act === 'pause') game.togglePause();
+      else if (el.dataset.act === 'help') openHelp(game);
       else togglePanel(game, /** @type {any} */ (el.dataset.panel));
     };
   }
@@ -193,7 +201,9 @@ export function showPauseMenu(game) {
   const note = $('pause-note');
   note.textContent = `${game.player.name} · nivå ${game.player.level} · ${game.zone.name}`;
   const aim = /** @type {HTMLElement} */ (box.querySelector('[data-act="autoaim"]'));
+  const atk = /** @type {HTMLElement} */ (box.querySelector('[data-act="autoattack"]'));
   aim.textContent = `Auto-sikte: ${game.settings.autoAim ? 'På' : 'Av'}`;
+  atk.textContent = `Auto-attack: ${game.settings.autoAttack ? 'På' : 'Av'}`;
 
   for (const b of /** @type {HTMLElement[]} */ ([...box.querySelectorAll('button')])) {
     b.onclick = () => {
@@ -203,6 +213,10 @@ export function showPauseMenu(game) {
         case 'autoaim':
           game.settings.autoAim = !game.settings.autoAim;
           aim.textContent = `Auto-sikte: ${game.settings.autoAim ? 'På' : 'Av'}`;
+          break;
+        case 'autoattack':
+          game.settings.autoAttack = !game.settings.autoAttack;
+          atk.textContent = `Auto-attack: ${game.settings.autoAttack ? 'På' : 'Av'}`;
           break;
         case 'quit':
           saveGame(game);
@@ -218,12 +232,8 @@ export function showPauseMenu(game) {
 /* Nivåhöjning                                                         */
 /* ------------------------------------------------------------------ */
 
-const ATTRS = /** @type {const} */ ([
-  ['str', 'Styrka', '+1% vapenskada'],
-  ['dex', 'Smidighet', 'attackhastighet, krit, rustning'],
-  ['vit', 'Vitalitet', '+4 max liv'],
-  ['will', 'Vilja', 'uthållighet'],
-]);
+const ATTRS = /** @type {const} */ (['str', 'dex', 'vit', 'will']);
+const ATTR_LABEL = { str: 'Styrka', dex: 'Smidighet', vit: 'Vitalitet', will: 'Vilja' };
 
 /** @param {any} game @param {number} levels */
 export function showLevelUp(game, levels) {
@@ -237,24 +247,26 @@ export function showLevelUp(game, levels) {
   const render = () => {
     const host = $('lvl-stats');
     host.innerHTML = '';
-    const head = document.createElement('div');
-    head.className = 'grp';
-    head.textContent = p.statPoints > 0
-      ? `${p.statPoints} attributpoäng · ${p.skillPoints} skillpoäng`
-      : `${p.skillPoints} skillpoäng kvar`;
-    host.appendChild(head);
+    for (const [n, label] of /** @type {[number,string][]} */ ([
+      [p.statPoints, 'attributpoäng att lägga'], [p.skillPoints, 'skillpoäng att lägga'],
+    ])) {
+      const b = document.createElement('div');
+      b.className = 'points' + (n > 0 ? ' has' : '');
+      b.innerHTML = `<span class="n">${n}</span><span class="l">${label}</span>`;
+      host.appendChild(b);
+    }
 
-    for (const [key, label, tip] of ATTRS) {
+    for (const key of ATTRS) {
       const r = document.createElement('div');
       r.className = 'row';
-      r.innerHTML = `<span>${label}</span><span>${p.eff[key]}</span>`;
+      r.innerHTML = `<span>${ATTR_LABEL[key]}</span><span>${p.eff[key]}</span>`;
       if (p.statPoints > 0) {
         const b = document.createElement('span');
         b.className = 'plus'; b.textContent = '+';
         b.onclick = () => { p.statPoints--; p.stats[key]++; recalc(p); game.dirtyUI = true; render(); };
         /** @type {HTMLElement} */ (r.children[0]).appendChild(b);
       }
-      r.onmouseenter = () => showTextTooltip(`<div class="tt-name">${label}</div><div class="tt-req">${tip}</div>`);
+      r.onmouseenter = () => showTextTooltip(attrTooltip(p, key));
       r.onmouseleave = hideTooltip;
       host.appendChild(r);
     }
@@ -282,13 +294,27 @@ export function levelUpOpen() { return !$('levelup').classList.contains('hidden'
 const TUTORIAL = [
   { ico: '🧭', title: 'Följ stigen norrut',
     body: 'Gå med <b>piltangenterna</b>. Stigen genom varje karta leder till nästa område — och en sidostig leder till något värt att hitta.' },
-  { ico: '🪓', title: 'Slå och rulla',
-    body: '<b>Vänsterklick</b> attackerar. Du siktar automatiskt på närmaste fiende, så du behöver inte peka.<br><b>Mellanslag</b> rullar undan — du är osårbar mitt i rullningen.' },
+  { ico: '🪓', title: 'Du slåss av dig själv',
+    body: 'Kommer en fiende inom räckhåll <b>attackerar du automatiskt</b> och siktar på den närmaste. Du behöver inte klicka.<br><b>Mellanslag</b> rullar undan — du är osårbar mitt i rullningen.' },
+  { ico: '💨', title: 'Uthålligheten är din klocka',
+    body: 'Varje svep kostar uthållighet, och <b>i strid återhämtar du dig bara långsamt</b>. Tar den slut kan du inte slå.<br>Varje fälld fiende ger en klunk tillbaka — så belönas den som träffar, inte den som slår i luften.' },
   { ico: '🧪', title: 'Håll dig vid liv',
-    body: '<b>Q</b> dricker en hälsodryck. Skills ligger på <b>1–6</b>.<br>Loot plockas upp automatiskt när du går över det.' },
+    body: '<b>Q</b> dricker en hälsodryck. Skills ligger på <b>1–6</b>.<br>Loot plockas upp automatiskt när du går över det — men det droppar sällan, så det som faller är värt att titta på.' },
   { ico: '🗿', title: 'Hitta hem',
-    body: 'Rör vid <b>vägstenen</b> i varje område — då kan du resa dit igen.<br><b>T</b> öppnar en portal till byn och tillbaka till samma plats.' },
+    body: 'Rör vid <b>vägstenen</b> i varje område — då kan du resa dit igen.<br><b>T</b> öppnar en portal till byn och tillbaka till samma plats.<br><br>Tryck på <b>?</b> uppe till höger för att läsa det här igen.' },
 ];
+
+/**
+ * Öppnar genomgången på nytt från frågetecknet. Pausar spelet så länge, och
+ * lämnar tillbaka kontrollen där man var.
+ * @param {any} game
+ */
+export function openHelp(game) {
+  hideTooltip();
+  const wasPaused = game.paused;
+  game.paused = true;
+  showTutorial(() => { game.paused = wasPaused; });
+}
 
 /** @param {()=>void} onDone */
 export function showTutorial(onDone) {

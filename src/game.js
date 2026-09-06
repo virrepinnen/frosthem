@@ -1,6 +1,6 @@
 // @ts-check
 import { createPlayer, HOTBAR_SIZE, BAG_SIZE } from './entities/player.js';
-import { generateZone, resolveCollision, lineBlocked, ZONE_DEFS } from './systems/world.js';
+import { generateZone, resolveCollision, lineBlocked, revealFog, ZONE_DEFS } from './systems/world.js';
 import { populateZone } from './systems/spawn.js';
 import { updateMonsters, updateProjectiles } from './systems/ai.js';
 import { performSwing, useSkill, drinkPotion, hitMonster, applyFreeze, spawnGround } from './systems/combat.js';
@@ -15,6 +15,7 @@ import { pushAlert, showOverlay, showLevelUp, hideLevelUp, levelUpOpen,
 import { panels, togglePanel, closeAllPanels, anyPanelOpen } from './ui/panels.js';
 import { hideTooltip } from './ui/tooltip.js';
 import { saveGame } from './systems/save.js';
+import { COMBAT_REGEN, COMBAT_WINDOW } from './systems/stats.js';
 import { rng } from './core/rng.js';
 import { clamp } from './core/math.js';
 
@@ -48,7 +49,7 @@ export function createGame(existing, progress) {
     paused: false,
     saveT: 0,
     levelUpPending: 0,
-    settings: { autoAim: true },
+    settings: { autoAim: true, autoAttack: true },
 
     /** @param {string} t */
     alert(t) { pushAlert(t); },
@@ -228,6 +229,7 @@ function update(game, dt) {
   if (game.paused) { updateFx(dt); return; }
 
   game.playerSlow = 0;
+  revealFog(game.zone, p.pos.x, p.pos.y);
   updatePlayer(game, dt);
   updateMonsters(game, dt);
   updateProjectiles(game, dt);
@@ -311,7 +313,12 @@ function updatePlayer(game, dt) {
   if (p.swing) { p.swing.t += dt; if (p.swing.t >= p.swing.dur) p.swing = null; }
 
   p.hp = Math.min(p.maxHp, p.hp + p.lifeRegen * dt);
-  p.stamina = Math.min(p.maxStamina, p.stamina + p.staminaRegen * dt);
+  // Uthålligheten återhämtar sig långsamt så länge du slåss, snabbt när du
+  // bryter kontakten. Det är den rytmen hela stridsekonomin vilar på.
+  p.combatT = Math.max(0, (p.combatT ?? 0) - dt);
+  const regen = p.staminaRegen * (p.combatT > 0 ? COMBAT_REGEN : 1);
+  p.stamina = Math.min(p.maxStamina, p.stamina + regen * dt);
+  p.exhausted = p.stamina < p.attackCost;
 
   // ---- rörelse -------------------------------------------------------------
   let mx = 0, my = 0;
@@ -369,12 +376,29 @@ function updatePlayer(game, dt) {
   }
 
   // ---- attacker ------------------------------------------------------------
-  if (!anyPanelOpen() && !p.whirl && !p.dash && !p.roll) {
-    if (input.mouse.down && p.attackTimer <= 0) {
-      p.attackTimer = 1 / (1.5 * p.attackSpeed);
-      performSwing(game, { arc: 1.5, reach: 66, mult: 1, kind: 'basic' });
+  // Auto-attack: står en fiende inom räckhåll slår du av dig själv. Musen
+  // behövs inte alls — men den fungerar fortfarande som manuell utlösare.
+  if (!anyPanelOpen() && !p.whirl && !p.dash && !p.roll && p.attackTimer <= 0) {
+    const t = game.aimTarget;
+    const inReach = t && !t.dead
+      && Math.hypot(t.pos.x - p.pos.x, t.pos.y - p.pos.y) <= 66 + t.radius;
+    const wants = input.mouse.down || (game.settings.autoAttack && inReach);
+    if (wants) {
+      if (p.stamina >= p.attackCost) {
+        p.stamina -= p.attackCost;
+        p.combatT = COMBAT_WINDOW;
+        p.attackTimer = 1 / (1.5 * p.attackSpeed);
+        performSwing(game, { arc: 1.5, reach: 66, mult: 1, kind: 'basic' });
+      } else {
+        // Utmattad: pysslar inte med att spamma varningar, men markerar tydligt.
+        p.attackTimer = 0.3;
+        p.staminaFlash = 0.45;
+        if ((p.exhaustAlertT ?? 0) <= 0) { p.exhaustAlertT = 6; game.alert('Utmattad — dra dig undan och hämta andan.'); }
+      }
     }
   }
+  p.exhaustAlertT = Math.max(0, (p.exhaustAlertT ?? 0) - dt);
+  p.staminaFlash = Math.max(0, (p.staminaFlash ?? 0) - dt);
   for (let i = 0; i < HOTBAR_SIZE; i++) {
     if (keyPressed(String(i + 1))) {
       const id = p.hotbar[i];

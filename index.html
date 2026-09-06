@@ -23,9 +23,10 @@
     <div id="skillbar"></div>
   </div>
 
-  <div class="orb orb-sta">
+  <div class="orb orb-sta" id="sta-orb">
     <div class="orb-fill" id="sta-fill"></div>
     <div class="orb-text" id="sta-text">0/0</div>
+    <div class="orb-hint">Utmattad</div>
   </div>
 </div>
 
@@ -41,6 +42,7 @@
     <div class="navbtn" data-panel="inventory" data-name="Väska &amp; utrustning" data-key="I">🎒</div>
     <div class="navbtn" data-panel="character" data-name="Karaktär" data-key="C">📜</div>
     <div class="navbtn" data-panel="skills" data-name="Skill-träd" data-key="K">🌟</div>
+    <div class="navbtn" data-act="help" data-name="Hur man spelar" data-key="F1"><span class="glyph">?</span></div>
     <div class="navbtn" data-act="pause" data-name="Paus &amp; spara" data-key="Esc"><span class="glyph">❙❙</span></div>
   </div>
 </div>
@@ -54,6 +56,7 @@
     <button data-act="resume" class="primary">Fortsätt</button>
     <button data-act="save">Spara nu</button>
     <button data-act="autoaim">Auto-sikte: På</button>
+    <button data-act="autoattack">Auto-attack: På</button>
     <button data-act="quit">Till startskärmen</button>
     <div class="menu-note" id="pause-note"></div>
   </div>
@@ -99,7 +102,8 @@
   <b>E</b><span>använd · tala · res</span>
   <b>T</b><span>stadsportal</span>
   <b>Esc</b><span>paus &amp; spara</span>
-  <b>F1</b><span>dölj den här listan</span>
+  <b>F1</b><span>hur man spelar</span>
+  <b>F2</b><span>dölj den här listan</span>
 </div>
 
 <div id="start">

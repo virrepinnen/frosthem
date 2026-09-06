@@ -11,6 +11,8 @@ import { showItemTooltip, showTextTooltip, hideTooltip, escape } from './tooltip
 
 export const panels = {
   inventory: false, character: false, skills: false, vendor: false, waypoint: false,
+  /** @type {'stal'|'frost'|'uthallighet'} */
+  skillTab: 'stal',
 };
 
 export function anyPanelOpen() {
@@ -35,6 +37,44 @@ export function closeAllPanels(game) {
 }
 
 const rarityClass = { normal: 'rn', magic: 'rm', rare: 'rr', unique: 'ru' };
+
+/**
+ * Attribut-tooltip som visar vad poängen *gör just nu*, inte bara vad den
+ * heter. Ett tal utan sammanhang hjälper ingen att välja.
+ * @param {any} p @param {'str'|'dex'|'vit'|'will'} key
+ */
+export function attrTooltip(p, key) {
+  const head = (/** @type {string} */ t, /** @type {string} */ body) =>
+    `<div class="tt-name" style="color:#d8b26a">${t}</div><div class="tt-core">${body}</div>`;
+  switch (key) {
+    case 'str':
+      return head('Styrka', `Varje poäng ger <b>+1% vapenskada</b>.` +
+        `<hr>Nu: ${p.eff.str} styrka → +${p.eff.str}% skada` +
+        `<br>Din skada: <b>${p.dmgMin}–${p.dmgMax}</b>`) +
+        `<div class="tt-req">Tyngre vapen och rustningar kräver styrka för att kunna bäras.</div>`;
+    case 'dex':
+      return head('Smidighet', `Varje poäng ger <b>+0,15% attackhastighet</b>, ` +
+        `<b>+0,12% kritisk träff</b> och <b>+0,4 rustning</b>.` +
+        `<hr>Nu: ${p.eff.dex} smidighet` +
+        `<br>Attackhastighet: <b>${p.attackSpeed.toFixed(2)}×</b>` +
+        `<br>Kritisk träff: <b>${p.critChance.toFixed(1)}%</b>`) +
+        `<div class="tt-req">Vissa vapen kräver smidighet.</div>`;
+    case 'vit':
+      return head('Vitalitet', `Varje poäng ger <b>+4 max liv</b>.` +
+        `<hr>Nu: ${p.eff.vit} vitalitet → <b>${p.maxHp} liv</b>` +
+        `<br>Nästa poäng: ${p.maxHp} → ${p.maxHp + 4}`) +
+        `<div class="tt-req">Det enda attributet som direkt håller dig vid liv.</div>`;
+    case 'will':
+      return head('Vilja', `Varje poäng ger <b>+3 uthållighet</b>, snabbare ` +
+        `återhämtning och en aning billigare svep.` +
+        `<hr>Nu: ${p.eff.will} vilja → <b>${p.maxStamina} uthållighet</b>` +
+        `<br>Återhämtning: <b>${p.staminaRegen.toFixed(1)}/s</b> i vila` +
+        `<br>Kostnad per svep: <b>${(p.attackCost ?? 8).toFixed(1)}</b>` +
+        `<br>Svep innan du är slut: <b>~${Math.floor(p.maxStamina / (p.attackCost || 8))}</b>`) +
+        `<div class="tt-req">Avgör hur länge du orkar stå kvar i en flock.</div>`;
+  }
+  return '';
+}
 
 /** @param {any} game */
 export function renderPanels(game) {
@@ -170,6 +210,13 @@ function characterPanel(game) {
     if (tip) { r.onmouseenter = () => showTextTooltip(tip); r.onmouseleave = hideTooltip; }
     return r;
   };
+  /** @param {string} text @param {number} n */
+  const badge = (text, n) => {
+    const b = document.createElement('div');
+    b.className = 'points' + (n > 0 ? ' has' : '');
+    b.innerHTML = `<span class="n">${n}</span><span class="l">${text}</span>`;
+    return b;
+  };
   const g = (/** @type {string} */ t) => {
     const e = document.createElement('div'); e.className = 'grp'; e.textContent = t; return e;
   };
@@ -180,11 +227,12 @@ function characterPanel(game) {
   d.appendChild(row('Fällda fiender', String(p.kills)));
   d.appendChild(row('Dödsfall', String(p.deaths)));
 
-  d.appendChild(g(`Attribut${p.statPoints ? ` — ${p.statPoints} poäng kvar` : ''}`));
-  d.appendChild(row('Styrka', String(p.eff.str), 'str', '<b>Styrka</b><br>+1% vapenskada per poäng. Krävs för tyngre vapen och rustningar.'));
-  d.appendChild(row('Smidighet', String(p.eff.dex), 'dex', '<b>Smidighet</b><br>+0,15% attackhastighet, +0,12% kritisk träff och +0,4 rustning per poäng.'));
-  d.appendChild(row('Vitalitet', String(p.eff.vit), 'vit', '<b>Vitalitet</b><br>+4 max liv per poäng.'));
-  d.appendChild(row('Vilja', String(p.eff.will), 'will', '<b>Vilja</b><br>+3 uthållighet och snabbare återhämtning per poäng.'));
+  d.appendChild(g('Attribut'));
+  d.appendChild(badge(p.statPoints === 1 ? 'attributpoäng att lägga' : 'attributpoäng att lägga', p.statPoints));
+  d.appendChild(row('Styrka', String(p.eff.str), 'str', attrTooltip(p, 'str')));
+  d.appendChild(row('Smidighet', String(p.eff.dex), 'dex', attrTooltip(p, 'dex')));
+  d.appendChild(row('Vitalitet', String(p.eff.vit), 'vit', attrTooltip(p, 'vit')));
+  d.appendChild(row('Vilja', String(p.eff.will), 'will', attrTooltip(p, 'will')));
 
   d.appendChild(g('Strid'));
   d.appendChild(row('Skada', `${p.dmgMin}–${p.dmgMax}`));
@@ -207,6 +255,14 @@ function characterPanel(game) {
   d.appendChild(row('Köldmotstånd', `${p.res.cold}% / ${cap}%`));
   d.appendChild(row('Eldmotstånd', `${p.res.fire}% / ${cap}%`));
   d.appendChild(row('Blixtmotstånd', `${p.res.light}% / ${cap}%`));
+
+  d.appendChild(g('Uthållighet'));
+  d.appendChild(row('Max uthållighet', String(p.maxStamina), undefined,
+    '<div class="tt-name">Uthållighet</div><div class="tt-core">Varje svep och varje skill kostar. ' +
+    'Under strid återhämtar du dig bara till 40% — bryt kontakten för full takt.</div>' +
+    '<div class="tt-req">Varje fälld fiende ger 8 tillbaka.</div>'));
+  d.appendChild(row('Kostnad per svep', (p.attackCost ?? 8).toFixed(1)));
+  d.appendChild(row('Återhämtning', `${p.staminaRegen.toFixed(1)}/s · ${(p.staminaRegen * 0.4).toFixed(1)}/s i strid`));
 
   d.appendChild(g('Övrigt'));
   d.appendChild(row('Gånghastighet', `${Math.round(p.moveSpeed)}`));
@@ -296,41 +352,53 @@ function skillNode(game, s) {
 /** @param {any} game */
 function skillsPanel(game) {
   const p = game.player;
-  const d = shell(`Skills${p.skillPoints ? ` — ${p.skillPoints} poäng` : ''}`, 'left',
-    () => { panels.skills = false; game.dirtyUI = true; });
+  const d = shell('Skills', 'left', () => { panels.skills = false; game.dirtyUI = true; });
 
+  // Poängräknaren är det viktigaste i panelen — den ska inte gömmas i rubriken.
+  const badge = document.createElement('div');
+  badge.className = 'points' + (p.skillPoints > 0 ? ' has' : '');
+  badge.innerHTML = `<span class="n">${p.skillPoints}</span>` +
+    `<span class="l">${p.skillPoints === 1 ? 'skillpoäng att lägga' : 'skillpoäng att lägga'}</span>`;
+  d.appendChild(badge);
+
+  // ---- flikar: ett träd i taget ------------------------------------------
+  const tabs = document.createElement('div');
+  tabs.className = 'tabs';
   for (const [treeId, treeName] of Object.entries(TREES)) {
     const inTree = SKILLS.filter(x => x.tree === treeId);
-    const t1 = inTree.filter(x => x.tier === 1);
-    const t2 = inTree.filter(x => x.tier === 2);
-    const t3 = inTree.filter(x => x.tier === 3);
-    const spent = inTree.reduce((a, s) => a + rank(p, s.id), 0);
-
+    const spent = inTree.reduce((a, sk) => a + rank(p, sk.id), 0);
     const t = document.createElement('div');
-    t.className = 'tree';
-    const h = document.createElement('div');
-    h.className = 'tree-name';
-    h.innerHTML = `${treeName}<span>${spent} poäng</span>`;
-    t.appendChild(h);
-
-    const row1 = document.createElement('div'); row1.className = 'tier';
-    t1.forEach(s => row1.appendChild(skillNode(game, s)));
-    t.appendChild(row1);
-
-    t.appendChild(branch(rank(p, t1[0].id) > 0, rank(p, t1[1].id) > 0, 'straight'));
-
-    const row2 = document.createElement('div'); row2.className = 'tier';
-    t2.forEach(s => row2.appendChild(skillNode(game, s)));
-    t.appendChild(row2);
-
-    t.appendChild(branch(rank(p, t2[0].id) > 0, rank(p, t2[1].id) > 0, 'merge'));
-
-    const row3 = document.createElement('div'); row3.className = 'tier cap';
-    t3.forEach(s => row3.appendChild(skillNode(game, s)));
-    t.appendChild(row3);
-
-    d.appendChild(t);
+    t.className = 'tab' + (panels.skillTab === treeId ? ' on' : '');
+    t.innerHTML = `<b>${treeName}</b><i>${spent}</i>`;
+    t.onclick = () => { panels.skillTab = /** @type {any} */ (treeId); game.dirtyUI = true; hideTooltip(); };
+    tabs.appendChild(t);
   }
+  d.appendChild(tabs);
+
+  const treeId = panels.skillTab;
+  const inTree = SKILLS.filter(x => x.tree === treeId);
+  const t1 = inTree.filter(x => x.tier === 1);
+  const t2 = inTree.filter(x => x.tier === 2);
+  const t3 = inTree.filter(x => x.tier === 3);
+
+  const t = document.createElement('div');
+  t.className = 'tree';
+
+  const row1 = document.createElement('div'); row1.className = 'tier';
+  t1.forEach(sk => row1.appendChild(skillNode(game, sk)));
+  t.appendChild(row1);
+  t.appendChild(branch(rank(p, t1[0].id) > 0, rank(p, t1[1].id) > 0, 'straight'));
+
+  const row2 = document.createElement('div'); row2.className = 'tier';
+  t2.forEach(sk => row2.appendChild(skillNode(game, sk)));
+  t.appendChild(row2);
+  t.appendChild(branch(rank(p, t2[0].id) > 0, rank(p, t2[1].id) > 0, 'merge'));
+
+  const row3 = document.createElement('div'); row3.className = 'tier cap';
+  t3.forEach(sk => row3.appendChild(skillNode(game, sk)));
+  t.appendChild(row3);
+
+  d.appendChild(t);
 
   const note = document.createElement('div');
   note.className = 'tt-req';

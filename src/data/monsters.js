@@ -32,30 +32,30 @@
 /** @type {MonsterDef[]} */
 export const MONSTERS = [
   {
-    id: 'wolf', name: 'Snövarg', radius: 13, color: '#4e5c70', color2: '#222b38',
-    shape: 'wolf', ai: 'charger', speed: 118, hp: 13, hpPerLvl: 6.5, dmg: 3, dmgPerLvl: 1.5,
-    armor: 2, xp: 6, attackRange: 26, attackCd: 1.1, res: { cold: 40 }, pack: [4, 7], minZone: 1, weight: 12,
+    id: 'wolf', name: 'Snövarg', radius: 10, color: '#4e5c70', color2: '#222b38',
+    shape: 'wolf', ai: 'charger', speed: 118, hp: 11, hpPerLvl: 5.5, dmg: 3, dmgPerLvl: 1.5,
+    armor: 2, xp: 6, attackRange: 26, attackCd: 1.1, res: { cold: 40 }, pack: [6, 10], minZone: 1, weight: 12,
   },
   {
-    id: 'ghoul', name: 'Frostgast', radius: 15, color: '#5c7288', color2: '#1d2937',
-    shape: 'humanoid', ai: 'melee', speed: 72, hp: 22, hpPerLvl: 12, dmg: 5, dmgPerLvl: 2.4,
-    armor: 6, xp: 10, coldPart: 0.2, attackRange: 30, attackCd: 1.5, res: { cold: 55, fire: -25 }, pack: [3, 5], minZone: 1, weight: 10,
+    id: 'ghoul', name: 'Frostgast', radius: 12, color: '#5c7288', color2: '#1d2937',
+    shape: 'humanoid', ai: 'melee', speed: 72, hp: 19, hpPerLvl: 10, dmg: 5, dmgPerLvl: 2.4,
+    armor: 6, xp: 10, coldPart: 0.2, attackRange: 30, attackCd: 1.5, res: { cold: 55, fire: -25 }, pack: [5, 8], minZone: 1, weight: 10,
   },
   {
-    id: 'raider', name: 'Utbygdsplundrare', radius: 14, color: '#8a6242', color2: '#2e2016',
-    shape: 'humanoid', ai: 'ranged', speed: 88, hp: 21, hpPerLvl: 9.5, dmg: 6, dmgPerLvl: 2.6,
-    armor: 10, xp: 12, attackRange: 250, attackCd: 2.0, res: {}, pack: [2, 4], minZone: 1, weight: 8,
+    id: 'raider', name: 'Utbygdsplundrare', radius: 11, color: '#8a6242', color2: '#2e2016',
+    shape: 'humanoid', ai: 'ranged', speed: 88, hp: 18, hpPerLvl: 8, dmg: 6, dmgPerLvl: 2.6,
+    armor: 10, xp: 12, attackRange: 250, attackCd: 2.0, res: {}, pack: [3, 6], minZone: 1, weight: 8,
   },
   {
-    id: 'revenant', name: 'Isvålnad', radius: 17, color: '#6fb9d8', color2: '#123448',
-    shape: 'wraith', ai: 'melee', speed: 62, hp: 62, hpPerLvl: 22, dmg: 9, dmgPerLvl: 3.4,
+    id: 'revenant', name: 'Isvålnad', radius: 14, color: '#6fb9d8', color2: '#123448',
+    shape: 'wraith', ai: 'melee', speed: 62, hp: 52, hpPerLvl: 18, dmg: 9, dmgPerLvl: 3.4,
     armor: 18, xp: 24, coldPart: 0.45, attackRange: 34, attackCd: 1.8, res: { cold: 75, light: 20, fire: -20 },
-    pack: [1, 3], minZone: 2, weight: 7,
+    pack: [2, 4], minZone: 2, weight: 7,
   },
   {
-    id: 'brute', name: 'Drivbjörn', radius: 22, color: '#8f9cb0', color2: '#2b3441',
-    shape: 'humanoid', ai: 'charger', speed: 82, hp: 110, hpPerLvl: 34, dmg: 14, dmgPerLvl: 4.6,
-    armor: 26, xp: 42, coldPart: 0.15, attackRange: 42, attackCd: 2.2, res: { cold: 50 }, pack: [1, 2], minZone: 3, weight: 5,
+    id: 'brute', name: 'Drivbjörn', radius: 18, color: '#8f9cb0', color2: '#2b3441',
+    shape: 'humanoid', ai: 'charger', speed: 82, hp: 92, hpPerLvl: 28, dmg: 14, dmgPerLvl: 4.6,
+    armor: 26, xp: 42, coldPart: 0.15, attackRange: 42, attackCd: 2.2, res: { cold: 50 }, pack: [2, 3], minZone: 3, weight: 5,
   },
 ];
 

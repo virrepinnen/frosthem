@@ -4,7 +4,7 @@ import { createPlayer } from './entities/player.js';
 import { initInput, endFrameInput, keyPressed } from './core/input.js';
 import { camera } from './render/camera.js';
 import { initRenderer, render, renderMinimap } from './render/renderer.js';
-import { updateHud, rebuildSkillbar, showOverlay, initNav, showTutorial } from './ui/hud.js';
+import { updateHud, rebuildSkillbar, showOverlay, initNav, showTutorial, openHelp } from './ui/hud.js';
 import { renderPanels, anyPanelOpen } from './ui/panels.js';
 import { moveTooltip, hideTooltip } from './ui/tooltip.js';
 import { readSave, clearSave, playerFromSave, describeSave, saveGame } from './systems/save.js';
@@ -131,7 +131,8 @@ function frame(now) {
 
   // Hjälptexten tonar ned av sig själv, och F1 döljer den helt.
   hintT += dt;
-  if (keyPressed('f1')) {
+  if (keyPressed('f1')) openHelp(game);
+  if (keyPressed('f2')) {
     const h = $('hint');
     h.classList.toggle('show');
     h.classList.remove('faded');

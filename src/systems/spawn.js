@@ -31,14 +31,14 @@ export function populateZone(zone) {
       out.push(createMonster(def, level + 2, a.x, a.y, { elite: true }));
       for (let i = 0; i < count; i++) {
         const ang = (i / count) * Math.PI * 2 + r.range(-0.3, 0.3);
-        const rad = 58 + r.range(0, 26);
+        const rad = 52 + r.range(0, 30);
         out.push(createMonster(def, level, a.x + Math.cos(ang) * rad, a.y + Math.sin(ang) * rad, {}));
       }
       continue;
     }
 
     for (let i = 0; i < count; i++) {
-      const ang = r.range(0, Math.PI * 2), rad = r.range(0, 55);
+      const ang = r.range(0, Math.PI * 2), rad = r.range(0, 62);
       out.push(createMonster(def, level, a.x + Math.cos(ang) * rad, a.y + Math.sin(ang) * rad,
         { champion: r.chance(0.1) }));
     }
