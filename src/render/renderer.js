@@ -392,18 +392,21 @@ function drawObstacle(ctx, o) {
 }
 
 /**
- * Text i världen med mörk kontur. Utan konturen försvinner den mot snön —
- * det var därför skyltarna kändes otydliga.
+ * Text i världen med mörk kontur.
+ *
+ * Storleken delas med kamerazoomen så texten blir lika stor på skärmen oavsett
+ * hur nära vi är — annars växer skyltarna med zoomen och tar över bilden.
  * @param {CanvasRenderingContext2D} ctx @param {string} text
  * @param {number} x @param {number} y @param {string} color @param {number} [size] @param {number} [weight]
  */
-function worldLabel(ctx, text, x, y, color, size = 13, weight = 600) {
+function worldLabel(ctx, text, x, y, color, size = 12, weight = 600) {
+  const px = size / camera.zoom;
   ctx.save();
   ctx.textAlign = 'center';
-  ctx.font = `${weight} ${size}px system-ui, sans-serif`;
-  ctx.lineWidth = 3.5;
+  ctx.font = `${weight} ${px}px system-ui, sans-serif`;
+  ctx.lineWidth = 2.6 / camera.zoom;
   ctx.lineJoin = 'round';
-  ctx.strokeStyle = 'rgba(4,7,12,0.9)';
+  ctx.strokeStyle = 'rgba(4,7,12,0.85)';
   ctx.strokeText(text, x, y);
   ctx.fillStyle = color;
   ctx.fillText(text, x, y);
@@ -411,39 +414,39 @@ function worldLabel(ctx, text, x, y, color, size = 13, weight = 600) {
 }
 
 /**
- * Den enda [E]-prompten. Ritas ovanför det spelaren faktiskt kan använda,
- * med tangenten som en egen tydlig knapp.
+ * [E]-prompten. Ingen ruta — bara tangenten i guld och ett kort verb, som
+ * guppar långsamt så att ögat hittar den utan att den skriker.
  * @param {CanvasRenderingContext2D} ctx @param {any} game
  */
 function drawInteractPrompt(ctx, game) {
   const it = game.interact;
   if (!it || game.player.dead) return;
   const t = performance.now() / 1000;
-  const y = it.y + Math.sin(t * 2.4) * 2;
+  const y = it.y + Math.sin(t * 1.6) * 3.5;
+  const px = 14 / camera.zoom;
+
   ctx.save();
-  ctx.font = '600 13px system-ui, sans-serif';
-  const tw = ctx.measureText(it.label).width;
-  const boxW = tw + 46, boxH = 26;
-  const x = it.x - boxW / 2;
-  ctx.fillStyle = 'rgba(6,10,17,0.88)';
-  ctx.strokeStyle = 'rgba(216,178,106,0.85)';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.roundRect(x, y - boxH, boxW, boxH, 5); ctx.fill(); ctx.stroke();
-  // tangentkapsel
-  ctx.fillStyle = '#d8b26a';
-  ctx.beginPath(); ctx.roundRect(x + 6, y - boxH + 5, 17, 16, 3); ctx.fill();
-  ctx.fillStyle = '#0b0f17';
-  ctx.font = '700 11px ui-monospace, monospace';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('E', x + 14.5, y - boxH + 13.5);
-  ctx.fillStyle = '#f0e6cf';
-  ctx.font = '600 13px system-ui, sans-serif';
+  ctx.font = `600 ${px}px system-ui, sans-serif`;
+  ctx.textBaseline = 'alphabetic';
+  const key = '[E] ';
+  const kw = ctx.measureText(key).width;
+  const lw = ctx.measureText(it.label).width;
+  const x0 = it.x - (kw + lw) / 2;
+
   ctx.textAlign = 'left';
-  ctx.fillText(it.label, x + 30, y - boxH + 13.5);
+  ctx.lineWidth = 3 / camera.zoom;
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(4,7,12,0.9)';
+  ctx.strokeText(key, x0, y);
+  ctx.strokeText(it.label, x0 + kw, y);
+  ctx.fillStyle = '#e8c072';
+  ctx.fillText(key, x0, y);
+  ctx.fillStyle = '#f2f6fb';
+  ctx.fillText(it.label, x0 + kw, y);
   ctx.restore();
 }
 
-/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} rx @param {number} ry @param {number} [a] */
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} rx @param {number} ry @param {number} [a] *//** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} rx @param {number} ry @param {number} [a] */
 function shadow(ctx, x, y, rx, ry, a = 0.32) {
   ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = '#1a2434';
   ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();

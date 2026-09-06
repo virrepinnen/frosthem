@@ -574,27 +574,27 @@ export function findInteract(game) {
       : (game.zone.index === game.portal.zoneIndex ? game.portal.fromPos : null);
     if (here && near(here, 70)) {
       return { kind: 'portal', obj: here, x: here.x, y: here.y - 108,
-        label: game.zone.isTown ? `Res till ${game.portal.zoneName}` : 'Res till Frosthem' };
+        label: 'Res' };
     }
   }
   const wp = game.zone.waypoint;
   if (wp && near(wp, wp.r + 46)) {
-    return { kind: 'waypoint', obj: wp, x: wp.x, y: wp.y - 112, label: 'Använd vägstenen' };
+    return { kind: 'waypoint', obj: wp, x: wp.x, y: wp.y - 108, label: 'Använd' };
   }
   for (const c of game.zone.chests) {
     if (!c.opened && near(c, c.r + 46)) {
-      return { kind: 'chest', obj: c, x: c.x, y: c.y - 64, label: 'Öppna kistan' };
+      return { kind: 'chest', obj: c, x: c.x, y: c.y - 60, label: 'Öppna' };
     }
   }
   for (const e of game.zone.exits) {
     if (near(e, e.r + 34)) {
-      return { kind: 'exit', obj: e, x: e.x, y: e.y - e.r * 0.5 - 40, label: `Gå till ${e.label}` };
+      return { kind: 'exit', obj: e, x: e.x, y: e.y - e.r * 0.5 - 40, label: 'Res' };
     }
   }
   for (const n of game.zone.npcs) {
     if (near(n, 115)) {
       return { kind: 'npc', obj: n, x: n.x, y: n.y - 64,
-        label: n.id === 'gerd' ? 'Handla med Gerd' : `Tala med ${n.name}` };
+        label: n.id === 'gerd' ? 'Handla' : 'Tala' };
     }
   }
   return null;

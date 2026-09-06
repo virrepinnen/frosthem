@@ -45,6 +45,14 @@ canvas.addEventListener('mouseenter', hideTooltip);
 
 /** @type {ReturnType<typeof createGame>|null} */
 let game = null;
+/**
+ * Varje bildruteloop får en egen bricka. Startas ett nytt spel höjs brickan och
+ * gamla loopar avslutar sig själva. Utan det kunde ett dubbelklick på
+ * "Börja vandringen" starta två spel som ritade om vartannat — det syntes som
+ * ett flimmer, och den ena loopens ruta blev hängande över skärmen.
+ */
+let loopToken = 0;
+let starting = false;
 
 /** Klasser. Bara Barbaren finns — de andra visas för att visa vart det bär. */
 const CLASSES = [
@@ -217,6 +225,8 @@ requestAnimationFrame(menuStorm);
  * @param {string} [charId]
  */
 function begin(player, progress, isNew, charId) {
+  if (starting) return;   // dubbelklick, eller Enter ovanpå ett klick
+  starting = true;
   $('start').classList.add('hidden');
   // Man återvänder alltid till Frosthem — byn är den enda plats som inte
   // genereras om, och därför den enda som går att spara en position i.
@@ -240,7 +250,8 @@ function begin(player, progress, isNew, charId) {
       `${player.name}, nivå ${player.level}. Härden brinner ännu.`,
       'Fortsätt', resume);
   }
-  requestAnimationFrame(frame);
+  const myToken = ++loopToken;
+  requestAnimationFrame((t) => frame(t, myToken));
 }
 
 /* ------------------------------------------------------------------ */
@@ -251,9 +262,10 @@ let last = performance.now();
 let acc = 0;
 let hintT = 0;
 
-/** @param {number} now */
-function frame(now) {
-  requestAnimationFrame(frame);
+/** @param {number} now @param {number} token */
+function frame(now, token) {
+  if (token !== loopToken) return;   // en äldre loop: låt den dö ut
+  requestAnimationFrame((t) => frame(t, token));
   if (!game) return;
   let dt = (now - last) / 1000;
   last = now;
