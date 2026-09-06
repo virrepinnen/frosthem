@@ -79,12 +79,20 @@ tar dig till Frosthem och tillbaka till exakt samma plats — den bevarar zonen 
 lämnade, inklusive monster och loot på marken, vilket är hela poängen när zoner
 annars genereras om vid varje besök.
 
-**Uthållighet.** Varje svep och varje skill kostar uthållighet, och *under strid
-återhämtar du dig bara till 40 % av normal takt* — bryt kontakten så fyller den
-på snabbt. Varje fälld fiende ger 8 tillbaka. Det gör hela stridsekonomin till
-en avvägning: du kan rensa en flock om du träffar effektivt, men bomsvep och
-tåligare fiender tvingar dig att backa och andas. Vilja höjer taket, snabbar upp
-återhämtningen och gör svepen något billigare; tunga vapen kostar mer per svep.
+**Två resurser, inte en.** Uthållighet och mana är skilda åt, och syns var för
+sig: liv som klot till vänster, mana som klot till höger, och uthållighet som en
+egen gyllene stapel mitt i blickfånget.
+
+*Uthållighet* är kroppen. Varje svep och varje fysisk skill kostar, och **under
+strid återhämtar du dig bara till 40 %** av normal takt — bryt kontakten så
+fyller den på snabbt. Varje fälld fiende ger 8 tillbaka. Det gör stridsekonomin
+till en avvägning: du kan rensa en flock om du träffar effektivt, men bomsvep
+och tåligare fiender tvingar dig att backa och andas. Vitalitet bär den, och
+tunga vapen kostar mer per svep.
+
+*Mana* är viljan, och dras bara av Frost-skills. Den bryr sig inte om huruvida
+du slåss. Bygger du på stål och stryk räcker det med lite vilja — vilket är
+hela poängen med att dela upp dem.
 
 **Fog of war.** Vildmarken börjar svart på kartan och avtäcks medan du går.
 Minimapen minns terräng, stigar och det du hittat — men visar bara fiender som
@@ -119,14 +127,20 @@ vardera i tre steg: två ingångar, två mellansteg som var för sig kräver en 
 i sin förälder, och en kapsten som kräver båda mellanstegen. Steg 2 öppnar på
 nivå 6, steg 3 på nivå 12. Plus synergier där skills stärker varandra.
 
-**Nivåhöjning.** Spelet pausar och visar en ruta där du kan lägga attributpoäng
-på plats — du behöver inte bryta en strid eller gå till byn för att bli starkare.
-Du *måste* inte lägga dem: poängen ligger kvar, och `Esc` eller *Fortsätt* tar dig
+**Nivåhöjning.** Spelet pausar och visar en ruta med **både** attributpoäng och
+skillpoäng i samma fönster, så inget går att missa — skills du kan lägga en poäng
+i listas per träd med varsin plusknapp, och räknarna uppdateras direkt. Du
+*måste* inte lägga dem: poängen ligger kvar, och `Esc` eller *Fortsätt* tar dig
 rakt tillbaka in i striden.
 
-**Karaktär och sparning.** Du namnger din vandrare vid start, och första
-karaktären får en kort genomgång i fem steg. Frågetecknet uppe till höger (eller
-`F1`) tar upp den igen när som helst. Allt sparas i
+**Flera karaktärer.** Huvudmenyn listar dina vandrare med nivå, antal fällda,
+guld och när du senast spelade — ett klick och du är inne. *Skapa ny karaktär*
+öppnar klasslistan (Vandraren är byggd; Jägaren och Frostkallaren står som
+kommande). Allt sparas i webbläsarens `localStorage`, automatiskt vid
+nivåhöjning, zonbyte och när du lämnar fliken, eller manuellt med `F5`.
+
+Första karaktären får en kort genomgång i fem steg. Frågetecknet uppe till höger
+(eller `F1`) tar upp den igen när som helst. Allt sparas i
 webbläsarens `localStorage` — automatiskt vid nivåhöjning, zonbyte, köp och när
 du lämnar fliken, eller manuellt med `F5`. Startskärmen erbjuder *Fortsätt* när
 ett sparläge finns. Du återvänder alltid till Frosthem, eftersom byn är den enda
