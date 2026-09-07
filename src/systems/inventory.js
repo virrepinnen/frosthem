@@ -80,11 +80,13 @@ export function equip(game, item) {
 
   const idx = p.inventory.indexOf(item);
   if (idx < 0) return false;
-  p.inventory.splice(idx, 1);
 
+  // Byt på plats: det avtagna föremålet tar den lucka det nya lämnade. Att
+  // splice:a ut och push:a sist kastade om hela väskan vid varje byte.
   const prev = p.equipment[target];
   p.equipment[target] = item;
-  if (prev) p.inventory.push(prev);
+  if (prev) p.inventory[idx] = prev;
+  else p.inventory.splice(idx, 1);
 
   recalc(p);
   game.dirtyUI = true;
@@ -111,7 +113,9 @@ export function dropItem(game, item) {
   const idx = p.inventory.indexOf(item);
   if (idx < 0) return false;
   p.inventory.splice(idx, 1);
-  game.ground.push({ x: p.pos.x, y: p.pos.y + 20, kind: 'item', item, pop: 0.3, age: 0 });
+  // Oarmerat: automatplocket rör det inte förrän du gått ifrån det. Annars
+  // sögs föremålet upp i samma stund som du släppte det.
+  game.ground.push({ x: p.pos.x, y: p.pos.y + 20, kind: 'item', item, pop: 0.3, age: 0, armed: false });
   game.groundVersion++;
   game.dirtyUI = true;
   return true;

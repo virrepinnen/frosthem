@@ -21,7 +21,7 @@ export function slotsFor(s) {
 }
 
 /** Väskans rutnät. Rutorna är fler än förr, men föremålen tar olika mycket plats. */
-export const BAG_COLS = 10;
+export const BAG_COLS = 12;
 export const BAG_ROWS = 6;
 export const HOTBAR_SIZE = 6;
 

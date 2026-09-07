@@ -6,7 +6,7 @@ import { rollItem } from './loot.js';
 import { burst, floatText, decal, shake, screenFlash } from '../render/fx.js';
 import { lineBlocked } from './world.js';
 import { pickAttack } from '../render/hero.js';
-import { grantXp } from '../entities/player.js';
+import { spawnXpOrbs } from './orbs.js';
 
 /** @typedef {import('../entities/monster.js').Monster} Monster */
 /** @typedef {import('../entities/player.js').Player} Player */
@@ -102,25 +102,11 @@ export function killMonster(game, m) {
   else if (m.elite) shake(6);
 
   const xpGain = m.xp * (1 + (game.player.xpBuff || 0));
-  const levels = grantXp(game.player, xpGain);
-  floatText(m.pos.x, m.pos.y - m.radius - 20, `+${Math.round(xpGain)} xp`, '#9fd0f0', 12);
-  if (levels > 0) onLevelUp(game, levels);
+  spawnXpOrbs(game, m.pos.x, m.pos.y, xpGain);
 
   dropLoot(game, m);
 }
 
-/** @param {any} game @param {number} levels */
-function onLevelUp(game, levels) {
-  const p = game.player;
-  burst(p.pos.x, p.pos.y, 90, { color: '#ffd88a', speed: 300, life: 1.4, size: 3.4, grav: -70 });
-  burst(p.pos.x, p.pos.y, 30, { color: '#fff3d0', speed: 120, life: 1.8, size: 2.2, grav: -110 });
-  floatText(p.pos.x, p.pos.y - 54, `NIVÅ ${p.level}`, '#ffd88a', 26);
-  screenFlash(0.34, '#d8b26a');
-  shake(7);
-  // Rutan öppnas i nästa uppdatering, så att träffen som gav nivån hinner
-  // spelas klart innan spelet pausar.
-  game.levelUpPending = (game.levelUpPending || 0) + levels;
-}
 
 /* ------------------------------------------------------------------ */
 /* Loot                                                                */
@@ -135,27 +121,28 @@ function dropLoot(game, m) {
   // Droppfrekvensen är medvetet låg. Med automatisk upplockning blir varje
   // föremål annars bara brus i väskan — sällsyntheten är hela poängen.
   let itemRolls = 0, boost = 1;
-  if (m.isBoss) { itemRolls = 5; boost = 4; }
-  else if (m.elite) { itemRolls = 2; boost = 2.6; }
-  else if (m.isChampion) { itemRolls = rng.chance(0.55) ? 1 : 0; boost = 1.8; }
-  else if (rng.chance(0.14)) itemRolls = 1;
+  if (m.isBoss) { itemRolls = 4; boost = 4; }
+  else if (m.elite) { itemRolls = rng.chance(0.5) ? 2 : 1; boost = 2.8; }
+  else if (m.isChampion) { itemRolls = rng.chance(0.35) ? 1 : 0; boost = 2; }
+  else if (rng.chance(0.045)) itemRolls = 1;
 
   for (let i = 0; i < itemRolls; i++) {
     const forced = m.isBoss && i === 0 ? /** @type {const} */ ('rare') : undefined;
     const item = rollItem(ilvl, { mf, boost, forceRarity: forced });
     if (!item) continue;
     // Vitt skräp faller mest bort helt i stället för att skräpa ner marken.
-    if (item.rarity === 'normal' && !m.isBoss && rng.chance(0.7)) continue;
+    if (item.rarity === 'normal' && !m.isBoss && rng.chance(0.85)) continue;
     spawnGround(game, m.pos.x, m.pos.y, { kind: 'item', item });
   }
 
-  const goldChance = m.isBoss ? 1 : m.elite ? 1 : 0.6;
+  // Färre men tyngre högar: marken blev plottrig av guld efter varje flock.
+  const goldChance = m.isBoss ? 1 : m.elite ? 1 : m.isChampion ? 0.5 : 0.2;
   if (rng.chance(goldChance)) {
     const base = 4 + m.level * 3.2;
-    const amount = Math.round(base * rng.range(0.6, 1.8) * (m.isBoss ? 14 : m.elite ? 5 : m.isChampion ? 2.4 : 1));
+    const amount = Math.round(base * rng.range(0.6, 1.8) * (m.isBoss ? 14 : m.elite ? 5 : m.isChampion ? 2.4 : 3.2));
     spawnGround(game, m.pos.x, m.pos.y, { kind: 'gold', amount });
   }
-  if (rng.chance(m.isBoss ? 1 : m.elite ? 0.6 : 0.11)) {
+  if (rng.chance(m.isBoss ? 1 : m.elite ? 0.5 : 0.07)) {
     spawnGround(game, m.pos.x, m.pos.y, { kind: 'potion', amount: m.isBoss ? 5 : 1 });
   }
 }

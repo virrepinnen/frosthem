@@ -5,6 +5,7 @@ import { populateZone } from './systems/spawn.js';
 import { updateMonsters, updateProjectiles } from './systems/ai.js';
 import { performSwing, useSkill, drinkPotion, hitMonster, applyFreeze, spawnGround } from './systems/combat.js';
 import { pickup, canAdd } from './systems/inventory.js';
+import { updateOrbs } from './systems/orbs.js';
 import { rollItem } from './systems/loot.js';
 import { SKILL_BY_ID } from './data/skills.js';
 import { input, keyPressed, keyDown } from './core/input.js';
@@ -34,6 +35,7 @@ export function createGame(existing, progress) {
     /** @type {any[]} */ ground: [],
     /** @type {any[]} */ projectiles: [],
     /** @type {any[]} */ novas: [],
+    /** @type {import('./systems/orbs.js').Orb[]} */ orbs: [],
     groundVersion: 0,
     dirtyUI: true,
     playerSlow: 0,
@@ -60,6 +62,20 @@ export function createGame(existing, progress) {
 
     /** @param {string} t */
     alert(t) { pushAlert(t); },
+    /**
+     * Nivåhöjningen sker nu när klot sopas upp, inte i stridsloopen — rutan
+     * dyker alltså upp när du samlar in bytet, inte mitt i ett svep.
+     * @param {number} levels
+     */
+    onLevelUp(levels) {
+      const p = game.player;
+      burst(p.pos.x, p.pos.y, 90, { color: '#ffd88a', speed: 300, life: 1.4, size: 3.4, grav: -70 });
+      burst(p.pos.x, p.pos.y, 30, { color: '#fff3d0', speed: 120, life: 1.8, size: 2.2, grav: -110 });
+      floatText(p.pos.x, p.pos.y - 62, `NIVÅ ${p.level}`, '#ffd88a', 26);
+      screenFlash(0.34, '#d8b26a');
+      shake(7);
+      game.levelUpPending = (game.levelUpPending || 0) + levels;
+    },
     /** @param {string} id */
     tryUseSkill(id) { if (useSkill(game, id)) game.dirtyUI = true; },
     tryDrink() { drinkPotion(game); game.dirtyUI = true; },
@@ -105,7 +121,7 @@ export function createGame(existing, progress) {
 function snapshot(game) {
   return {
     zone: game.zone, monsters: game.monsters, ground: game.ground,
-    projectiles: game.projectiles, novas: game.novas,
+    projectiles: game.projectiles, novas: game.novas, orbs: game.orbs,
   };
 }
 
@@ -122,12 +138,14 @@ function travel(game, to, from, opts = {}) {
     game.ground = opts.restore.ground;
     game.projectiles = opts.restore.projectiles;
     game.novas = opts.restore.novas;
+    game.orbs = opts.restore.orbs ?? [];
   } else {
     game.zone = generateZone(idx, (rng.next() * 0xffffffff) >>> 0);
     game.monsters = populateZone(game.zone);
     game.ground = [];
     game.projectiles = [];
     game.novas = [];
+    game.orbs = [];
   }
   game.groundVersion++;
   game.victoryT = 3;
@@ -245,6 +263,7 @@ function update(game, dt) {
   updateMonsters(game, dt);
   updateProjectiles(game, dt);
   updateGround(game, dt);
+  updateOrbs(game, dt);
   updateNovas(game, dt);
   updateFx(dt);
   updateCamera(game, dt);
@@ -703,7 +722,11 @@ function updateGround(game, dt) {
     // Full väska: låt föremålet ligga kvar tyst i stället för att larma varje
     // bildruta man står ovanpå det. Etiketten finns kvar att klicka på.
     if (g.kind === 'item' && !canAdd(p.inventory, g.item)) continue;
-    if (Math.hypot(g.x - p.pos.x, g.y - p.pos.y) < reach) {
+    const d = Math.hypot(g.x - p.pos.x, g.y - p.pos.y);
+    // Något du själv släppt armeras först när du gått ifrån det. Utan det gick
+    // det inte att lägga ifrån sig ett vapen — det sögs upp direkt igen.
+    if (g.armed === false) { if (d > reach + 26) g.armed = true; continue; }
+    if (d < reach) {
       if (pickup(game, g)) { game.ground.splice(i, 1); changed = true; }
     }
   }

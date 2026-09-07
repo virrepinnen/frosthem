@@ -379,9 +379,10 @@ function weapon(ctx, item, reach) {
 
 /**
  * Släpljuset efter eggen, ritat ur samma poskurva som vapnet.
- * @param {CanvasRenderingContext2D} ctx @param {{pose:Pose, trail:string}} v @param {number} k
+ * @param {CanvasRenderingContext2D} ctx @param {{pose:Pose, trail:string}} v
+ * @param {number} k @param {number} mirror
  */
-function trail(ctx, v, k) {
+function trail(ctx, v, k, mirror) {
   const from = Math.max(0, k - 0.34);
   if (k - from < 0.03) return;
   const steps = 12;
@@ -389,7 +390,7 @@ function trail(ctx, v, k) {
   /** @type {{x:number,y:number}[]} */ const inner = [];
   for (let i = 0; i <= steps; i++) {
     const q = v.pose(mix(from, k, i / steps));
-    const ang = -q.ang, len = 6 + q.reach;
+    const ang = -q.ang * mirror, len = 6 + q.reach;
     outer.push({ x: Math.cos(ang) * len, y: Math.sin(ang) * len });
     inner.push({ x: Math.cos(ang) * len * 0.42, y: Math.sin(ang) * len * 0.42 });
   }
@@ -528,11 +529,16 @@ export function drawHero(ctx, game) {
     ctx.beginPath(); ctx.ellipse(-6.4, H.chest, 2.1, 2.4, 0, 0, Math.PI * 2); ctx.fill();
   }
 
-  // --- vapenarm: svänger i skärmplanet ------------------------------------
+  // --- vapenarm: svänger i skärmplanet, riktad mot målet ------------------
+  // Blickriktningen projiceras till en skärmvinkel, så ett hugg uppåt eller
+  // snett verkligen går dit fienden står — inte bara åt höger eller vänster.
+  const aim = Math.atan2(Math.sin(p.facing) * PROJ, Math.cos(p.facing));
   ctx.save();
   ctx.translate(7, H.chest + 1);
-  if (variant) trail(ctx, variant, k);
-  ctx.rotate(-pose.ang);
+  ctx.scale(mirror, 1);     // tillbaka till skärmens rum
+  ctx.rotate(aim);
+  if (variant) trail(ctx, variant, k, mirror);
+  ctx.rotate(-pose.ang * mirror);
   ctx.strokeStyle = flash ? '#ffffff' : C.robeLit;
   ctx.lineWidth = 4.6;
   ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(7, 0); ctx.stroke();

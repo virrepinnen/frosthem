@@ -6,6 +6,7 @@ import { showTextTooltip, hideTooltip, escape } from './tooltip.js';
 import { panels, togglePanel, closeAllPanels } from './panels.js';
 import { attributeCards, skillTreeEl, confirmBar, pointsBadge, statPointsLeft, skillPointsLeft,
   pendingStats, pendingSkills } from './alloc-ui.js';
+import { commitPending } from '../systems/allocation.js';
 
 import { saveGame } from '../systems/save.js';
 
@@ -284,13 +285,21 @@ export function showLevelUp(game, levels) {
     host.appendChild(left);
     host.appendChild(right);
 
+    // Stora knappen låser in allt som väntar och stänger. Att i stället kasta
+    // en färdig fördelning vore en otäck överraskning — kolumnernas egna
+    // rader finns kvar för den som vill bekräfta ett slag i taget.
     const actions = $('lvl-actions');
     actions.innerHTML = '';
+    const waiting = pendingStats(game.pending) + pendingSkills(game.pending);
     const done = document.createElement('button');
     done.className = 'primary';
-    const waiting = pendingStats(game.pending) + pendingSkills(game.pending);
-    done.textContent = waiting ? 'Stäng (olåsta poäng sparas)' : 'Fortsätt';
-    done.onclick = () => { game.dropPending(); hideLevelUp(); closeAllPanels(game); game.paused = false; };
+    done.textContent = waiting ? `Lås in ${waiting} och fortsätt` : 'Fortsätt';
+    done.onclick = () => {
+      commitPending(game, game.pending);
+      hideLevelUp();
+      closeAllPanels(game);
+      game.paused = false;
+    };
     actions.appendChild(done);
   };
   render();

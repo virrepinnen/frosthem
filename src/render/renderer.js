@@ -11,6 +11,7 @@ import { hashNoise, clamp } from '../core/math.js';
 import { RARITY_COLOR } from '../data/items.js';
 import { FOG_CELL } from '../systems/world.js';
 import { drawHero } from './hero.js';
+import { ORB_TIERS } from '../systems/orbs.js';
 
 /**
  * All världsrendering. Canvas 2D, top-down, med djupsortering på y så att
@@ -102,6 +103,7 @@ export function render(ctx, game, dt) {
   drawPortal(ctx, game);
   drawChests(ctx, game);
   drawGroundItems(ctx, game);
+  drawOrbs(ctx, game);
   ctx.save(); ctx.scale(1, PROJ); drawNovas(ctx, game); ctx.restore();
 
   // ---- djupsorterad lista -------------------------------------------------
@@ -702,6 +704,37 @@ function drawGroundItems(ctx, game) {
     ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, 0, rr, 0, Math.PI * 2); ctx.fill();
     ctx.font = '15px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(g.kind === 'gold' ? '🪙' : g.kind === 'potion' ? '🧪' : g.item.base.icon, 0, 0);
+    ctx.restore();
+  }
+}
+
+/**
+ * Erfarenhetsklot. Storlek och färg bär valören, så man ser på marken vad som
+ * är värt att gå tillbaka efter.
+ * @param {CanvasRenderingContext2D} ctx @param {any} game
+ */
+function drawOrbs(ctx, game) {
+  const t = performance.now() / 1000;
+  for (const o of game.orbs) {
+    const T = ORB_TIERS[o.tier];
+    const bob = Math.sin(t * 3.2 + o.seed) * 1.6;
+    const y = PY(o.y) - 6 + bob;
+    const pulse = 0.75 + Math.sin(t * 4 + o.seed) * 0.25;
+
+    ctx.save();
+    // skenet på marken
+    ctx.globalAlpha = 0.4 * pulse;
+    const g = ctx.createRadialGradient(o.x, y, 1, o.x, y, T.r * 5);
+    g.addColorStop(0, T.glow); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(o.x, y, T.r * 5, 0, Math.PI * 2); ctx.fill();
+
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = T.core;
+    ctx.beginPath(); ctx.arc(o.x, y, T.r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath(); ctx.arc(o.x - T.r * 0.3, y - T.r * 0.35, T.r * 0.38, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
 }

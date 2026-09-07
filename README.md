@@ -154,18 +154,25 @@ distans och tunga varelser. De är avsiktligt aggressiva — det driver tempot.
 Kraftfull, Frostbunden, Pansrad, Blodtörstig, Skyddad* — som kombineras fritt.
 Det ger oförutsägbara svårighetsspikar utan att någon designar dem för hand.
 
-**Väskan.** Rutnätet är 10 × 6, och föremål tar olika mycket plats: vapen,
-rustningar och sköldar 2 × 3, hjälmar och handskar 2 × 2, bälten 2 × 1, ringar
-och amuletter en enda ruta. Väskan packas om automatiskt — plockandet sker ändå
-av sig självt, så manuell tetris vore bara pyssel.
+**Väskan.** Rutnätet är 12 × 6, och föremålen tar plats efter sin egen form,
+inte efter sin utrustningsplats: ett långsvärd är 1 × 3 och ett slagsvärd 1 × 4,
+medan en stridsyxa är 2 × 3 och en krosshammare 2 × 4. Byter du ett vapen mot
+ett du redan bär hamnar det gamla på den lucka det nya lämnade, så väskan inte
+kastas om vid varje byte.
 
-**Loot.** Föremål droppar sällan — ungefär ett per tolv fällda vanliga fiender —
-men allt plockas upp automatiskt när du går över det. Elitmonster, kistor och
-bossen är de verkliga källorna. Full affix-motor: bastyp → sällsynthet → slumpade prefix/suffix, där
-vilka affix-*nivåer* som kan rullas styrs av föremålets ilvl, som kommer från
-monstrets nivå. Fem sällsynthetsgrader med egna färger, sex unika föremål med
-fasta specialegenskaper, attributkrav som gatear vad du kan bära, och en
-handlare som köper skräpet.
+**Erfarenhet som klot.** XP bokförs inte längre direkt — den faller som klot på
+marken där fienden stod, och du får den först när du går nära nog att suga upp
+dem. Det gör räckvidd till en avvägning: slår du på håll eller kitar runt en
+flock måste du gå tillbaka och sopa upp bytet. Valörerna syns på färg och
+storlek — vit liten och stor, sedan gul, blå och lila — så du ser på marken vad
+som är värt att hämta. Ett tungt byte delas i flera klot, och när fältet blir
+fullt slås nya ihop med närliggande i stället för att strö ut mer grus.
+
+**Loot.** Föremål droppar sällan — knappt ett per tjugo fällda vanliga fiender —
+och vita skräpföremål faller nästan alltid bort helt. Guld kommer i färre men
+tyngre högar. Allt du hittar plockas upp automatiskt när du går över det, men
+något *du själv* släpper ligger kvar tills du gått ifrån det, så det går att
+lägga ifrån sig ett vapen i vildmarken.
 
 **Progression.** Nivåer 1 och uppåt, fyra attributpoäng och en skillpoäng per
 nivå. Tre riktiga **skill-träd** (Stål, Frost, Uthållighet) — ett per flik — med fem skills

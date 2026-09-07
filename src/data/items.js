@@ -31,62 +31,62 @@
 /** @type {BaseItem[]} */
 export const BASES = [
   // ---- vapen ----------------------------------------------------------------
-  { id: 'rustyaxe',  name: 'Rostig yxa',      slot: 'weapon', ilvl: 1,  dmgMin: 4,  dmgMax: 9,  speed: 1.00, reqStr: 0,  value: 12,  icon: '🪓' },
-  { id: 'cudgel',    name: 'Knölpåk',         slot: 'weapon', ilvl: 1,  dmgMin: 5,  dmgMax: 8,  speed: 1.10, reqStr: 0,  value: 10,  icon: '🔨' },
-  { id: 'shortsword',name: 'Kortsvärd',       slot: 'weapon', ilvl: 3,  dmgMin: 4,  dmgMax: 10, speed: 1.15, reqDex: 12, value: 26,  icon: '🗡️' },
-  { id: 'handaxe',   name: 'Handyxa',         slot: 'weapon', ilvl: 5,  dmgMin: 7,  dmgMax: 12, speed: 0.95, reqStr: 15, value: 32,  icon: '🪓' },
-  { id: 'mace',      name: 'Stridsklubba',    slot: 'weapon', ilvl: 8,  dmgMin: 9,  dmgMax: 14, speed: 0.90, reqStr: 22, value: 48,  icon: '🔨' },
-  { id: 'longsword', name: 'Långsvärd',       slot: 'weapon', ilvl: 11, dmgMin: 9,  dmgMax: 24, speed: 1.05, reqDex: 24, value: 74,  icon: '⚔️' },
-  { id: 'battleaxe', name: 'Stridsyxa',       slot: 'weapon', ilvl: 13, dmgMin: 14, dmgMax: 22, speed: 0.85, reqStr: 34, value: 88,  icon: '🪓' },
-  { id: 'morningstar',name:'Morgonstjärna',   slot: 'weapon', ilvl: 16, dmgMin: 17, dmgMax: 26, speed: 0.88, reqStr: 40, value: 110, icon: '🔨' },
-  { id: 'greatsword',name: 'Slagsvärd',       slot: 'weapon', ilvl: 20, dmgMin: 18, dmgMax: 42, speed: 0.90, reqStr: 44, reqDex: 30, value: 165, icon: '⚔️' },
-  { id: 'warhammer', name: 'Krosshammare',    slot: 'weapon', ilvl: 24, dmgMin: 28, dmgMax: 40, speed: 0.78, reqStr: 58, value: 210, icon: '🔨' },
-  { id: 'glaive',    name: 'Bardisan',        slot: 'weapon', ilvl: 27, dmgMin: 24, dmgMax: 50, speed: 0.92, reqStr: 48, reqDex: 40, value: 260, icon: '🗡️' },
+  { id: 'rustyaxe',  name: 'Rostig yxa',      slot: 'weapon', ilvl: 1,  dmgMin: 4,  dmgMax: 9,  speed: 1.00, reqStr: 0,  value: 12,  icon: '🪓', size: [2, 3] },
+  { id: 'cudgel',    name: 'Knölpåk',         slot: 'weapon', ilvl: 1,  dmgMin: 5,  dmgMax: 8,  speed: 1.10, reqStr: 0,  value: 10,  icon: '🔨', size: [1, 3] },
+  { id: 'shortsword',name: 'Kortsvärd',       slot: 'weapon', ilvl: 3,  dmgMin: 4,  dmgMax: 10, speed: 1.15, reqDex: 12, value: 26,  icon: '🗡️', size: [1, 2] },
+  { id: 'handaxe',   name: 'Handyxa',         slot: 'weapon', ilvl: 5,  dmgMin: 7,  dmgMax: 12, speed: 0.95, reqStr: 15, value: 32,  icon: '🪓', size: [2, 3] },
+  { id: 'mace',      name: 'Stridsklubba',    slot: 'weapon', ilvl: 8,  dmgMin: 9,  dmgMax: 14, speed: 0.90, reqStr: 22, value: 48,  icon: '🔨', size: [1, 3] },
+  { id: 'longsword', name: 'Långsvärd',       slot: 'weapon', ilvl: 11, dmgMin: 9,  dmgMax: 24, speed: 1.05, reqDex: 24, value: 74,  icon: '⚔️', size: [1, 3] },
+  { id: 'battleaxe', name: 'Stridsyxa',       slot: 'weapon', ilvl: 13, dmgMin: 14, dmgMax: 22, speed: 0.85, reqStr: 34, value: 88,  icon: '🪓', size: [2, 3] },
+  { id: 'morningstar',name:'Morgonstjärna',   slot: 'weapon', ilvl: 16, dmgMin: 17, dmgMax: 26, speed: 0.88, reqStr: 40, value: 110, icon: '🔨', size: [2, 3] },
+  { id: 'greatsword',name: 'Slagsvärd',       slot: 'weapon', ilvl: 20, dmgMin: 18, dmgMax: 42, speed: 0.90, reqStr: 44, reqDex: 30, value: 165, icon: '⚔️', size: [1, 4] },
+  { id: 'warhammer', name: 'Krosshammare',    slot: 'weapon', ilvl: 24, dmgMin: 28, dmgMax: 40, speed: 0.78, reqStr: 58, value: 210, icon: '🔨', size: [2, 4] },
+  { id: 'glaive',    name: 'Bardisan',        slot: 'weapon', ilvl: 27, dmgMin: 24, dmgMax: 50, speed: 0.92, reqStr: 48, reqDex: 40, value: 260, icon: '🗡️', size: [1, 4] },
 
   // ---- sköld ----------------------------------------------------------------
-  { id: 'buckler',   name: 'Träbuckla',       slot: 'shield', ilvl: 1,  armor: 6,   value: 10,  icon: '🛡️' },
-  { id: 'roundshield',name:'Rundsköld',       slot: 'shield', ilvl: 6,  armor: 16,  reqStr: 16, value: 34,  icon: '🛡️' },
-  { id: 'ironshield',name: 'Järnsköld',       slot: 'shield', ilvl: 13, armor: 34,  reqStr: 32, value: 78,  icon: '🛡️' },
-  { id: 'towershield',name:'Tornsköld',       slot: 'shield', ilvl: 22, armor: 60,  reqStr: 55, value: 170, icon: '🛡️' },
+  { id: 'buckler',   name: 'Träbuckla',       slot: 'shield', ilvl: 1,  armor: 6,   value: 10,  icon: '🛡️', size: [2, 2] },
+  { id: 'roundshield',name:'Rundsköld',       slot: 'shield', ilvl: 6,  armor: 16,  reqStr: 16, value: 34,  icon: '🛡️', size: [2, 2] },
+  { id: 'ironshield',name: 'Järnsköld',       slot: 'shield', ilvl: 13, armor: 34,  reqStr: 32, value: 78,  icon: '🛡️', size: [2, 3] },
+  { id: 'towershield',name:'Tornsköld',       slot: 'shield', ilvl: 22, armor: 60,  reqStr: 55, value: 170, icon: '🛡️', size: [2, 3] },
 
   // ---- hjälm ----------------------------------------------------------------
-  { id: 'hood',      name: 'Huva',            slot: 'helm',   ilvl: 1,  armor: 3,   value: 6,   icon: '⛑️' },
-  { id: 'leatherhelm',name:'Läderhjälm',      slot: 'helm',   ilvl: 5,  armor: 12,  value: 24,  icon: '⛑️' },
-  { id: 'ironhelm',  name: 'Järnhjälm',       slot: 'helm',   ilvl: 12, armor: 26,  reqStr: 24, value: 62,  icon: '⛑️' },
-  { id: 'hornhelm',  name: 'Hornhjälm',       slot: 'helm',   ilvl: 21, armor: 46,  reqStr: 44, value: 140, icon: '⛑️' },
+  { id: 'hood',      name: 'Huva',            slot: 'helm',   ilvl: 1,  armor: 3,   value: 6,   icon: '⛑️', size: [2, 1] },
+  { id: 'leatherhelm',name:'Läderhjälm',      slot: 'helm',   ilvl: 5,  armor: 12,  value: 24,  icon: '⛑️', size: [2, 2] },
+  { id: 'ironhelm',  name: 'Järnhjälm',       slot: 'helm',   ilvl: 12, armor: 26,  reqStr: 24, value: 62,  icon: '⛑️', size: [2, 2] },
+  { id: 'hornhelm',  name: 'Hornhjälm',       slot: 'helm',   ilvl: 21, armor: 46,  reqStr: 44, value: 140, icon: '⛑️', size: [2, 2] },
 
   // ---- bröst ----------------------------------------------------------------
-  { id: 'rags',      name: 'Trasor',          slot: 'chest',  ilvl: 1,  armor: 5,   value: 5,   icon: '🧥' },
-  { id: 'quilted',   name: 'Vadderad rock',   slot: 'chest',  ilvl: 3,  armor: 11,  value: 20,  icon: '🧥' },
-  { id: 'leatherarmor',name:'Läderrustning',  slot: 'chest',  ilvl: 7,  armor: 22,  reqStr: 14, value: 46,  icon: '🧥' },
-  { id: 'studded',   name: 'Nitläder',        slot: 'chest',  ilvl: 11, armor: 34,  reqStr: 22, value: 72,  icon: '🧥' },
-  { id: 'chainmail', name: 'Ringbrynja',      slot: 'chest',  ilvl: 15, armor: 52,  reqStr: 36, value: 118, icon: '🧥' },
-  { id: 'scalemail', name: 'Fjällpansar',     slot: 'chest',  ilvl: 20, armor: 70,  reqStr: 48, value: 168, icon: '🧥' },
-  { id: 'platearmor',name: 'Plåtrustning',    slot: 'chest',  ilvl: 26, armor: 100, reqStr: 66, value: 250, icon: '🧥' },
+  { id: 'rags',      name: 'Trasor',          slot: 'chest',  ilvl: 1,  armor: 5,   value: 5,   icon: '🧥', size: [2, 2] },
+  { id: 'quilted',   name: 'Vadderad rock',   slot: 'chest',  ilvl: 3,  armor: 11,  value: 20,  icon: '🧥', size: [2, 3] },
+  { id: 'leatherarmor',name:'Läderrustning',  slot: 'chest',  ilvl: 7,  armor: 22,  reqStr: 14, value: 46,  icon: '🧥', size: [2, 3] },
+  { id: 'studded',   name: 'Nitläder',        slot: 'chest',  ilvl: 11, armor: 34,  reqStr: 22, value: 72,  icon: '🧥', size: [2, 3] },
+  { id: 'chainmail', name: 'Ringbrynja',      slot: 'chest',  ilvl: 15, armor: 52,  reqStr: 36, value: 118, icon: '🧥', size: [2, 3] },
+  { id: 'scalemail', name: 'Fjällpansar',     slot: 'chest',  ilvl: 20, armor: 70,  reqStr: 48, value: 168, icon: '🧥', size: [2, 3] },
+  { id: 'platearmor',name: 'Plåtrustning',    slot: 'chest',  ilvl: 26, armor: 100, reqStr: 66, value: 250, icon: '🧥', size: [2, 3] },
 
   // ---- handskar / stövlar / bälte -------------------------------------------
-  { id: 'ragwraps',  name: 'Trasvantar',      slot: 'gloves', ilvl: 1,  armor: 2,   value: 4,   icon: '🧤' },
-  { id: 'leathergloves',name:'Läderhandskar', slot: 'gloves', ilvl: 5,  armor: 9,   value: 20,  icon: '🧤' },
-  { id: 'chaingloves',name:'Ringvantar',      slot: 'gloves', ilvl: 13, armor: 19,  reqStr: 22, value: 56,  icon: '🧤' },
-  { id: 'gauntlets', name: 'Pansarhandskar',  slot: 'gloves', ilvl: 22, armor: 33,  reqStr: 45, value: 130, icon: '🧤' },
+  { id: 'ragwraps',  name: 'Trasvantar',      slot: 'gloves', ilvl: 1,  armor: 2,   value: 4,   icon: '🧤', size: [2, 1] },
+  { id: 'leathergloves',name:'Läderhandskar', slot: 'gloves', ilvl: 5,  armor: 9,   value: 20,  icon: '🧤', size: [2, 2] },
+  { id: 'chaingloves',name:'Ringvantar',      slot: 'gloves', ilvl: 13, armor: 19,  reqStr: 22, value: 56,  icon: '🧤', size: [2, 2] },
+  { id: 'gauntlets', name: 'Pansarhandskar',  slot: 'gloves', ilvl: 22, armor: 33,  reqStr: 45, value: 130, icon: '🧤', size: [2, 2] },
 
-  { id: 'footwraps', name: 'Fotlappar',       slot: 'boots',  ilvl: 1,  armor: 2,   value: 4,   icon: '🥾' },
-  { id: 'leatherboots',name:'Läderstövlar',   slot: 'boots',  ilvl: 5,  armor: 9,   value: 20,  icon: '🥾' },
-  { id: 'chainboots',name: 'Ringstövlar',     slot: 'boots',  ilvl: 13, armor: 19,  reqStr: 22, value: 56,  icon: '🥾' },
-  { id: 'plateboots',name: 'Pansarstövlar',   slot: 'boots',  ilvl: 22, armor: 33,  reqStr: 45, value: 130, icon: '🥾' },
+  { id: 'footwraps', name: 'Fotlappar',       slot: 'boots',  ilvl: 1,  armor: 2,   value: 4,   icon: '🥾', size: [2, 1] },
+  { id: 'leatherboots',name:'Läderstövlar',   slot: 'boots',  ilvl: 5,  armor: 9,   value: 20,  icon: '🥾', size: [2, 2] },
+  { id: 'chainboots',name: 'Ringstövlar',     slot: 'boots',  ilvl: 13, armor: 19,  reqStr: 22, value: 56,  icon: '🥾', size: [2, 2] },
+  { id: 'plateboots',name: 'Pansarstövlar',   slot: 'boots',  ilvl: 22, armor: 33,  reqStr: 45, value: 130, icon: '🥾', size: [2, 2] },
 
-  { id: 'ropebelt',  name: 'Repbälte',        slot: 'belt',   ilvl: 1,  armor: 1,   value: 3,   icon: '🪢' },
-  { id: 'leatherbelt',name:'Läderbälte',      slot: 'belt',   ilvl: 6,  armor: 7,   value: 18,  icon: '🪢' },
-  { id: 'studdedbelt',name:'Nitbälte',        slot: 'belt',   ilvl: 14, armor: 15,  reqStr: 20, value: 50,  icon: '🪢' },
-  { id: 'warbelt',   name: 'Krigsbälte',      slot: 'belt',   ilvl: 23, armor: 25,  reqStr: 42, value: 120, icon: '🪢' },
+  { id: 'ropebelt',  name: 'Repbälte',        slot: 'belt',   ilvl: 1,  armor: 1,   value: 3,   icon: '🪢', size: [2, 1] },
+  { id: 'leatherbelt',name:'Läderbälte',      slot: 'belt',   ilvl: 6,  armor: 7,   value: 18,  icon: '🪢', size: [2, 1] },
+  { id: 'studdedbelt',name:'Nitbälte',        slot: 'belt',   ilvl: 14, armor: 15,  reqStr: 20, value: 50,  icon: '🪢', size: [2, 1] },
+  { id: 'warbelt',   name: 'Krigsbälte',      slot: 'belt',   ilvl: 23, armor: 25,  reqStr: 42, value: 120, icon: '🪢', size: [2, 2] },
 
   // ---- smycken (bara affixer) -----------------------------------------------
-  { id: 'tinring',   name: 'Tennring',        slot: 'ring',   ilvl: 2,  value: 30,  icon: '💍' },
-  { id: 'silverring',name: 'Silverring',      slot: 'ring',   ilvl: 10, value: 90,  icon: '💍' },
-  { id: 'goldring',  name: 'Guldring',        slot: 'ring',   ilvl: 20, value: 200, icon: '💍' },
-  { id: 'boneamulet',name: 'Benamulett',      slot: 'amulet', ilvl: 3,  value: 40,  icon: '📿' },
-  { id: 'silveramulet',name:'Silveramulett',  slot: 'amulet', ilvl: 12, value: 120, icon: '📿' },
-  { id: 'runeamulet',name: 'Runamulett',      slot: 'amulet', ilvl: 22, value: 260, icon: '📿' },
+  { id: 'tinring',   name: 'Tennring',        slot: 'ring',   ilvl: 2,  value: 30,  icon: '💍', size: [1, 1] },
+  { id: 'silverring',name: 'Silverring',      slot: 'ring',   ilvl: 10, value: 90,  icon: '💍', size: [1, 1] },
+  { id: 'goldring',  name: 'Guldring',        slot: 'ring',   ilvl: 20, value: 200, icon: '💍', size: [1, 1] },
+  { id: 'boneamulet',name: 'Benamulett',      slot: 'amulet', ilvl: 3,  value: 40,  icon: '📿', size: [1, 1] },
+  { id: 'silveramulet',name:'Silveramulett',  slot: 'amulet', ilvl: 12, value: 120, icon: '📿', size: [1, 1] },
+  { id: 'runeamulet',name: 'Runamulett',      slot: 'amulet', ilvl: 22, value: 260, icon: '📿', size: [1, 1] },
 ];
 
 /** Grupper en affix kan hänga på. */
@@ -319,7 +319,9 @@ export const SLOT_SIZE = {
 
 /** @param {BaseItem} base @returns {{w:number,h:number}} */
 export function itemSize(base) {
-  const [w, h] = SLOT_SIZE[base.slot] ?? [1, 1];
+  // Bastypens egen form går före platsens: ett svärd är smalt och långt (1×3)
+  // medan en yxa är bredare (2×3). Det gör väskan till ett riktigt pusselval.
+  const [w, h] = base.size ?? SLOT_SIZE[base.slot] ?? [1, 1];
   return { w, h };
 }
 
