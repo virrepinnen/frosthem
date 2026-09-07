@@ -322,7 +322,9 @@ function waypointPanel(game) {
     const row = document.createElement('div');
     row.className = 'node' + (z.known ? '' : ' locked');
     row.innerHTML = `<div class="ico">${glyph(z.index === 0 ? 'hearth' : 'waystone')}</div>` +
-      `<div class="t"><b>${escape(z.name)}</b><i>${z.known ? (z.index === 0 ? 'The village' : `Monster level ${z.level}`) : 'Not discovered'}</i></div>` +
+      `<div class="t"><b>${escape(z.name)}</b><i>${z.known
+        ? (z.index === 0 ? 'The village' : `${escape(z.area)} · monster level ${z.level}`)
+        : 'Not discovered'}</i></div>` +
       `<div class="rk">${z.here ? 'here' : z.known ? '→' : glyph('lock')}</div>`;
     row.style.marginBottom = '6px';
     if (z.known && !z.here) row.onclick = () => { game.travelToWaypoint(z.index); closeAllPanels(game); };

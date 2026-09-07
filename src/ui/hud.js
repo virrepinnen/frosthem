@@ -44,7 +44,8 @@ export function updateHud(game) {
   flashOnce('mana-orb', p.manaFlash);
   $('xp-fill').style.width = `${(p.xp / p.xpNext) * 100}%`;
   $('zone-name').textContent = game.zone.name;
-  $('zone-lvl').textContent = game.zone.isTown ? 'sanctuary' : `monster level ${game.zone.level}`;
+  $('zone-lvl').textContent = game.zone.isTown
+    ? 'sanctuary' : `${game.zone.area} · level ${game.zone.level}`;
   $('veil').style.opacity = String(game.veil ?? 0);
   $('char-level').textContent = `Level ${p.level}`;
   $('gold').textContent = String(p.gold);

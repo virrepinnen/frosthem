@@ -99,10 +99,15 @@ export function createGame(existing, progress) {
     /** @param {number} index */
     travelToWaypoint(index) { travelToWaypoint(game, index); },
     waypointList() {
-      return ZONE_DEFS.map((z, i) => ({
-        index: i, name: z.name, level: z.level,
-        known: game.waypoints.has(i), here: game.zone.index === i,
-      }));
+      // Only maps that actually hold a waystone. The rest of the chain is
+      // walked, which is the point of it being a chain.
+      return ZONE_DEFS
+        .map((z, i) => ({ z, i }))
+        .filter(({ z }) => z.waypoint)
+        .map(({ z, i }) => ({
+          index: i, name: z.name, area: z.area, level: z.level,
+          known: game.waypoints.has(i), here: game.zone.index === i,
+        }));
     },
     save() { const ok = saveGame(game); if (ok) game.alert('Saved.'); return ok; },
     /** Starts a fresh run with the same character. Gear and gold stay. */
@@ -180,8 +185,9 @@ function travel(game, to, from, opts = {}) {
   let spawn = opts.at ?? { ...game.zone.entry };
   if (!opts.at && from !== undefined) {
     const back = game.zone.exits.find(e => e.to === from);
-    // A little inside the threshold, or the first step would send you straight back out.
-    if (back) spawn = { x: back.x, y: back.trigger + (back.edge === 'n' ? 132 : -132) };
+    // A little inside the threshold, or the first step would send you straight
+    // back out. Measured inward along the border's own normal.
+    if (back) spawn = { x: back.tx - back.dirX * 132, y: back.ty - back.dirY * 132 };
   }
   p.pos.x = spawn.x; p.pos.y = spawn.y;
   p.vel.x = p.vel.y = 0;
@@ -193,8 +199,11 @@ function travel(game, to, from, opts = {}) {
 
   // The name fades in over the screen instead of sitting in the notice list —
   // you should notice you have arrived somewhere without reading a corner.
+  // The banner names the map; the line under it names the area, so the chain
+  // reads as one journey rather than eight unrelated places.
   showZoneBanner(game.zone.name, game.zone.isTown
-    ? 'the hearth still burns' : `monster level ${game.zone.level}`);
+    ? 'the hearth still burns'
+    : `${game.zone.area} · monster level ${game.zone.level}`);
   if (game.zone.isTown) {
     p.hp = p.maxHp; p.stamina = p.maxStamina; p.mana = p.maxMana;
     game.waypoints.add(0);
@@ -218,10 +227,16 @@ function checkZoneEdge(game) {
   const p = game.player;
   if (game.transit || p.dead) return;
   for (const e of game.zone.exits) {
-    if (Math.abs(p.pos.x - e.x) > e.r) continue;
-    const out = e.edge === 'n' ? p.pos.y < e.trigger : p.pos.y > e.trigger;
-    if (!out) continue;
-    const willing = e.edge === 'n' ? p.inY < -0.05 : p.inY > 0.05;
+    // Measured along and across the border, so the same test works on all four
+    // edges. `out` is how far past the trigger line you are; `along` how far
+    // sideways from the opening's centre.
+    const dx = p.pos.x - e.tx, dy = p.pos.y - e.ty;
+    const out = dx * e.dirX + dy * e.dirY;
+    const along = Math.abs(dx * -e.dirY + dy * e.dirX);
+    if (out <= 0 || along > e.r) continue;
+    // You have to walk out under your own power. A shove in the back mid-fight
+    // must not be able to throw you out of the map.
+    const willing = p.inX * e.dirX + p.inY * e.dirY > 0.05;
     if (!willing) continue;
     game.transit = { t: 0, to: e.to, from: game.zone.index, done: false };
     return;

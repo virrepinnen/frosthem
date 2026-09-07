@@ -683,40 +683,51 @@ function drawShrines(ctx, game) {
  * The zone border. No portal — just the path leaving the picture and vanishing
  * into driving snow, with two standing stones as a gate and the name of what
  * lies beyond.
+ *
+ * Drawn from the exit's own vectors rather than from x and y, so it looks the
+ * same whichever of the four edges the border happens to sit on.
  * @param {CanvasRenderingContext2D} ctx @param {any} game
  */
 function drawExits(ctx, game) {
   const t = performance.now() / 1000;
   for (const e of game.zone.exits) {
-    const north = e.edge === 'n';
-    const sign = north ? -1 : 1;
-    const line = PY(e.trigger);         // where the zone actually ends
-    const rim = PY(e.y);                // kartans kant
+    // Outward normal and the along-edge direction, both in world space. The
+    // projection squashes y, so screen-space positions come from PY().
+    const ox = e.dirX, oy = e.dirY;
+    const ax = -e.dirY, ay = e.dirX;
+    const at = (/** @type {number} */ out, /** @type {number} */ along) => ({
+      x: e.tx + ox * out + ax * along,
+      y: PY(e.ty + oy * out + ay * along),
+    });
 
     // Haze that swallows the ground on the last stretch out.
     ctx.save();
-    const g = ctx.createLinearGradient(0, line - sign * 30, 0, rim + sign * 40);
+    const a0 = at(-30, 0), a1 = at(234, 0);
+    const g = ctx.createLinearGradient(a0.x, a0.y, a1.x, a1.y);
     g.addColorStop(0, 'rgba(206,226,244,0)');
     g.addColorStop(0.45, 'rgba(212,231,246,0.38)');
     g.addColorStop(1, 'rgba(224,238,250,0.92)');
     ctx.fillStyle = g;
+    const q = [at(-30, -e.r), at(-30, e.r), at(234, e.r * 1.28), at(234, -e.r * 1.28)];
     ctx.beginPath();
-    ctx.moveTo(e.x - e.r, line - sign * 40);
-    ctx.lineTo(e.x + e.r, line - sign * 40);
-    ctx.lineTo(e.x + e.r * 1.28, rim + sign * 30);
-    ctx.lineTo(e.x - e.r * 1.28, rim + sign * 30);
+    ctx.moveTo(q[0].x, q[0].y);
+    for (let i = 1; i < q.length; i++) ctx.lineTo(q[i].x, q[i].y);
     ctx.closePath(); ctx.fill();
     ctx.restore();
 
-    // Two standing stones as a gate, one on each side of the path.
-    for (const sx of [-1, 1]) {
-      const x = e.x + sx * 78;
-      const base = PY(e.trigger + sign * 6);
-      const h = 88 + sx * 6;
-      ctx.save(); ctx.translate(x, base);
+    // Two standing stones as a gate, one on each side of the path. They have
+    // height, so they are drawn upright in unsquashed pixels wherever they sit.
+    // On an east/west border the along-axis is y, which the projection squashes.
+    // Spacing the stones by the same world distance would make that gate look
+    // half as wide as a north/south one, so the offset is unsquashed first.
+    const spread = (e.edge === 'e' || e.edge === 'w') ? 78 / PROJ : 78;
+    for (const side of [-1, 1]) {
+      const base = at(6, side * spread);
+      const h = 88 + side * 6;
+      ctx.save(); ctx.translate(base.x, base.y);
       ctx.fillStyle = 'rgba(4,7,12,0.34)';
       ctx.beginPath(); ctx.ellipse(0, 2, 19, 8, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.rotate(sx * 0.05);
+      ctx.rotate(side * 0.05);
       const gr = ctx.createLinearGradient(-14, -h, 14, 0);
       gr.addColorStop(0, '#3d4b60'); gr.addColorStop(0.55, '#293445'); gr.addColorStop(1, '#161e2b');
       ctx.fillStyle = gr;
@@ -727,16 +738,19 @@ function drawExits(ctx, game) {
       ctx.fillStyle = 'rgba(226,239,250,0.72)';
       ctx.beginPath(); ctx.moveTo(-9.5, -h); ctx.lineTo(8, -h - 7); ctx.lineTo(8, -h + 1); ctx.lineTo(-9.5, -h + 6);
       ctx.closePath(); ctx.fill();
-      ctx.fillStyle = `rgba(150,214,244,${0.2 + Math.sin(t * 1.5 + sx) * 0.07})`;
-      ctx.fillRect(-sx * 3 - 1.8, -h * 0.74, 3.6, h * 0.52);
+      ctx.fillStyle = `rgba(150,214,244,${0.2 + Math.sin(t * 1.5 + side) * 0.07})`;
+      ctx.fillRect(-side * 3 - 1.8, -h * 0.74, 3.6, h * 0.52);
       ctx.restore();
     }
 
-    // The name sits on the path *inside* the gate. The camera stops at the map
-    // edge, so anything drawn beyond the threshold risks landing off screen.
-    const ly = PY(e.trigger - sign * 78);
-    worldLabel(ctx, e.label, e.x, ly, '#d6ecfb', 15);
-    worldLabel(ctx, north ? '▲' : '▼', e.x, ly + sign * 20, 'rgba(190,224,244,0.72)', 11);
+    // The name hangs above the gate mouth like a sign, not beside it: placing it
+    // along the road put it in the walking lane on an east/west border, right
+    // on top of the figure. Above the stones it reads the same on all four
+    // edges, and stays on screen where the camera stops at the map edge.
+    const lab = at(0, 0);
+    worldLabel(ctx, e.label, lab.x, lab.y - 116, '#d6ecfb', 15);
+    worldLabel(ctx, e.edge === 'n' ? '▲' : e.edge === 's' ? '▼' : e.edge === 'w' ? '◀' : '▶',
+      lab.x, lab.y - 96, 'rgba(190,224,244,0.72)', 11);
   }
 }
 
