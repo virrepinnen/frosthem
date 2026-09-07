@@ -5,23 +5,22 @@ import { recalc, xpToNext } from '../systems/stats.js';
 /** @typedef {import('../systems/loot.js').Item} Item */
 /** @typedef {import('../data/items.js').Slot} Slot */
 
-/** Utrustningsplatser (två ringar, som i D2). */
+/** Equipment slots (two rings, as in D2). */
 export const EQUIP_SLOTS = /** @type {const} */ ([
   'weapon', 'shield', 'helm', 'chest', 'gloves', 'boots', 'belt', 'ring1', 'ring2', 'amulet',
 ]);
 
 export const SLOT_LABEL = /** @type {Record<string,string>} */ ({
-  weapon: 'Vapen', shield: 'Sköld', helm: 'Hjälm', chest: 'Rustning', gloves: 'Handskar',
-  boots: 'Stövlar', belt: 'Bälte', ring1: 'Ring', ring2: 'Ring', amulet: 'Amulett',
+  weapon: 'Weapon', shield: 'Shield', helm: 'Helm', chest: 'Armour', gloves: 'Gloves',
+  boots: 'Boots', belt: 'Belt', ring1: 'Ring', ring2: 'Ring', amulet: 'Amulet',
 });
 
-/** Vilken bastyp-slot som passar i vilken utrustningsplats. @param {Slot} s */
+/** Which base-type slot fits which equipment slot. @param {Slot} s */
 export function slotsFor(s) {
   return s === 'ring' ? ['ring1', 'ring2'] : [s];
 }
 
-/** Väskans rutnät. Rutorna är fler än förr, men föremålen tar olika mycket plats. */
-/** Hur länge stadsportalen laddar, och hur mycket av det som är öppningen. */
+/** How long the town portal takes to cast, and how much of that is the opening. */
 export const PORTAL_CAST = 2.5;
 export const PORTAL_STEP = 0.5;
 
@@ -30,9 +29,9 @@ export const BAG_ROWS = 6;
 export const HOTBAR_SIZE = 6;
 
 /**
- * Lägger en skill i snabbfältet.
+ * Puts a skill on the hotbar.
  * @param {Player} p @param {string} id
- * @param {boolean} cycle  true = flytta till nästa fack (högerklick), false = bara fylla luckor
+ * @param {boolean} cycle  true = move to the next slot (right click), false = only fill gaps
  */
 export function bindToHotbar(p, id, cycle) {
   const at = p.hotbar.indexOf(id);
@@ -58,11 +57,11 @@ export function createPlayer(name) {
   /** @type {Item} */
   const starter = {
     uid: 0, base: /** @type {any} */ (rusty), rarity: 'normal', ilvl: 1,
-    name: 'Rostig yxa', affixes: [], mods: {},
+    name: 'Rusty Axe', affixes: [], mods: {},
   };
 
   const p = {
-    name: name || 'Barbaren',
+    name: name || 'Barbarian',
     pos: { x: 0, y: 0 }, vel: { x: 0, y: 0 }, facing: 0, radius: 14,
 
     level: 1, xp: 0, xpNext: xpToNext(1),
@@ -91,34 +90,34 @@ export function createPlayer(name) {
     /** @type {Record<string, number>} */ cooldowns: {},
     /** @type {(string|null)[]} */ hotbar: new Array(HOTBAR_SIZE).fill(null),
 
-    // ---- transient stridstillstånd ----
+    // ---- transient combat state ----
     attackTimer: 0,
     /** @type {{t:number, dur:number, dir:number, arc:number, reach:number, kind:string}|null} */
     swing: null,
     /** @type {{t:number, dir:number, hit:Set<number>}|null} */ dash: null,
     /** @type {{t:number, dur:number, dir:number}|null} */ roll: null,
     /**
-     * Pågående stadsportal. Laddas i {@link PORTAL_CAST} sekunder; de sista
-     * {@link PORTAL_STEP} öppnar sig porten och gestalten kliver in.
+     * Town portal in progress. Charges for {@link PORTAL_CAST} seconds; during
+     * the last {@link PORTAL_STEP} the gate opens and the figure steps in.
      * @type {{t:number, x:number, y:number}|null}
      */
     cast: null,
     rollCd: 0,
-    /** Faktisk hastighet, mätt ur förflyttningen — täcker gång, rusning och rullning. */
+    /** Actual velocity, measured from the movement — covers walking, dashing and rolling. */
     velX: 0, velY: 0,
-    /** Rörelseinput denna bildruta (-1..1). Zongränsen läser den. */
+    /** Movement input this frame (-1..1). The zone border reads it. */
     inX: 0, inY: 0,
     /**
-     * Mantelns utslag som en dämpad fjäder. Den strävar mot *motsatt* håll än
-     * rörelsen, så tyget släpar efter, och svänger tillbaka till vila med ett
-     * par avtagande pendlingar när man stannar.
+     * The cloak's deflection as a damped spring. It reaches in the *opposite*
+     * direction to the movement, so the cloth trails behind, and swings back to
+     * rest with a couple of decaying oscillations when you stop.
      */
     cloak: { x: 0, y: 0, vx: 0, vy: 0 },
     /** @type {{t:number, tick:number}|null} */ whirl: null,
     dmgBuff: 0, dmgBuffT: 0,
     hitFlash: 0, invuln: 0,
     dead: false, deathT: 0,
-    /** Antal dödsfall — vi straffar inte ännu, men vi räknar. */
+    /** Death count — we do not punish yet, but we count. */
     deaths: 0,
     kills: 0,
     walkPhase: 0,
@@ -130,9 +129,9 @@ export function createPlayer(name) {
 }
 
 /**
- * Ger XP och hanterar nivåhöjningar (kan bli flera på en gång).
+ * Grants XP and handles level-ups (there can be several at once).
  * @param {Player} p @param {number} amount
- * @returns {number} antal nivåer som gavs
+ * @returns {number} how many levels were gained
  */
 export function grantXp(p, amount) {
   p.xp += Math.round(amount);

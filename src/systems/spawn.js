@@ -6,11 +6,11 @@ import { Rng } from '../core/rng.js';
 /** @typedef {import('./world.js').Zone} Zone */
 
 /**
- * Fyller en zon med monster utifrån dess ankarpunkter.
+ * Fills a zone with monsters from its anchor points.
  *
- * Grupperna sätts tätt (55 px spridning) i stället för utspridda: en flock ska
- * läsas som *en* flock på skärmen, och möta spelaren samlad. Nivån varierar
- * +0..2 kring zonens nivå så att enstaka fiender kan överraska.
+ * Groups are placed tightly (55 px spread) rather than scattered: a pack should
+ * read as *one* pack on screen and meet the player together. The level varies
+ * +0..2 around the zone level so the odd enemy can still surprise you.
  * @param {Zone} zone
  * @returns {import('../entities/monster.js').Monster[]}
  */
@@ -23,7 +23,7 @@ export function populateZone(zone) {
   for (const a of zone.anchors) {
     const def = r.weighted(pool, m => (m.weight ?? 5) * (m.minZone === zone.index ? 1.6 : 1));
     const level = zone.level + r.int(0, 2);
-    // Arketyper som normalt går i stora flockar får fler medlemmar än de tunga.
+    // Archetypes that normally travel in big packs get more members than the heavy ones.
     const scale = ((def.pack[0] + def.pack[1]) / 2) / 5;
     const count = Math.max(1, Math.round(a.n * scale));
 
@@ -46,8 +46,8 @@ export function populateZone(zone) {
 
   if (zone.bossAt && zone.bossPos) {
     out.push(createMonster(BOSS, zone.level + 4, zone.bossPos.x, zone.bossPos.y, { boss: true }));
-    // Livvakterna sover med sin jarl, så arenan är tyst tills man tar första
-    // steget. Att hitta honom ska vara ett ögonblick, inte ett bakhåll.
+    // The bodyguards sleep alongside their jarl, so the arena is silent until
+    // you take the first step. Finding him should be a moment, not an ambush.
     for (let i = 0; i < 5; i++) {
       const ang = (i / 5) * Math.PI * 2;
       const guard = createMonster(MONSTERS[3], zone.level + 2,

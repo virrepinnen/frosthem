@@ -14,9 +14,9 @@
 </style>
 </head>
 <body>
-<h2>Levande lägen</h2>
+<h2>Live states</h2>
 <div class="row" id="live"></div>
-<h2>Hugg, bildruta för bildruta</h2>
+<h2>Strikes, frame by frame</h2>
 <div id="strips"></div>
 <script type="module">
 import { drawHero, ATTACKS } from './src/render/hero.js';
@@ -47,14 +47,14 @@ function paint(ctx, p) {
   drawHero(ctx, { player: p });
 }
 
-// --- levande lägen ---
+// --- live states ---
 const live = document.getElementById('live');
 const modes = [
   ['stilla', p => { p.moving = false; }],
   ['springer', p => { p.moving = true; p.moveAngle = p.facing; p.walkPhase = performance.now() / 260; }],
   ['springer i sidled', p => { p.moving = true; p.moveAngle = p.facing + 1.9; p.walkPhase = performance.now() / 260; }],
   ['rullar', p => { p.roll = { t: 0.28 - (performance.now() / 1000 % 0.28), dur: 0.28, dir: p.facing }; }],
-  ['träffad', p => { p.hitFlash = 0.2; }],
+  ['hit', p => { p.hitFlash = 0.2; }],
 ];
 const liveCells = modes.map(([label, setup]) => {
   const c = cell(label); live.appendChild(c.d);
@@ -66,12 +66,12 @@ function tick() {
 }
 tick();
 
-// --- i spelets egen skala, för att se att silhuetten håller ---
+// --- at the game's own scale, to check the silhouette holds ---
 const gh = document.createElement('h2'); gh.textContent = 'i spelets skala (zoom 1,5)';
 document.getElementById('strips').appendChild(gh);
 const gameRow = document.createElement('div'); gameRow.className = 'row';
 document.getElementById('strips').appendChild(gameRow);
-for (const [label, dir] of [['höger',0],['ner',Math.PI/2],['vänster',Math.PI],['upp',-Math.PI/2]]) {
+for (const [label, dir] of [['right',0],['down',Math.PI/2],['left',Math.PI],['up',-Math.PI/2]]) {
   const c = cell(label); gameRow.appendChild(c.d);
   const p = mkPlayer(); p.facing = dir; p.moving = true; p.moveAngle = dir; p.walkPhase = 3;
   c.ctx.setTransform(1,0,0,1,0,0); c.ctx.fillStyle='#96a6ba'; c.ctx.fillRect(0,0,W,H);

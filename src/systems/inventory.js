@@ -9,12 +9,12 @@ import { floatText } from '../render/fx.js';
 /** @typedef {import('../entities/player.js').Player} Player */
 
 /**
- * Packar väskan i rutnätet. Föremålen läggs störst först, radvis uppifrån —
- * en enkel first-fit som ger samma resultat varje gång, så väskan inte hoppar
- * omkring mellan omritningar.
+ * Packs the bag into the grid. Items are placed largest first, row by row from
+ * the top — a simple first-fit that gives the same result every time, so the
+ * bag does not jump around between redraws.
  *
- * Vi packar om automatiskt i stället för att låta spelaren dra runt föremål:
- * plockandet sker ändå automatiskt, och då vore manuell tetris bara pyssel.
+ * We repack automatically instead of letting the player drag items around:
+ * picking up happens automatically anyway, so manual tetris would be busywork.
  * @param {Item[]} items
  * @returns {{placed:{item:Item,x:number,y:number,w:number,h:number}[], overflow:Item[]}}
  */
@@ -55,25 +55,25 @@ export function packBag(items) {
   return { placed, overflow };
 }
 
-/** Får ytterligare ett föremål plats? @param {Item[]} items @param {Item} extra */
+/** Does one more item fit? @param {Item[]} items @param {Item} extra */
 export function canAdd(items, extra) {
   return packBag([...items, extra]).overflow.length === 0;
 }
 
-/** Hur många rutor som är upptagna respektive totalt. @param {Item[]} items */
+/** How many cells are used out of the total. @param {Item[]} items */
 export function bagUsage(items) {
   const used = items.reduce((a, it) => { const s = itemSize(it.base); return a + s.w * s.h; }, 0);
   return { used, total: BAG_COLS * BAG_ROWS };
 }
 
 /**
- * Utrusta ett föremål från väskan. Ringar går till första lediga ringplats.
+ * Equip an item from the bag. Rings go to the first free ring slot.
  * @param {any} game @param {Item} item
  * @returns {boolean}
  */
 export function equip(game, item) {
   const p = game.player;
-  if (!canEquip(p, item)) { game.alert('Du saknar attribut för att bära det.'); return false; }
+  if (!canEquip(p, item)) { game.alert('You lack the attributes to carry that.'); return false; }
 
   const candidates = slotsFor(item.base.slot);
   let target = candidates.find(s => !p.equipment[s]) ?? candidates[0];
@@ -81,8 +81,8 @@ export function equip(game, item) {
   const idx = p.inventory.indexOf(item);
   if (idx < 0) return false;
 
-  // Byt på plats: det avtagna föremålet tar den lucka det nya lämnade. Att
-  // splice:a ut och push:a sist kastade om hela väskan vid varje byte.
+  // Swap in place: the removed item takes the gap the new one left behind.
+  // Splicing out and pushing to the end reshuffled the whole bag on every swap.
   const prev = p.equipment[target];
   p.equipment[target] = item;
   if (prev) p.inventory[idx] = prev;
@@ -90,7 +90,7 @@ export function equip(game, item) {
 
   recalc(p);
   game.dirtyUI = true;
-  game.alert(`Utrustade ${item.name}.`);
+  game.alert(`Equipped ${item.name}.`);
   return true;
 }
 
@@ -99,7 +99,7 @@ export function unequip(game, slot) {
   const p = game.player;
   const item = p.equipment[slot];
   if (!item) return false;
-  if (!canAdd(p.inventory, item)) { game.alert('Väskan är full.'); return false; }
+  if (!canAdd(p.inventory, item)) { game.alert('The bag is full.'); return false; }
   p.equipment[slot] = null;
   p.inventory.push(item);
   recalc(p);
@@ -113,8 +113,8 @@ export function dropItem(game, item) {
   const idx = p.inventory.indexOf(item);
   if (idx < 0) return false;
   p.inventory.splice(idx, 1);
-  // Oarmerat: automatplocket rör det inte förrän du gått ifrån det. Annars
-  // sögs föremålet upp i samma stund som du släppte det.
+  // Unarmed: auto-pickup leaves it alone until you have walked away. Otherwise
+  // the item was sucked straight back up the moment you dropped it.
   game.ground.push({ x: p.pos.x, y: p.pos.y + 20, kind: 'item', item, pop: 0.3, age: 0, armed: false });
   game.groundVersion++;
   game.dirtyUI = true;
@@ -129,14 +129,14 @@ export function sellItem(game, item) {
   const v = itemValue(item);
   p.inventory.splice(idx, 1);
   p.gold += v;
-  game.alert(`Sålde ${item.name} för ${v} guld.`);
+  game.alert(`Sold ${item.name} for ${v} gold.`);
   game.dirtyUI = true;
   return true;
 }
 
 /**
- * Plockar upp allt inom räckhåll (Space). Guld och drycker går alltid in;
- * föremål stannar kvar om väskan är full.
+ * Picks up everything within reach (Space). Gold and potions always go in;
+ * items stay on the ground if the bag is full.
  * @param {any} game @param {number} [radius]
  */
 export function pickupNearby(game, radius = 110) {
@@ -150,7 +150,7 @@ export function pickupNearby(game, radius = 110) {
     game.groundVersion++;
     took++;
   }
-  if (!took) game.alert('Inget inom räckhåll.');
+  if (!took) game.alert('Nothing within reach.');
   return took;
 }
 
@@ -159,19 +159,19 @@ export function pickup(game, g) {
   const p = game.player;
   if (g.kind === 'gold') {
     p.gold += g.amount;
-    floatText(p.pos.x, p.pos.y - 26, `+${g.amount} guld`, '#d8b26a', 13);
+    floatText(p.pos.x, p.pos.y - 26, `+${g.amount} gold`, '#d8b26a', 13);
     game.dirtyUI = true;
     return true;
   }
   if (g.kind === 'potion') {
     p.potions += g.amount;
-    floatText(p.pos.x, p.pos.y - 26, `+${g.amount} dryck`, '#e05a72', 13);
+    floatText(p.pos.x, p.pos.y - 26, `+${g.amount} potion`, '#e05a72', 13);
     game.dirtyUI = true;
     return true;
   }
-  if (!canAdd(p.inventory, g.item)) { game.alert('Väskan är full.'); return false; }
+  if (!canAdd(p.inventory, g.item)) { game.alert('The bag is full.'); return false; }
   p.inventory.push(g.item);
-  game.alert(`Plockade upp ${g.item.name}.`);
+  game.alert(`Picked up ${g.item.name}.`);
   game.dirtyUI = true;
   return true;
 }

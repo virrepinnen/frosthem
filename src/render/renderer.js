@@ -1,9 +1,9 @@
 // @ts-check
 import { camera, PROJ } from './camera.js';
 
-/** Världens y → skärmens y inom kameratransformen. Marken är hoptryckt. */
+/** World y → screen y inside the camera transform. The ground is squashed. */
 const PY = (/** @type {number} */ y) => y * PROJ;
-/** Mörk siluett bakom gestalter, så de håller mot snön. */
+/** Dark silhouette behind figures, so they hold up against the snow. */
 const C_SIL = 'rgba(7,11,18,0.95)';
 import { fx } from './fx.js';
 import { rng } from '../core/rng.js';
@@ -15,13 +15,14 @@ import { ORB_TIERS } from '../systems/orbs.js';
 import { PORTAL_CAST, PORTAL_STEP } from '../entities/player.js';
 
 /**
- * All världsrendering. Canvas 2D, top-down, med djupsortering på y så att
- * saker längre ner ritas ovanpå. Placeholdergrafik — men läsbarheten
- * (silhuett, färgkontrast mot snön, tydliga statusfärger) är designad på riktigt.
+ * All world rendering. Canvas 2D, top-down, with depth sorting on y so things
+ * further down are drawn on top. Placeholder art — but the readability
+ * (silhouette, colour contrast against the snow, clear status colours) is
+ * designed for real.
  */
 
 const SNOW_TILE = 512;
-/** Minimapens logiska storlek i CSS-pixlar. Måste stämma med styles.css. */
+/** The minimap's logical size in CSS pixels. Must match styles.css. */
 export const MINIMAP_SIZE = 180;
 /** @type {HTMLCanvasElement|null} */
 let snowTile = null;
@@ -29,8 +30,8 @@ let snowTile = null;
 let flakes = [];
 
 /**
- * Periodiskt brus: gitterkoordinaterna wrappas mot `period`, vilket gör att
- * texturen kan kaklas utan synliga sömmar.
+ * Periodic noise: the lattice coordinates wrap against `period`, which lets the
+ * texture tile without visible seams.
  * @param {number} x @param {number} y @param {number} period @param {number} seed
  */
 function periodicNoise(x, y, period, seed) {
@@ -43,7 +44,7 @@ function periodicNoise(x, y, period, seed) {
   return (n00 * (1 - u) + n10 * u) * (1 - v) + (n01 * (1 - u) + n11 * u) * v;
 }
 
-/** Bygger en snötextur en gång och kaklar den — mycket billigare än brus per pixel. */
+/** Builds a snow texture once and tiles it — far cheaper than per-pixel noise. */
 function buildSnowTile() {
   const c = document.createElement('canvas');
   c.width = c.height = SNOW_TILE;
@@ -51,7 +52,7 @@ function buildSnowTile() {
   const img = g.createImageData(SNOW_TILE, SNOW_TILE);
   for (let y = 0; y < SNOW_TILE; y++) {
     for (let x = 0; x < SNOW_TILE; x++) {
-      // Skalorna måste dela SNOW_TILE jämnt för att kaklingen ska gå ihop.
+      // The scales must divide SNOW_TILE evenly for the tiling to line up.
       const n = periodicNoise(x / 64, y / 64, 8, 7) * 0.5
               + periodicNoise(x / 16, y / 16, 32, 13) * 0.32
               + periodicNoise(x / 4, y / 4, 128, 21) * 0.18;
@@ -87,7 +88,7 @@ export function render(ctx, game, dt) {
   const ox = sh ? rng.range(-sh, sh) : 0, oy = sh ? rng.range(-sh, sh) : 0;
   ctx.translate(-Math.round(camera.x) + ox, -Math.round(camera.y * PROJ) + oy);
 
-  // Marken: allt som ligger *i* planet ritas hoptryckt i höjdled.
+  // The ground: everything lying *in* the plane is drawn squashed vertically.
   ctx.save();
   ctx.scale(1, PROJ);
   drawGround(ctx, zone);
@@ -97,7 +98,7 @@ export function render(ctx, game, dt) {
   drawTelegraphs(ctx, game);
   ctx.restore();
 
-  // Härifrån står allt upp ur marken, i oförminskade pixlar.
+  // From here on everything stands up out of the ground, in unsquashed pixels.
   drawShrines(ctx, game);
   drawExits(ctx, game);
   drawWaypoint(ctx, game);
@@ -139,7 +140,7 @@ export function render(ctx, game, dt) {
 
   ctx.restore();
 
-  // Skärmytan i den här transformen: höjden är hoptryckt, till skillnad från camera.h.
+  // The screen area in this transform: the height is squashed, unlike camera.h.
   const SH = H * PROJ;
   drawSnowfall(ctx, W, SH, dt);
   drawVignette(ctx, W, SH, zone);
@@ -165,7 +166,7 @@ function drawGround(ctx, zone) {
     ctx.fillStyle = pat;
     ctx.fillRect(x0 - SNOW_TILE, y0 - SNOW_TILE, camera.w + SNOW_TILE * 3, camera.h + SNOW_TILE * 3);
   }
-  // Utanför zonen: mörk avgrund/klippa
+  // Outside the zone: dark chasm/cliff
   ctx.fillStyle = '#0a1018';
   const m = 30;
   ctx.fillRect(camera.x - 400, camera.y - 400, camera.w + 800, Math.max(0, m - camera.y + 400) - 400 + 400);
@@ -176,8 +177,8 @@ function drawGround(ctx, zone) {
 }
 
 /**
- * Stigar. Upptrampad snö: mörkare kärna med ljusare kanter, plus spår.
- * Stigen är zonens ryggrad — den ska synas på håll utan att skrika.
+ * Paths. Trodden snow: a darker core with lighter edges, plus tracks.
+ * The path is the zone's spine — it should be visible from afar without shouting.
  * @param {CanvasRenderingContext2D} ctx @param {any} zone
  */
 function drawRoads(ctx, zone) {
@@ -265,7 +266,7 @@ function drawWaypoint(ctx, game) {
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -20, 110, 0, Math.PI * 2); ctx.fill();
   }
   shadow(ctx, 6, 8, w.r * 0.8, w.r * 0.34);
-  // två resta stenar med ett tvärstycke — en port, inte bara en sten
+  // two standing stones with a lintel — a gate, not just a stone
   ctx.fillStyle = '#39445a';
   ctx.fillRect(-24, -66, 13, 70);
   ctx.fillRect(11, -66, 13, 70);
@@ -282,7 +283,7 @@ function drawWaypoint(ctx, game) {
   ctx.stroke();
 
   ctx.restore();
-  worldLabel(ctx, known ? 'Vägsten' : 'Vägsten (orörd)', w.x, PY(w.y) - 92,
+  worldLabel(ctx, known ? 'Waystone' : 'Waystone (untouched)', w.x, PY(w.y) - 92,
     known ? '#c8ecfb' : '#93a6c0', 13);
 }
 
@@ -335,7 +336,7 @@ function drawChests(ctx, game) {
     ctx.fillStyle = c.opened ? '#5a4a30' : '#d8b26a';
     ctx.fillRect(-4, -26, 8, 14);
     ctx.restore();
-    worldLabel(ctx, c.opened ? 'Tömd kista' : 'Kista', c.x, PY(c.y) - 44,
+    worldLabel(ctx, c.opened ? 'Empty chest' : 'Chest', c.x, PY(c.y) - 44,
       c.opened ? '#8b98ab' : '#f0cf94', 13);
   }
 }
@@ -412,10 +413,10 @@ function drawObstacle(ctx, o) {
 }
 
 /**
- * Text i världen med mörk kontur.
+ * Text in the world with a dark outline.
  *
- * Storleken delas med kamerazoomen så texten blir lika stor på skärmen oavsett
- * hur nära vi är — annars växer skyltarna med zoomen och tar över bilden.
+ * The size is divided by the camera zoom so text is the same size on screen no
+ * matter how close we are — otherwise the signs grow with the zoom and take over.
  * @param {CanvasRenderingContext2D} ctx @param {string} text
  * @param {number} x @param {number} y @param {string} color @param {number} [size] @param {number} [weight]
  */
@@ -434,8 +435,8 @@ function worldLabel(ctx, text, x, y, color, size = 12, weight = 600) {
 }
 
 /**
- * [E]-prompten. Ingen ruta — bara tangenten i guld och ett kort verb, som
- * guppar långsamt så att ögat hittar den utan att den skriker.
+ * The [E] prompt. No box — just the key in gold and a short verb, which
+ * bobs slowly so the eye finds it without it shouting.
  * @param {CanvasRenderingContext2D} ctx @param {any} game
  */
 function drawInteractPrompt(ctx, game) {
@@ -487,7 +488,7 @@ function drawPine(ctx, o) {
     const yBot = -h * (t * 0.30) - 2;
     ctx.fillStyle = ['#163026', '#1c3a2d', '#224434'][i];
     ctx.beginPath(); ctx.moveTo(0, yTop); ctx.lineTo(-w, yBot); ctx.lineTo(w, yBot); ctx.closePath(); ctx.fill();
-    // snö på grenarna
+    // snow on the branches
     ctx.fillStyle = 'rgba(226,236,246,0.82)';
     ctx.beginPath(); ctx.moveTo(0, yTop); ctx.lineTo(-w * 0.62, yBot - (yBot - yTop) * 0.34); ctx.lineTo(w * 0.5, yBot - (yBot - yTop) * 0.42); ctx.closePath(); ctx.fill();
   }
@@ -534,7 +535,7 @@ function drawStandingStone(ctx, o) {
   ctx.restore();
 }
 
-/** Brutet stenblock — kantigt och regelbundet, till skillnad från naturstenen. */
+/** A cut stone block — angular and regular, unlike the natural rock. */
 /** @param {CanvasRenderingContext2D} ctx @param {any} o */
 function drawQuarryBlock(ctx, o) {
   const h = o.r * 1.5;
@@ -591,18 +592,18 @@ function drawHearth(ctx, o) {
 function drawBuilding(ctx, o) {
   if (o.type === 'ruin') { drawRuin(ctx, o); return; }
   const roofH = 34;
-  // Foten hamnar på den hoptryckta marken; fasaden behåller sin höjd i pixlar.
+  // The base sits on the squashed ground; the facade keeps its height in pixels.
   o = { ...o, y: PY(o.y + o.h) - o.h };
   ctx.save();
   ctx.globalAlpha = 0.34; ctx.fillStyle = '#1a2434';
   ctx.fillRect(o.x + 10, o.y + 8, o.w, o.h);
   ctx.globalAlpha = 1;
-  // väggar
+  // walls
   ctx.fillStyle = '#3c3128';
   ctx.fillRect(o.x, o.y, o.w, o.h);
   ctx.fillStyle = '#2e261e';
   for (let y = o.y + 8; y < o.y + o.h; y += 11) ctx.fillRect(o.x, y, o.w, 2);
-  // tak (snötäckt)
+  // roof (snow-covered)
   ctx.fillStyle = '#e6eef7';
   ctx.beginPath();
   ctx.moveTo(o.x - 10, o.y + 6); ctx.lineTo(o.x + o.w / 2, o.y - roofH);
@@ -610,7 +611,7 @@ function drawBuilding(ctx, o) {
   ctx.fillStyle = 'rgba(150,168,190,0.5)';
   ctx.beginPath();
   ctx.moveTo(o.x + o.w / 2, o.y - roofH); ctx.lineTo(o.x + o.w + 10, o.y + 6); ctx.lineTo(o.x + o.w / 2, o.y + 6); ctx.closePath(); ctx.fill();
-  // fönster med varmt ljus
+  // windows with warm light
   const t = performance.now() / 1000;
   const glow = 0.6 + Math.sin(t * 2 + o.s * 9) * 0.12;
   ctx.fillStyle = `rgba(255,190,110,${glow})`;
@@ -628,7 +629,7 @@ function drawRuin(ctx, o) {
   ctx.globalAlpha = 1;
   ctx.fillStyle = '#332b22';
   ctx.fillRect(o.x, o.y, o.w, o.h);
-  // trasig takås: bara stumpar kvar
+  // broken ridge: only stumps left
   ctx.fillStyle = '#e6eef7';
   ctx.fillRect(o.x - 4, o.y - 5, o.w * 0.35, 9);
   ctx.fillRect(o.x + o.w * 0.62, o.y - 5, o.w * 0.42, 9);
@@ -678,8 +679,9 @@ function drawShrines(ctx, game) {
 }
 
 /**
- * Zongränsen. Ingen portal — bara stigen som går ut ur bilden och försvinner i
- * yrsnö, med två resta stenar som grind och namnet på det som ligger bortom.
+ * The zone border. No portal — just the path leaving the picture and vanishing
+ * into driving snow, with two standing stones as a gate and the name of what
+ * lies beyond.
  * @param {CanvasRenderingContext2D} ctx @param {any} game
  */
 function drawExits(ctx, game) {
@@ -687,10 +689,10 @@ function drawExits(ctx, game) {
   for (const e of game.zone.exits) {
     const north = e.edge === 'n';
     const sign = north ? -1 : 1;
-    const line = PY(e.trigger);         // där zonen faktiskt tar slut
+    const line = PY(e.trigger);         // where the zone actually ends
     const rim = PY(e.y);                // kartans kant
 
-    // Dis som sväljer marken sista biten ut.
+    // Haze that swallows the ground on the last stretch out.
     ctx.save();
     const g = ctx.createLinearGradient(0, line - sign * 30, 0, rim + sign * 40);
     g.addColorStop(0, 'rgba(206,226,244,0)');
@@ -705,7 +707,7 @@ function drawExits(ctx, game) {
     ctx.closePath(); ctx.fill();
     ctx.restore();
 
-    // Två resta stenar som grind, en på var sida om stigen.
+    // Two standing stones as a gate, one on each side of the path.
     for (const sx of [-1, 1]) {
       const x = e.x + sx * 78;
       const base = PY(e.trigger + sign * 6);
@@ -720,7 +722,7 @@ function drawExits(ctx, game) {
       ctx.beginPath();
       ctx.moveTo(-13, 0); ctx.lineTo(-9.5, -h); ctx.lineTo(8, -h - 7); ctx.lineTo(13, 0);
       ctx.closePath(); ctx.fill();
-      // Snö på ovansidan och en sval glöd mot öppningen.
+      // Snow on top and a cool glow facing the opening.
       ctx.fillStyle = 'rgba(226,239,250,0.72)';
       ctx.beginPath(); ctx.moveTo(-9.5, -h); ctx.lineTo(8, -h - 7); ctx.lineTo(8, -h + 1); ctx.lineTo(-9.5, -h + 6);
       ctx.closePath(); ctx.fill();
@@ -729,8 +731,8 @@ function drawExits(ctx, game) {
       ctx.restore();
     }
 
-    // Namnet står på stigen *innanför* grinden. Kameran stannar vid kartkanten,
-    // så allt som ritas utanför tröskeln riskerar att hamna ovanför skärmen.
+    // The name sits on the path *inside* the gate. The camera stops at the map
+    // edge, so anything drawn beyond the threshold risks landing off screen.
     const ly = PY(e.trigger - sign * 78);
     worldLabel(ctx, e.label, e.x, ly, '#d6ecfb', 15);
     worldLabel(ctx, north ? '▲' : '▼', e.x, ly + sign * 20, 'rgba(190,224,244,0.72)', 11);
@@ -755,9 +757,9 @@ function drawGroundItems(ctx, game) {
 }
 
 /**
- * Stadsportalens uppladdning: en ring i marken som sluts medan du laddar, och
- * en port som öppnar sig under den sista halvsekunden. Ringen ligger *i*
- * planet, porten reser sig ur det.
+ * The town portal's cast: a ring in the ground that closes while you charge, and
+ * a gate that opens during the last half second. The ring lies *in* the
+ * plane, the gate rises out of it.
  * @param {CanvasRenderingContext2D} ctx @param {any} game
  */
 function drawCast(ctx, game) {
@@ -778,7 +780,7 @@ function drawCast(ctx, game) {
   ctx.strokeStyle = '#a8e4f8';
   ctx.lineWidth = 4;
   ctx.beginPath(); ctx.arc(0, 0, 46, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2); ctx.stroke();
-  // runorna innanför snurrar långsamt
+  // the runes inside turn slowly
   ctx.globalAlpha = 0.5 + k * 0.4;
   ctx.strokeStyle = '#cfeeff';
   ctx.lineWidth = 2;
@@ -793,7 +795,7 @@ function drawCast(ctx, game) {
 
   if (openK <= 0) return;
 
-  // porten som öppnar sig: smal springa som vidgar sig till en oval
+  // the gate opening: a narrow slit widening into an oval
   ctx.save();
   ctx.translate(c.x, cy);
   const h = 46 * openK, w = 19 * Math.pow(openK, 0.6);
@@ -805,8 +807,8 @@ function drawCast(ctx, game) {
   ctx.strokeStyle = '#dff4ff';
   ctx.lineWidth = 2.5;
   for (let i = 0; i < 3; i++) {
-    // Ringarna krymper inåt, men radien får aldrig gå under noll: i början av
-    // öppningen är porten smalare än avståndet mellan ringarna.
+    // The rings shrink inward, but the radius must never go below zero: early in
+    // the opening the gate is narrower than the gap between the rings.
     const rx = w - i * 4.5, ry = h * 0.62 - i * 4;
     if (rx <= 0.5 || ry <= 0.5) continue;
     ctx.globalAlpha = 0.35 + i * 0.2;
@@ -818,8 +820,8 @@ function drawCast(ctx, game) {
 }
 
 /**
- * Erfarenhetsklot. Storlek och färg bär valören, så man ser på marken vad som
- * är värt att gå tillbaka efter.
+ * Experience orbs. Size and colour carry the denomination, so you can see from
+ * the ground what is worth walking back for.
  * @param {CanvasRenderingContext2D} ctx @param {any} game
  */
 function drawOrbs(ctx, game) {
@@ -831,7 +833,7 @@ function drawOrbs(ctx, game) {
     const pulse = 0.75 + Math.sin(t * 4 + o.seed) * 0.25;
 
     ctx.save();
-    // skenet på marken
+    // the glow on the ground
     ctx.globalAlpha = 0.4 * pulse;
     const g = ctx.createRadialGradient(o.x, y, 1, o.x, y, T.r * 5);
     g.addColorStop(0, T.glow); g.addColorStop(1, 'rgba(0,0,0,0)');
@@ -862,8 +864,8 @@ function drawNovas(ctx, game) {
 }
 
 /**
- * Markör runt den fiende auto-siktet valt. Utan den vet man inte var slaget
- * kommer att landa, och auto-sikte blir gissningslek i stället för avlastning.
+ * Marker around the enemy auto-aim picked. Without it you cannot tell where the
+ * blow will land, and auto-aim becomes guesswork instead of relief.
  * @param {CanvasRenderingContext2D} ctx @param {any} game
  */
 function drawAimTarget(ctx, game) {
@@ -901,10 +903,10 @@ function drawProjectiles(ctx, game) {
 /* ---------------- entiteter ---------------- */
 
 /**
- * Monstren ritas upprätt ur den hoptryckta marken, precis som hjälten.
- * Kameravinkeln är låst, så riktningen ändrar *bilden* — vilken väg gestalten
- * vänder sig och om vi ser fram- eller baksidan — inte figurens rotation.
- * Att låta dem ligga platt medan hjälten står upp läste som två olika spel.
+ * Monsters are drawn upright out of the squashed ground, just like the hero.
+ * The camera angle is locked, so direction changes the *image* — which way the
+ * figure turns and whether we see its front or back — not the figure's rotation.
+ * Letting them lie flat while the hero stands up read as two different games.
  * @param {CanvasRenderingContext2D} ctx @param {any} m @param {any} game
  */
 function drawMonster(ctx, m, game) {
@@ -932,7 +934,7 @@ function drawMonster(ctx, m, game) {
   const walk = Math.sin((m.walk ?? 0) * 6);
   const idle = Math.sin(t * 2 + m.id) * 0.8;
 
-  // skugga på marken (vålnader svävar och kastar knappt någon)
+  // shadow on the ground (wraiths float and barely cast one)
   if (m.shape !== 'wraith') {
     ctx.save();
     ctx.globalAlpha = 0.34;
@@ -944,7 +946,7 @@ function drawMonster(ctx, m, game) {
   ctx.save();
   ctx.translate(gx, gy);
 
-  // elitens aura ligger kvar på marken
+  // the elite's aura stays on the ground
   if (m.elite) {
     ctx.save();
     ctx.scale(1, PROJ);
@@ -957,7 +959,7 @@ function drawMonster(ctx, m, game) {
   ctx.scale(mirror, 1);
 
   if (m.shape === 'wolf') {
-    // fyrfotad, sedd från sidan: kropp, ben som växlar, nos framåt, svans bakåt
+    // four-legged, seen from the side: body, alternating legs, snout forward, tail back
     const h = R * 1.5;
     ctx.strokeStyle = dark; ctx.lineWidth = R * 0.28; ctx.lineCap = 'round';
     for (const [lx, ph] of [[-R * 0.55, 0], [-R * 0.3, 1], [R * 0.45, 1], [R * 0.7, 0]]) {
@@ -975,12 +977,12 @@ function drawMonster(ctx, m, game) {
     ctx.quadraticCurveTo(-R * 2, -h * 1.1 + idle, -R * 1.9, -h * 0.55);
     ctx.quadraticCurveTo(-R * 1.5, -h * 0.75, -R * 1.05, -h * 0.62);
     ctx.closePath(); ctx.fill();
-    // huvud och nos
+    // head and snout
     ctx.fillStyle = body;
     ctx.beginPath(); ctx.ellipse(R * 1.15, -h * 0.92, R * 0.55, R * 0.48, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = dark;
     ctx.beginPath(); ctx.ellipse(R * 1.6, -h * 0.82, R * 0.32, R * 0.22, 0, 0, Math.PI * 2); ctx.fill();
-    // öron
+    // ears
     ctx.beginPath();
     ctx.moveTo(R * 0.95, -h * 1.2); ctx.lineTo(R * 1.15, -h * 1.5); ctx.lineTo(R * 1.3, -h * 1.14);
     ctx.closePath(); ctx.fill();
@@ -990,7 +992,7 @@ function drawMonster(ctx, m, game) {
     }
 
   } else if (m.shape === 'wraith') {
-    // svävar: tunn spets nedåt som tonar bort, ingen skugga
+    // floats: a thin point downward that fades out, no shadow
     const h = R * 2.4;
     const float = Math.sin(t * 1.6 + m.id) * 2;
     ctx.translate(0, float);
@@ -1013,7 +1015,7 @@ function drawMonster(ctx, m, game) {
     }
 
   } else if (m.shape === 'boss') {
-    // bred gestalt med iskrona
+    // broad figure with an ice crown
     const h = R * 2.1;
     ctx.strokeStyle = dark; ctx.lineWidth = R * 0.3;
     ctx.beginPath(); ctx.moveTo(-R * 0.4, -h * 0.42); ctx.lineTo(-R * 0.5 + walk * R * 0.2, 0); ctx.stroke();
@@ -1044,7 +1046,7 @@ function drawMonster(ctx, m, game) {
     }
 
   } else {
-    // upprätt gestalt: ben, bål, huvud — och båge åt skyttarna
+    // upright figure: legs, torso, head — and a bow for the archers
     const h = R * 2.4;
     ctx.strokeStyle = dark; ctx.lineWidth = R * 0.3; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(-R * 0.3, -h * 0.42); ctx.lineTo(-R * 0.35 + walk * R * 0.35, 0); ctx.stroke();
@@ -1063,7 +1065,7 @@ function drawMonster(ctx, m, game) {
       ctx.strokeStyle = '#8a7050'; ctx.lineWidth = R * 0.14;
       ctx.beginPath(); ctx.arc(R * 1.0, -h * 0.72, R * 0.5, -1.1, 1.1); ctx.stroke();
     }
-    // huvud, något framåtlutat
+    // head, tilted slightly forward
     ctx.fillStyle = C_SIL;
     ctx.beginPath(); ctx.ellipse(R * 0.14, -h * 1.02, R * 0.42, R * 0.4, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = body;
@@ -1075,7 +1077,7 @@ function drawMonster(ctx, m, game) {
   }
   ctx.restore();
 
-  // --- hälsobar och statusmärken -----------------------------------------
+  // --- health bar and status marks ---------------------------------------
   const topY = gy - m.radius * (m.shape === 'boss' ? 2.6 : m.shape === 'wolf' ? 1.9 : 2.7) - 6;
   const showBar = !m.dormant && (m.elite || m.isChampion || m.isBoss || m.hp < m.maxHp);
   if (showBar) {
@@ -1113,7 +1115,7 @@ function drawPlayer(ctx, game) {
 
   drawHero(ctx, game);
 
-  // Virvelvindens ringar ligger ovanpå figuren
+  // Whirlwind's rings sit on top of the figure
   if (p.whirl) {
     ctx.save();
     ctx.translate(p.pos.x, PY(p.pos.y));
@@ -1127,7 +1129,7 @@ function drawPlayer(ctx, game) {
     ctx.restore();
   }
 
-  // riktningsmarkör
+  // facing marker
   ctx.save();
   ctx.globalAlpha = 0.26;
   ctx.strokeStyle = '#cfe4f2'; ctx.lineWidth = 1.5;
@@ -1196,7 +1198,7 @@ function drawVignette(ctx, W, H, zone) {
   g.addColorStop(1, zone.theme === 'barrow' ? 'rgba(4,8,16,0.82)' : 'rgba(6,10,18,0.66)');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
-  // kall färgton
+  // cold colour cast
   ctx.save();
   ctx.globalCompositeOperation = 'multiply';
   ctx.fillStyle = zone.theme === 'barrow' ? 'rgba(150,170,210,1)' : 'rgba(186,200,224,1)';
@@ -1205,21 +1207,21 @@ function drawVignette(ctx, W, H, zone) {
 }
 
 /**
- * Minimap med fog of war.
+ * Minimap with fog of war.
  *
- * Ritas i skärmens faktiska upplösning (annars blir den suddig på en
- * retina-panel) och med tre tydligt skilda toner: utforskad mark, dimma, och
- * utanför zonen. Ordningen spelar roll — allt ritas först, sedan målas det du
- * inte besökt över. Fienderna ritas *efter* dimman men bara nära dig: kartan
- * minns terräng, inte var monstren står.
+ * Drawn at the screen's actual resolution (otherwise it goes blurry on a
+ * retina panel) and with three clearly separated tones: explored ground, fog, and
+ * outside the zone. Order matters — everything is drawn first, then what you
+ * have not visited is painted over. Enemies are drawn *after* the fog but only
+ * near you: the map remembers terrain, not where the monsters stand.
  * @param {CanvasRenderingContext2D} ctx @param {any} game
  */
 export function renderMinimap(ctx, game) {
   const canvas = ctx.canvas;
-  // Logisk storlek är en konstant, aldrig något vi läser ur elementet.
-  // Att läsa clientWidth och skriva tillbaka den i width-attributet är en
-  // återkoppling: attributet är även layoutstorlek när CSS inte säger annat,
-  // så kartan fördubblades varje bildruta tills den täckte hela skärmen.
+  // The logical size is a constant, never something we read out of the element.
+  // Reading clientWidth and writing it back into the width attribute is a
+  // feedback loop: the attribute is also the layout size unless CSS says
+  // otherwise, so the map doubled every frame until it covered the screen.
   const S = MINIMAP_SIZE;
   const dpr = Math.min(devicePixelRatio || 1, 2);
   if (canvas.width !== Math.round(S * dpr)) {
@@ -1234,7 +1236,7 @@ export function renderMinimap(ctx, game) {
   const wy = (/** @type {number} */ y) => offY + y * sc;
 
   ctx.clearRect(0, 0, S, S);
-  ctx.fillStyle = '#05080e';           // utanför zonen
+  ctx.fillStyle = '#05080e';           // outside the zone
   ctx.fillRect(0, 0, S, S);
   ctx.fillStyle = '#243448';           // utforskad mark
   ctx.fillRect(offX, offY, zone.w * sc, zone.h * sc);
@@ -1272,7 +1274,7 @@ export function renderMinimap(ctx, game) {
     ctx.fillRect(wx(zone.waypoint.x) - 2.5, wy(zone.waypoint.y) - 2.5, 5, 5);
   }
 
-  // ---- dimman: måla över det du inte sett ---------------------------------
+  // ---- the fog: paint over what you have not seen -------------------------
   if (zone.fog) {
     const cw = FOG_CELL * sc;
     ctx.fillStyle = '#0a0f18';
@@ -1282,7 +1284,7 @@ export function renderMinimap(ctx, game) {
         const hidden = gx < zone.fogW && zone.fog[gy * zone.fogW + gx] === 0;
         if (hidden) { if (run < 0) run = gx; }
         else if (run >= 0) {
-          // Hela sjok i taget i stället för ruta för ruta.
+          // Whole runs at a time instead of cell by cell.
           ctx.fillRect(wx(run * FOG_CELL), wy(gy * FOG_CELL), (gx - run) * cw + 0.6, cw + 0.6);
           run = -1;
         }
@@ -1290,7 +1292,7 @@ export function renderMinimap(ctx, game) {
     }
   }
 
-  // ---- fiender: bara de du rimligen kan uppfatta just nu ------------------
+  // ---- enemies: only those you could plausibly perceive right now ---------
   const px = game.player.pos.x, py = game.player.pos.y;
   for (const m of game.monsters) {
     if (m.dead) continue;
@@ -1299,7 +1301,7 @@ export function renderMinimap(ctx, game) {
       m.isBoss ? 4 : m.elite ? 3 : 1.8);
   }
 
-  // ---- du själv, med blickriktning ---------------------------------------
+  // ---- yourself, with facing ---------------------------------------------
   ctx.save();
   ctx.translate(wx(px), wy(py));
   ctx.rotate(game.player.facing);

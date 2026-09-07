@@ -2,39 +2,36 @@
 import { clamp } from '../core/math.js';
 
 /**
- * `w`/`h` är synfältet i *världsenheter*. Zoomen sätts i renderarens
- * grundtransform, så all världslogik kan räkna i världskoordinater rakt av.
- */
-/**
- * Låst kameravinkel, som i Diablo 2: ortografisk projektion utan
- * avståndsförminskning, men markplanet är hoptryckt i höjdled så att det lutar
- * bort från betraktaren. Allt som har höjd reser sig ur den hoptryckta marken i
- * *oförminskade* pixlar — det är den skillnaden som gör att en figur ser ut att
- * stå upp i stället för att ligga platt.
+ * Locked camera angle, as in Diablo 2: orthographic projection with no
+ * perspective foreshortening, but the ground plane is squashed vertically so it
+ * tilts away from the viewer. Everything with height rises out of the squashed
+ * ground in *unsquashed* pixels — that difference is what makes a figure look
+ * like it is standing up rather than lying flat.
  *
- * 0,5 är D2:s rutnätsförhållande. Vi kör något mindre hoptryckt eftersom vår
- * värld inte är vriden 45° och därför tål mindre.
+ * 0.5 is D2's grid ratio. We use slightly less squash because our world is not
+ * rotated 45° and therefore tolerates less.
  */
 export const PROJ = 0.58;
 
-/** `w`/`h` är synfältet i världsenheter; `h` räknar in hoptryckningen. */
+/** `w`/`h` is the view in world units; `h` accounts for the squash. Zoom is set
+ *  in the renderer's base transform, so all world logic works in world units. */
 export const camera = { x: 0, y: 0, w: 0, h: 0, zoom: 1.7 };
 
-/** Världspunkt → skärmpunkt inom kamerans transform. @param {number} y */
+/** World point → screen point inside the camera transform. @param {number} y */
 export const projY = (y) => y * PROJ;
 
 /**
- * Kameran följer spelaren men lutar en bit mot muspekaren, så att man ser
- * lite mer åt det håll man siktar.
+ * The camera follows the player but leans a little towards the mouse, so you
+ * see slightly more in the direction you are aiming.
  * @param {any} game @param {number} dt
  */
 export function updateCamera(game, dt) {
   const p = game.player;
   const mx = game.aim.x, my = game.aim.y;
-  // OBS: sikteslägets världsposition beror på kameran, så det här är en
-  // återkopplad loop. Förstärkningen (<1) gör den stabil, men den slutliga
-  // förskjutningen blir k/(1-k) gånger musens avstånd från mitten — därför
-  // hålls både faktorn och taken låga.
+  // NOTE: the aim's world position depends on the camera, so this is a feedback
+  // loop. The gain (<1) keeps it stable, but the final offset ends up k/(1-k)
+  // times the mouse's distance from the centre — which is why both the factor
+  // and the caps are kept low.
   const leadX = clamp((mx - p.pos.x) * 0.15, -100, 100);
   const leadY = clamp((my - p.pos.y) * 0.15, -80 / PROJ, 80 / PROJ);
 
@@ -44,7 +41,7 @@ export function updateCamera(game, dt) {
   camera.x += (tx - camera.x) * k;
   camera.y += (ty - camera.y) * k;
 
-  // håll kameran innanför zonen när zonen är större än skärmen
+  // keep the camera inside the zone when the zone is larger than the screen
   camera.x = game.zone.w > camera.w ? clamp(camera.x, 0, game.zone.w - camera.w) : (game.zone.w - camera.w) / 2;
   camera.y = game.zone.h > camera.h ? clamp(camera.y, 0, game.zone.h - camera.h) : (game.zone.h - camera.h) / 2;
 }

@@ -2,9 +2,9 @@
 import { rng } from '../core/rng.js';
 
 /**
- * Effektlager: partiklar, flytande siffror och avtryck i snön.
- * Allt här är rent kosmetiskt men bär större delen av "känslan" i striden —
- * feedback på träffar är det som gör att slag känns som slag.
+ * Effects layer: particles, floating numbers and marks in the snow.
+ * Everything here is purely cosmetic but carries most of the "feel" of combat —
+ * feedback on hits is what makes a blow land like a blow.
  */
 
 /** @typedef {{x:number,y:number,vx:number,vy:number,life:number,max:number,r:number,color:string,grav:number,fade:number,shape:string}} Particle */

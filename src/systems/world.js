@@ -3,12 +3,12 @@ import { Rng } from '../core/rng.js';
 import { clamp, smoothNoise, wrapAngle } from '../core/math.js';
 
 /**
- * Procedurell zongenerering.
+ * Procedural zone generation.
  *
- * Zoner regenereras varje gång du går in i dem — precis som Diablo 2:s
- * vildmarker. Det gör att kartan aldrig blir "löst", men reglerna
- * (täthet, temavariation, var utgångarna sitter) är handdesignade så att
- * resultatet håller sig läsbart.
+ * Zones are regenerated every time you enter them — exactly like Diablo 2's
+ * wildernesses. That means the map is never "solved", but the rules (density,
+ * theme variation, where the exits sit) are hand-designed so the result stays
+ * readable.
  */
 
 /** @typedef {{kind:'circle', x:number, y:number, r:number, type:string, s:number}} CircleObstacle */
@@ -37,8 +37,8 @@ import { clamp, smoothNoise, wrapAngle } from '../core/math.js';
  * @property {{x:number,y:number,r:number}|null} waypoint
  * @property {{x:number,y:number}} [portalPad] Var stadsportalen dyker upp i byn
  * @property {{x:number,y:number,r:number,opened:boolean,tier:number}[]} chests
- * @property {Obstacle[]} [_walls] Cache: hinder som blockerar sikt
- * @property {Uint8Array} [fog] Utforskningsrutnät (1 = sedd)
+ * @property {Obstacle[]} [_walls] Cache: obstacles that block line of sight
+ * @property {Uint8Array} [fog] Exploration grid (1 = seen)
  * @property {number} [fogW]
  * @property {number} [fogH]
  * @property {number} [bossAt]
@@ -53,12 +53,12 @@ export const ZONE_DEFS = [
 ];
 
 /* ------------------------------------------------------------------ */
-/* Stigar                                                              */
+/* Paths                                                               */
 /* ------------------------------------------------------------------ */
 
 /**
- * Bygger en stig som en polylinje med några krökar. Stigen är zonens ryggrad:
- * den ger spelaren en riktning att följa utan att kartan behöver vara en korridor.
+ * Builds a path as a polyline with a few bends. The path is the zone's spine:
+ * it gives the player a direction to follow without the map becoming a corridor.
  * @param {{x:number,y:number}} from @param {{x:number,y:number}} to
  * @param {Rng} r @param {number} bends @param {number} jitter
  */
@@ -66,7 +66,7 @@ function makeRoad(from, to, r, bends, jitter) {
   const pts = [{ ...from }];
   const dx = to.x - from.x, dy = to.y - from.y;
   const len = Math.hypot(dx, dy) || 1;
-  const nx = -dy / len, ny = dx / len; // normal, för sidoförskjutning
+  const nx = -dy / len, ny = dx / len; // normal, for the sideways offset
   for (let i = 1; i <= bends; i++) {
     const t = i / (bends + 1);
     const off = r.range(-jitter, jitter);
@@ -77,7 +77,7 @@ function makeRoad(from, to, r, bends, jitter) {
 }
 
 /**
- * Kortaste avståndet från en punkt till en polylinje.
+ * Shortest distance from a point to a polyline.
  * @param {number} px @param {number} py @param {{x:number,y:number}[]} pts
  */
 export function distToRoad(px, py, pts) {
@@ -93,7 +93,7 @@ export function distToRoad(px, py, pts) {
   return best;
 }
 
-/** Punkt längs en polylinje vid parametern t (0..1 av total längd). */
+/** Point along a polyline at parameter t (0..1 of the total length). */
 function pointAlong(pts, t) {
   const segs = [];
   let total = 0;
@@ -131,14 +131,14 @@ export function generateZone(index, seed) {
 /* Fog of war                                                          */
 /* ------------------------------------------------------------------ */
 
-/** Rutstorlek för utforskningsrutnätet, i världsenheter. */
+/** Cell size of the exploration grid, in world units. */
 export const FOG_CELL = 40;
-/** Hur långt omkring sig spelaren avtäcker kartan. */
+/** How far around themselves the player uncovers the map. */
 export const FOG_RADIUS = 430;
 
 /**
- * Byn är känd från början — den är hem. Vildmarken börjar svart och avtäcks
- * medan man går, som D2:s automap.
+ * The village is known from the start — it is home. The wilderness starts black
+ * and is uncovered as you walk, like D2's automap.
  * @param {Zone} zone
  */
 export function initFog(zone) {
@@ -149,8 +149,8 @@ export function initFog(zone) {
 }
 
 /**
- * Avtäcker rutorna kring en punkt. Anropas varje bildruta; den kvadrerade
- * jämförelsen håller det billigt nog att inte märkas.
+ * Uncovers the cells around a point. Called every frame; the squared comparison
+ * keeps it cheap enough to go unnoticed.
  * @param {Zone} zone @param {number} x @param {number} y @param {number} [radius]
  */
 export function revealFog(zone, x, y, radius = FOG_RADIUS) {
@@ -186,8 +186,8 @@ function village(index, seed, d) {
   /** @type {Zone['decor']} */
   const decor = [];
 
-  // Sex stugor i en ring kring härden. Handbyggd regel, slumpad utfyllnad —
-  // byn ska kännas som samma plats varje gång du kommer tillbaka.
+  // Six cottages in a ring around the hearth. Hand-built rule, random filling —
+  // the village should feel like the same place every time you come back.
   const houses = 6;
   for (let i = 0; i < houses; i++) {
     const a = (i / houses) * Math.PI * 2 + 0.35;
@@ -202,13 +202,13 @@ function village(index, seed, d) {
   const fenceR = 470;
   for (let i = 0; i < 46; i++) {
     const a = (i / 46) * Math.PI * 2;
-    if (a > 4.4 && a < 5.1) continue; // öppning mot norr/utgången
+    if (a > 4.4 && a < 5.1) continue; // opening to the north, towards the exit
     obstacles.push({
       kind: 'circle', x: cx + Math.cos(a) * fenceR, y: cy + Math.sin(a) * fenceR,
       r: 13, type: 'post', s: r.next(),
     });
   }
-  // Utanför palissaden: gles skog, bara dekor
+  // Outside the palisade: sparse forest, decoration only
   for (let i = 0; i < 90; i++) {
     const a = r.range(0, Math.PI * 2), rad = r.range(fenceR + 60, Math.min(d.w, d.h) / 2 + 120);
     const x = cx + Math.cos(a) * rad, y = cy + Math.sin(a) * rad;
@@ -218,35 +218,36 @@ function village(index, seed, d) {
   for (let i = 0; i < 130; i++) {
     decor.push({ x: r.range(0, d.w), y: r.range(0, d.h), r: r.range(3, 11), s: r.next(), type: 'drift' });
   }
-  // Härden i mitten
+  // The hearth at the centre
   obstacles.push({ kind: 'circle', x: cx, y: cy, r: 30, type: 'hearth', s: 0 });
 
   return {
     index, name: d.name, theme: d.theme, level: d.level, seed, w: d.w, h: d.h, isTown: true,
     entry: { x: cx, y: cy + 110 },
     obstacles, decor,
-    // Porten norrut är en tröskel: gå ut genom palissaden så är du i vildmarken.
+    // The north gate is a threshold: walk out through the palisade and you are in the wild.
     exits: [{ x: cx - 20, y: cy - fenceR - 34, r: 340, to: 1, label: 'Bleka hedarna',
       edge: /** @type {'n'} */ ('n'), trigger: cy - fenceR - 18 }],
     shrines: [],
     anchors: [],
-    // Stigen svänger förbi härden i stället för rakt igenom den. Den gick
-    // tidigare tvärs över elden — det såg fel ut, och gav dessutom en vägg
-    // mitt i den naturliga vägen ut ur byn.
+    // The path curves past the hearth instead of straight through it. It used
+    // to run across the fire — which looked wrong, and also put a wall in the
+    // middle of the natural way out of the village.
     roads: [{ pts: [{ x: cx + 30, y: cy + 120 }, { x: cx + 92, y: cy + 20 },
       { x: cx + 112, y: cy - 250 }, { x: cx + 70, y: cy - 420 },
       { x: cx - 20, y: cy - fenceR - 30 }], width: 54, main: true }],
     poi: null,
     waypoint: { x: cx + 60, y: cy + 120, r: 34 },
-    // Portalen får en egen plats på andra sidan härden. Låg den vid vägstenen
-    // hamnade de två resesätten ovanpå varandra och [E] blev en gissningslek.
+    // The portal gets its own spot on the far side of the hearth. Next to the
+    // waypoint the two ways to travel sat on top of each other and [E] became a
+    // guessing game.
     portalPad: { x: cx - 175, y: cy + 135 },
     chests: [],
     npcs: [
       { x: cx - 130, y: cy + 60, r: 22, id: 'gerd', name: 'Gerd Askhand',
-        line: 'Handla, sälj, eller lämna mig i fred. Snön bryr sig inte.' },
+        line: 'Buy, sell, or leave me be. The snow does not care.' },
       { x: cx + 140, y: cy - 40, r: 22, id: 'olav', name: 'Gamle Olav',
-        line: 'Hravn ligger inte still i graven. Någon måste gå dit.' },
+        line: 'Hravn does not lie still in his grave. Someone has to go there.' },
     ],
   };
 }
@@ -265,20 +266,21 @@ function wilderness(index, seed, d) {
 
   const THEME = {
     moor:   { treeClusters: 16, clusterSize: [3, 9],  rocks: 55, ponds: 5, elites: 2, density: 0.55,
-              packs: 9,  pack: [4, 7], poi: { kind: 'quarry', name: 'Stenbrottet' } },
+              packs: 9,  pack: [4, 7], poi: { kind: 'quarry', name: 'The Quarry' } },
     pass:   { treeClusters: 26, clusterSize: [5, 14], rocks: 70, ponds: 3, elites: 3, density: 0.78,
-              packs: 11, pack: [7, 11], poi: { kind: 'camp',   name: 'Det övergivna lägret' } },
+              packs: 11, pack: [7, 11], poi: { kind: 'camp',   name: 'The Abandoned Camp' } },
     barrow: { treeClusters: 10, clusterSize: [2, 6],  rocks: 90, ponds: 8, elites: 4, density: 0.62,
-              packs: 10, pack: [6, 10], poi: { kind: 'offering', name: 'Offerplatsen' } },
+              packs: 10, pack: [6, 10], poi: { kind: 'offering', name: 'The Offering Ground' } },
   };
   const params = THEME[/** @type {'moor'|'pass'|'barrow'} */ (d.theme)];
 
   // ---- stigar -------------------------------------------------------------
-  // Huvudstigen binder ihop in- och utgången. Sidostigen leder till zonens
-  // avstickare — en plats man väljer att gå till, inte snubblar över.
+  // The main path ties the entrance to the exit. The side path leads to the
+  // zone's detour — a place you choose to go to, not one you stumble over.
   const main = makeRoad(entry, exitPt, r, 3, Math.min(d.w, d.h) * 0.16);
-  // Stigen fortsätter ut ur kartan i båda ändar. Det är den som säger var
-  // gränsen går — man ser vart man är på väg långt innan man är framme.
+  // The path continues out of the map at both ends. That is what tells you
+  // where the border runs — you see where you are heading long before you get
+  // there.
   main.unshift({ x: entry.x, y: d.h - 26 });
   main.push({ x: exitPt.x, y: 26 });
   const junction = pointAlong(main, r.range(0.32, 0.6));
@@ -300,11 +302,11 @@ function wilderness(index, seed, d) {
     Math.hypot(x - poiPos.x, y - poiPos.y) < 210 + pad;
   const inBounds = (/** @type {number} */ x, /** @type {number} */ y) =>
     x > 90 && y > 90 && x < d.w - 90 && y < d.h - 90;
-  /** Fritt från stig, avstickare och entré? */
+  /** Clear of the path, the detour and the entrance? */
   const free = (/** @type {number} */ x, /** @type {number} */ y) =>
     inBounds(x, y) && !nearRoad(x, y, 26) && !inPoi(x, y, -40);
 
-  // ---- terräng ------------------------------------------------------------
+  // ---- terrain ------------------------------------------------------------
   for (let c = 0; c < params.treeClusters; c++) {
     const cx = r.range(120, d.w - 120), cy = r.range(120, d.h - 120);
     if (smoothNoise(cx / 400, cy / 400, seed) < 1 - params.density) continue;
@@ -340,13 +342,13 @@ function wilderness(index, seed, d) {
   }
 
   // ---- avstickaren --------------------------------------------------------
-  // Porten läggs där sidostigen faktiskt kommer in — inte i riktning mot
-  // korsningen. Stigen kröker sig, så de två riktningarna kan skilja rejält,
-  // och det var precis så stenbrottets ring hann sluta sig runt kistan.
+  // The gate is placed where the side path actually arrives — not in the
+  // direction of the junction. The path bends, so the two directions can differ
+  // sharply, and that is exactly how the quarry's ring closed around the chest.
   const approach = branchRoad[branchRoad.length - 2] ?? { x: junction.x, y: junction.y };
   const gateDir = Math.atan2(approach.y - poiPos.y, approach.x - poiPos.x);
   buildPoi(obstacles, decor, poiPos, params.poi.kind, r, gateDir);
-  // Och som skyddsnät: inget hinder får ligga kvar ovanpå sidostigen.
+  // And as a safety net: no obstacle may remain on top of the side path.
   for (let i = obstacles.length - 1; i >= 0; i--) {
     const o = obstacles[i];
     if (o.kind !== 'circle') continue;
@@ -356,12 +358,12 @@ function wilderness(index, seed, d) {
   shrines.push({ x: poiPos.x + 90, y: poiPos.y + 60, r: 30, kind: r.pick(['dmg', 'armor', 'speed', 'xp']), used: false });
   anchors.push({ x: poiPos.x, y: poiPos.y + 10, n: params.pack[1] + 2, elite: true });
 
-  // ---- vägsten ------------------------------------------------------------
-  // Stigen börjar numera i kartkanten, så 6 % längs den hade lagt vägstenen
-  // *utanför* zongränsen. Den ska stå strax innanför där man kommer in.
+  // ---- waypoint -----------------------------------------------------------
+  // The path now starts at the map edge, so 6% along it would have put the
+  // waypoint *outside* the zone border. It belongs just inside where you enter.
   const wpAt = pointAlong(main, 0.2);
   const waypoint = { x: wpAt.x + wpAt.nx * 70, y: wpAt.y + wpAt.ny * 70, r: 34 };
-  // Håll marken kring vägstenen fri — den måste alltid gå att kliva fram till.
+  // Keep the ground around the waypoint clear — you must always be able to reach it.
   for (let i = obstacles.length - 1; i >= 0; i--) {
     const o = obstacles[i];
     const ox = o.kind === 'circle' ? o.x : o.x + o.w / 2;
@@ -369,9 +371,9 @@ function wilderness(index, seed, d) {
     if (Math.hypot(ox - waypoint.x, oy - waypoint.y) < 96) obstacles.splice(i, 1);
   }
 
-  // ---- monstergrupper längs stigen ----------------------------------------
-  // Grupperna sitter tätt och ligger nära vägen, så man möter dem på färden
-  // i stället för att behöva kamma kartan.
+  // ---- monster groups along the path --------------------------------------
+  // The groups sit tightly and close to the road, so you meet them on the way
+  // instead of having to comb the map.
   let placed = 0, guard = 0;
   while (placed < params.packs && guard++ < 900) {
     const t = r.range(0.14, 0.96);
@@ -384,7 +386,7 @@ function wilderness(index, seed, d) {
     anchors.push({ x, y, n: r.int(params.pack[0], params.pack[1]), elite: false });
     placed++;
   }
-  // ett par grupper vid avstickarstigen, så omvägen kostar något
+  // a couple of groups along the side path, so the detour costs something
   for (let i = 0; i < 2; i++) {
     const at = pointAlong(branchRoad, 0.35 + i * 0.3);
     anchors.push({ x: at.x + at.nx * r.range(-90, 90), y: at.y + at.ny * r.range(-90, 90),
@@ -400,9 +402,9 @@ function wilderness(index, seed, d) {
       r: 30, kind: r.pick(['dmg', 'armor', 'speed', 'heal', 'xp']), used: false });
   }
 
-  // Utgångarna ligger i kartkanten och har ingen knapp: går man ut ur bilden
-  // där stigen slutar så byter man zon. `trigger` är linjen som räknas som
-  // "ute", `r` hur bred öppningen är åt sidorna.
+  // The exits sit at the map edge and have no button: walk out of the picture
+  // where the path ends and you change zone. `trigger` is the line that counts
+  // as "outside", `r` how wide the opening is sideways.
   /** @type {Zone['exits']} */
   const exits = [
     { x: entry.x, y: d.h - 26, r: 190, to: index - 1, label: ZONE_DEFS[index - 1].name,
@@ -414,8 +416,8 @@ function wilderness(index, seed, d) {
       edge: 'n', trigger: 260 });
   }
 
-  // Gränsen ska synas: en öppning i trädlinjen där stigen lämnar kartan.
-  // Utan den här rensningen växer granarna igen grinden och man ser den inte.
+  // The border must be visible: a gap in the treeline where the path leaves the
+  // map. Without this clearing the pines grow over the gate and you never see it.
   const gateClear = (/** @type {number} */ x, /** @type {number} */ y) =>
     exits.some(e => Math.abs(x - e.x) < 170
       && (e.edge === 'n' ? y < e.trigger + 90 : y > e.trigger - 90));
@@ -435,11 +437,11 @@ function wilderness(index, seed, d) {
   };
 
   if (isLast) {
-    // Bossarenan ligger vid stigens slut och är rensad från hinder.
+    // The boss arena sits at the end of the path and is cleared of obstacles.
     const bx = exitPt.x, by = 340;
     zone.bossAt = 1;
     zone.bossPos = { x: bx, y: by };
-    main.length -= 1;                       // ingen väg ut norrut i sista zonen
+    main.length -= 1;                       // no way out north in the last zone
     main[main.length - 1] = { x: bx, y: by + 240 };
     zone.obstacles = obstacles.filter(o => {
       const ox = o.kind === 'circle' ? o.x : o.x + o.w / 2;
@@ -448,10 +450,10 @@ function wilderness(index, seed, d) {
     });
     for (let i = 0; i < 20; i++) {
       const a = (i / 20) * Math.PI * 2;
-      if (Math.abs(a - Math.PI / 2) < 1.05) continue; // bred öppning söderut, dit stigen leder
+      if (Math.abs(a - Math.PI / 2) < 1.05) continue; // wide opening south, where the path leads
       zone.obstacles.push({ kind: 'circle', x: bx + Math.cos(a) * 330, y: by + Math.sin(a) * 330, r: 24, type: 'standingstone', s: r.next() });
     }
-    // Ingen stenring får stå i stigen fram till arenan.
+    // No standing stone may block the path up to the arena.
     zone.obstacles = zone.obstacles.filter(o => o.type !== 'standingstone'
       || distToRoad(o.x, /** @type {any} */ (o).y, main) > 46 + (o.kind === 'circle' ? o.r : 0));
     zone.anchors = zone.anchors.filter(a => Math.hypot(a.x - bx, a.y - by) > 430);
@@ -461,14 +463,14 @@ function wilderness(index, seed, d) {
 }
 
 /**
- * Avstickarens innehåll. Varje tema har sin egen plats med egen siluett, så
- * att omvägen känns som *en plats* och inte bara som fler monster.
+ * The detour's contents. Every theme has its own place with its own silhouette,
+ * so the detour feels like *a place* and not just more monsters.
  * @param {Obstacle[]} obstacles @param {Zone['decor']} decor
  * @param {{x:number,y:number}} c @param {string} kind @param {Rng} r
- * @param {number} gateDir Riktning (från mitten) där muren ska ha en öppning
+ * @param {number} gateDir Direction (from the centre) where the wall has a gap
  */
 function buildPoi(obstacles, decor, c, kind, r, gateDir) {
-  /** Öppning mot infarten plus en nödutgång mitt emot — aldrig en sluten ring. */
+  /** A gap towards the entrance plus an escape opposite — never a closed ring. */
   const isGate = (/** @type {number} */ a) =>
     Math.abs(wrapAngle(a - gateDir)) < 0.55 || Math.abs(wrapAngle(a - gateDir - Math.PI)) < 0.42;
   // rensa marken i mitten
@@ -518,16 +520,16 @@ function buildPoi(obstacles, decor, c, kind, r, gateDir) {
 }
 
 /**
- * Vilka hinder räknas som *mur*? Bara de stora: block, stenar och byggnader.
- * Träd och stolpar ska inte stoppa vare sig svep eller pilar — det skulle
- * kännas godtyckligt i strid.
+ * Which obstacles count as *wall*? Only the big ones: blocks, rocks and
+ * buildings. Trees and posts should stop neither swings nor arrows — that would
+ * feel arbitrary in a fight.
  * @param {Obstacle} o
  */
 export function isWall(o) {
   return o.kind === 'rect' || (o.type !== 'pine' && o.type !== 'post' && o.type !== 'drift' && o.r >= 22);
 }
 
-/** Cachar murarna per zon; listan ändras aldrig efter generering. */
+/** Caches the walls per zone; the list never changes after generation. */
 /** @param {Zone} zone */
 export function wallsOf(zone) {
   if (!zone._walls) zone._walls = zone.obstacles.filter(isWall);
@@ -535,8 +537,8 @@ export function wallsOf(zone) {
 }
 
 /**
- * Fri siktlinje mellan två punkter? Används för att hindra att man slår
- * (och skjuter) rakt igenom en klippvägg.
+ * Clear line of sight between two points? Used to stop you striking (and
+ * shooting) straight through a rock face.
  * @param {Zone} zone @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1
  */
 export function lineBlocked(zone, x0, y0, x1, y1) {
@@ -557,8 +559,8 @@ export function lineBlocked(zone, x0, y0, x1, y1) {
 }
 
 /**
- * Kollisionslösning: putta en cirkel ut ur alla hinder den överlappar.
- * Enkel men stabil — vi itererar två gånger så hörn inte fastnar.
+ * Collision resolution: push a circle out of every obstacle it overlaps.
+ * Simple but stable — we iterate twice so corners do not snag.
  * @param {Zone} zone @param {{x:number,y:number}} pos @param {number} radius
  */
 export function resolveCollision(zone, pos, radius) {
@@ -582,7 +584,7 @@ export function resolveCollision(zone, pos, radius) {
         if (d < radius) {
           if (d > 0.0001) { pos.x = nx + (dx / d) * radius; pos.y = ny + (dy / d) * radius; }
           else {
-            // Mitt inne i rektangeln: skjut ut åt närmaste kant.
+            // Dead inside the rectangle: push out to the nearest edge.
             const left = pos.x - o.x, right = o.x + o.w - pos.x;
             const top = pos.y - o.y, bottom = o.y + o.h - pos.y;
             const m = Math.min(left, right, top, bottom);
@@ -599,7 +601,7 @@ export function resolveCollision(zone, pos, radius) {
   pos.y = clamp(pos.y, radius + 30, zone.h - radius - 30);
 }
 
-/** Fri sikt-test mot hinder. @param {Zone} zone @param {number} x @param {number} y */
+/** Line-of-sight test against obstacles. @param {Zone} zone @param {number} x @param {number} y */
 export function blocked(zone, x, y) {
   for (const o of zone.obstacles) {
     if (o.type === 'drift' || o.type === 'post') continue;

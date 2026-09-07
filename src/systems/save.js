@@ -9,18 +9,18 @@ const LEGACY_KEY = 'frosthem.save.v1';
 export const SAVE_KEY = 'frosthem.saves.v2';
 
 /**
- * Sparningen är en *lista* av karaktärer, inte en enda plats. Varje vandrare
- * har ett eget id, så man kan ha flera på gång och välja i huvudmenyn.
+ * The save is a *list* of characters, not a single slot. Every wanderer has
+ * their own id, so you can have several on the go and pick one in the menu.
  * @typedef {Object} SaveRecord
  * @property {string} id
- * @property {number} t   Senast sparad (ms)
+ * @property {number} t   Last saved (ms)
  * @property {string} name
  * @property {number} level
  */
 
 /**
- * Föremål serialiseras via bastypens id — bas-objekten är delade referenser och
- * ska aldrig hamna i JSON.
+ * Items are serialised through the base type's id — base objects are shared
+ * references and must never end up in the JSON.
  * @param {Item|null} it
  */
 function packItem(it) {
@@ -35,14 +35,14 @@ function packItem(it) {
 function unpackItem(o) {
   if (!o) return null;
   const base = BASES.find(b => b.id === o.b);
-  if (!base) return null; // bastypen finns inte längre — hoppa över föremålet
+  if (!base) return null; // the base type no longer exists — skip the item
   return {
     uid: Math.floor(Math.random() * 1e9), base, rarity: o.r, ilvl: o.i, name: o.n,
     affixes: o.a ?? [], mods: o.m ?? {}, flavor: o.f, uniqueId: o.u,
   };
 }
 
-/** @returns {any} hela sparfilen, alltid med en chars-array */
+/** @returns {any} the whole save file, always with a chars array */
 function readAll() {
   /** @type {{v:number, chars:any[]}} */
   let data = { v: 2, chars: [] };
@@ -52,7 +52,7 @@ function readAll() {
       const d = JSON.parse(raw);
       if (d && Array.isArray(d.chars)) data = d;
     }
-    // Enstaka karaktär från det gamla formatet flyttas in i listan en gång.
+    // A single character from the old format is migrated into the list once.
     const legacy = localStorage.getItem(LEGACY_KEY);
     if (legacy) {
       const old = JSON.parse(legacy);
@@ -63,7 +63,7 @@ function readAll() {
       localStorage.removeItem(LEGACY_KEY);
       writeAll(data);
     }
-  } catch { /* trasig eller otillgänglig lagring — börja om tomt */ }
+  } catch { /* broken or unavailable storage — start over empty */ }
   return data;
 }
 
@@ -73,7 +73,7 @@ function writeAll(data) {
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     return true;
   } catch (e) {
-    console.warn('Kunde inte spara:', e);
+    console.warn('Could not save:', e);
     return false;
   }
 }
@@ -82,7 +82,7 @@ function newId() {
   return 'c' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
 }
 
-/** Alla sparade karaktärer, senast spelad först. @returns {any[]} */
+/** Every saved character, most recently played first. @returns {any[]} */
 export function listSaves() {
   return readAll().chars.slice().sort((a, b) => (b.t ?? 0) - (a.t ?? 0));
 }
@@ -100,7 +100,7 @@ export function deleteSave(id) {
 }
 
 /**
- * Sparar den aktiva karaktären. `game.charId` sätts första gången.
+ * Saves the active character. `game.charId` is set the first time.
  * @param {any} game
  */
 export function saveGame(game) {
@@ -130,8 +130,8 @@ export function saveGame(game) {
 }
 
 /**
- * Bygger en spelare ur sparad data. Okända fält faller tillbaka på nyskapade
- * värden, så ett gammalt sparläge kan aldrig producera en trasig karaktär.
+ * Builds a player from saved data. Unknown fields fall back to freshly created
+ * values, so an old save can never produce a broken character.
  * @param {any} d
  */
 export function playerFromSave(d) {
@@ -161,14 +161,14 @@ export function playerFromSave(d) {
   return p;
 }
 
-/** Kort sammanfattning till karaktärslistan. @param {any} d */
+/** Short summary for the character list. @param {any} d */
 export function describeSave(d) {
   const when = new Date(d.t ?? Date.now());
   const now = Date.now();
   const mins = Math.round((now - when.getTime()) / 60000);
-  const rel = mins < 2 ? 'nyss'
-    : mins < 60 ? `för ${mins} min sedan`
-    : mins < 60 * 24 ? `för ${Math.round(mins / 60)} h sedan`
-    : when.toLocaleDateString('sv-SE');
+  const rel = mins < 2 ? 'just now'
+    : mins < 60 ? `${mins} min ago`
+    : mins < 60 * 24 ? `${Math.round(mins / 60)} h ago`
+    : when.toLocaleDateString('en-GB');
   return { rel, kills: d.kills ?? 0, gold: d.gold ?? 0, deaths: d.deaths ?? 0 };
 }

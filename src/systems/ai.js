@@ -9,7 +9,7 @@ import { updateBoss } from './boss.js';
 /** @typedef {import('../entities/monster.js').Monster} Monster */
 
 const AGGRO = 470;
-const AGGRO_FAR = 900; // när de väl blivit arga följer de längre
+const AGGRO_FAR = 900; // once angered they follow much further
 
 /**
  * @param {any} game @param {number} dt
@@ -58,14 +58,14 @@ export function updateMonsters(game, dt) {
       }
       if (m.dead) continue;
     }
-    // Elitens frostaura mot spelaren
+    // The elite's frost aura on the player
     if (m.auraSlow && dist < 190) game.playerSlow = Math.max(game.playerSlow, m.auraSlow);
 
     const frozen = m.freezeT > 0 || m.stunT > 0;
     const speedMult = (1 - m.slowAmt) * (frozen ? 0 : 1);
 
-    // Bossen kör sin egen loop och står utanför separationen — annars kunde
-    // livvakterna putta bort den från spelaren i all oändlighet.
+    // The boss runs its own loop and stands outside separation — otherwise the
+    // bodyguards could shove it away from the player forever.
     if (m.isBoss) {
       const b = updateBoss(game, m, dt);
       const bl = Math.hypot(b.mx, b.my);
@@ -79,7 +79,7 @@ export function updateMonsters(game, dt) {
       continue;
     }
 
-    // Sovande: står kvar och väntar. Väcks först av en träff.
+    // Dormant: stands and waits. Only a hit wakes it.
     if (m.dormant) { resolveCollision(zone, m.pos, m.radius); continue; }
 
     // ---- aggro ----------------------------------------------------------
@@ -97,13 +97,13 @@ export function updateMonsters(game, dt) {
 
     let mx = 0, my = 0;
     if (m.state === 'idle') {
-      // Vandra långsamt omkring — gör världen levande utan att dra uppmärksamhet
+      // Wander slowly — makes the world feel alive without drawing attention
       m.wanderT -= dt;
       if (m.wanderT <= 0) { m.wanderT = rng.range(1.5, 4); m.wanderDir = rng.range(0, Math.PI * 2); }
       mx = Math.cos(m.wanderDir) * 0.28; my = Math.sin(m.wanderDir) * 0.28;
     } else if (m.windup <= 0) {
       if (m.ai === 'ranged') {
-        // Håll avstånd: närma dig om för långt, backa om för nära
+        // Keep your distance: close in if too far, back off if too close
         const want = m.attackRange * 0.72;
         const k = dist < want * 0.6 ? -1 : dist > want ? 1 : 0;
         mx = (dx / dist) * k; my = (dy / dist) * k;
@@ -114,7 +114,7 @@ export function updateMonsters(game, dt) {
       } else {
         if (dist > m.attackRange + m.radius * 0.4) {
           mx = dx / dist; my = dy / dist;
-          // Charger: korta utfall som gör dem farliga i öppen terräng
+          // Charger: short lunges that make them dangerous in open ground
           if (m.ai === 'charger') {
             m.lungeCd -= dt;
             if (m.lungeT > 0) { m.lungeT -= dt; mx *= 2.5; my *= 2.5; }
@@ -127,9 +127,9 @@ export function updateMonsters(game, dt) {
       }
     }
 
-    // ---- separation: monster ska inte stapla på varandra ----------------
-    // Kraften taklistas: annars kan en tät flock trycka bort sina egna
-    // medlemmar från målet i stället för att omringa det.
+    // ---- separation: monsters should not stack on top of each other ------
+    // The force is capped: otherwise a dense pack can push its own members
+    // away from the target instead of surrounding it.
     let sx = 0, sy = 0;
     for (const o of game.monsters) {
       if (o === m || o.dead) continue;
@@ -188,7 +188,7 @@ function resolveMonsterAttack(game, m, dist) {
     if (healed > 0) { m.hp += healed; floatText(m.pos.x, m.pos.y - m.radius, `+${Math.round(healed)}`, '#7ce39a', 11); }
   }
   if (m.isBoss) {
-    // Bossen slår i en båge och träffar även bakåt-undanhoppare
+    // The boss strikes in an arc and catches those dodging backwards too
     game.novas.push({ x: m.pos.x, y: m.pos.y, t: 0, dur: 0.35, r: m.attackRange + 20, color: '#7fd4f0' });
   }
 }

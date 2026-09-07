@@ -57,23 +57,23 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
   animation:fade 5s forwards}
 @keyframes fade{0%{opacity:0;transform:translateX(-8px)}8%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
 #topright{position:fixed;top:14px;right:16px;z-index:10}
-/* Storleken måste stå i CSS. Utan den blir width-attributet också
-   layoutstorlek, och eftersom renderaren sätter attributet från clientWidth
-   fick vi en återkoppling som fördubblade kartan varje bildruta. */
+/* The size must live in CSS. Without it the width attribute is also the layout
+   size, and since the renderer sets that attribute from clientWidth we got a
+   feedback loop that doubled the map every frame. */
 #minimap-wrap{width:180px;height:180px;border:1px solid var(--border);border-radius:4px;
   overflow:hidden;background:rgba(6,10,17,.7);box-shadow:0 0 18px rgba(0,0,0,.6)}
 #minimap{display:block;width:180px;height:180px;opacity:.85}
-/* Var man är står alltid kvar under kartan — banderollen tonar bort, den här
-   gör det inte. */
+/* Where you are always stays under the map — the banner fades away, this does
+   not. */
 #zone-tag{margin-top:6px;text-align:right;pointer-events:none;line-height:1.35}
 #zone-name{display:block;font-size:12px;letter-spacing:.2em;text-transform:uppercase;
   color:#a9bcd4;text-shadow:0 1px 3px #000}
 #zone-lvl{display:block;font-size:10px;letter-spacing:.14em;color:var(--muted);
   font-family:var(--mono)}
 
-/* ---------- platsnamn vid ankomst ---------- */
-/* Ligger högt upp, utan ruta. Tonar in, står kvar en stund, tonar ut — och
-   fångar aldrig muspekaren. */
+/* ---------- place name on arrival ---------- */
+/* Sits high up, with no box. Fades in, holds a moment, fades out — and never
+   catches the mouse pointer. */
 #banner{position:fixed;top:13vh;left:0;right:0;z-index:24;text-align:center;
   pointer-events:none;opacity:0}
 #banner.show{animation:banner 4.2s ease-out forwards}
@@ -88,11 +88,11 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
   100%{opacity:0;transform:translateY(-6px)}
 }
 
-/* Mörkningen vid zonbyte. Täcker även HUD:en, så bytet blir ett helt klipp. */
+/* The darkening during a zone change. Covers the HUD too, so it reads as a cut. */
 #veil{position:fixed;inset:0;z-index:60;background:#05070d;pointer-events:none;opacity:0}
-/* Hjälptexten ligger i nedre vänstra hörnet, utanför både orbarna och
-   skillfältet. På smala fönster finns ingen sådan ficka — då göms den, och
-   F1 tvingar fram den igen. */
+/* The help text sits in the bottom-left corner, clear of both the orbs and the
+   skill bar. Narrow windows have no such pocket — there it is hidden, and
+   F1 forces it back. */
 #hint{position:fixed;bottom:14px;left:16px;z-index:9;pointer-events:none;
   display:grid;grid-template-columns:auto auto;gap:4px 12px;align-items:baseline;
   font-size:12px;line-height:1.5;color:#93a6c0;letter-spacing:.01em;transition:opacity .5s;
@@ -116,8 +116,8 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
 .panel .close{position:absolute;top:10px;right:12px;color:var(--muted);cursor:pointer;font-size:16px;line-height:1}
 .panel .close:hover{color:var(--ink)}
 
-/* Utrustningsdocka: platserna sitter där de sitter på en kropp, som i D2.
-   Hjälm överst, vapen till vänster, sköld till höger, stövlar nederst. */
+/* Equipment doll: the slots sit where they sit on a body, as in D2.
+   Helm on top, weapon to the left, shield to the right, boots at the bottom. */
 #equip-doll{position:relative;display:grid;gap:6px;margin-bottom:16px;
   grid-template-columns:1fr 1.15fr 1fr;
   grid-template-rows:auto auto auto auto auto}
@@ -143,8 +143,8 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
 .eq[data-slot="ring1"]  {grid-column:1;grid-row:5}
 .eq[data-slot="ring2"]  {grid-column:3;grid-row:5}
 
-/* Väska: tetris-rutnät. Bakgrundsrutor i ett lager, föremål i ett annat,
-   så ett tvåhandssvärd kan spänna över sex rutor utan att flytta något. */
+/* Bag: a tetris grid. Background cells in one layer, items in another, so a
+   two-handed sword can span six cells without moving anything. */
 #bag{position:relative;width:100%;aspect-ratio:10 / 6}
 .bag-grid{position:absolute;inset:0;display:grid;gap:3px;
   grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(6,1fr)}
@@ -168,8 +168,9 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
   border:1px solid var(--gold);color:var(--gold);border-radius:3px;cursor:pointer;font-size:12px;line-height:1}
 .plus:hover{background:var(--gold);color:#0b0f17}
 
-/* Skill-träd. Grenarna ritas som linjer mellan raderna så att kraven syns
-   innan man läser dem: en nod är låst tills föräldern har en poäng. */
+/* Skill trees. The branches are drawn as lines between the rows so the
+   requirements are visible before you read them: a node is locked until its
+   parent has a point. */
 .tree{margin-bottom:20px;padding-bottom:6px;border-bottom:1px solid rgba(39,54,77,.35)}
 .tree:last-of-type{border-bottom:0}
 .tree-name{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ice);
@@ -190,8 +191,8 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
 .node.locked{opacity:.34;cursor:default;border-style:dashed}
 .node .ico{width:28px;height:28px;display:grid;place-items:center;border:1px solid var(--border);
   border-radius:4px;background:#080d15;font-size:15px;flex:none}
-/* Trädnoder står på höjden: ikonen bär igenkänningen, texten får plats även
-   i en smal kolumn, och rutnätet läser som ett träd i stället för en lista. */
+/* Tree nodes stand vertically: the icon carries recognition, the text fits even
+   in a narrow column, and the grid reads as a tree rather than a list. */
 .node.sk{flex-direction:column;align-items:center;text-align:center;gap:4px;padding:9px 5px 7px}
 .node.sk .ico{width:34px;height:34px;font-size:18px}
 .node.sk .t{width:100%}
@@ -236,7 +237,7 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
 ::-webkit-scrollbar-track{background:#080d15}
 ::-webkit-scrollbar-thumb{background:#243349;border-radius:4px}
 
-/* ---------- startskärm ---------- */
+/* ---------- start screen ---------- */
 #start{position:fixed;inset:0;z-index:90;display:grid;place-items:center;
   background:radial-gradient(ellipse at 50% 25%,#101b2b,#04070d 78%);overflow:hidden}
 #menu-bg{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -262,7 +263,7 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
 #start-box button.primary{background:var(--gold);border-color:var(--gold);color:#0b0f17}
 #start-box button.primary:hover{filter:brightness(1.12);color:#0b0f17}
 
-/* karaktärslistan */
+/* the character list */
 #char-list{display:flex;flex-direction:column;gap:7px;margin-bottom:6px}
 .char-row{display:flex;align-items:center;gap:12px;padding:11px 12px;text-align:left;
   border:1px solid var(--border);border-radius:6px;background:#0a0f18;cursor:pointer;transition:.14s}
@@ -295,7 +296,7 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
 .cc-t span{font-size:11.5px;color:var(--muted);line-height:1.5}
 
 /* ---------- navigeringsikoner ---------- */
-/* Knapparna sitter nere till höger om manaklotet, där handen redan är. */
+/* The buttons sit below and right of the mana orb, where the hand already is. */
 #nav{position:fixed;right:16px;bottom:20px;z-index:11;display:flex;gap:6px}
 .navbtn{position:relative;width:38px;height:38px;display:grid;place-items:center;font-size:17px;cursor:pointer;
   border:1px solid var(--border);border-radius:5px;background:rgba(24,34,49,.94);
@@ -304,15 +305,15 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
 .navbtn:hover{border-color:var(--gold);background:#18222f}
 .navbtn.on{border-color:var(--gold);box-shadow:0 0 9px rgba(216,178,106,.28)}
 .navbtn .dot{position:absolute}
-/* OBS: klassen får inte heta .alert — det namnet bär HUD-meddelandenas
-   fade-animation, som annars gör ikonen osynlig. */
+/* NOTE: the class must not be called .alert — that name carries the HUD
+   messages' fade animation, which would otherwise make the icon invisible. */
 .navbtn.pending::after{content:'';position:absolute;width:7px;height:7px;border-radius:50%;
   background:var(--gold);transform:translate(15px,-13px);box-shadow:0 0 6px var(--gold)}
 
-/* ---------- meny-, nivå- och tutorialrutor ---------- */
+/* ---------- menu, level-up and tutorial windows ---------- */
 #pause,#levelup,#tutorial{position:fixed;inset:0;z-index:85;display:grid;place-items:center}
 #pause,#tutorial{background:rgba(3,5,9,.8)}
-/* Nivårutan får inte låsa panelerna — man ska kunna öppna skill-trädet bakom den. */
+/* The level-up window must not lock the panels — you should be able to open the skill tree behind it. */
 #levelup{background:none;pointer-events:none}
 .menu-box{width:min(360px,88vw);padding:26px 26px 20px;text-align:center;pointer-events:auto;
   border:1px solid var(--border);border-radius:8px;
@@ -327,15 +328,15 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
 .menu-box button.primary:hover{filter:brightness(1.12);color:#0b0f17}
 .menu-note{margin-top:12px;font-size:11px;color:var(--muted);line-height:1.55}
 
-/* nivåhöjning */
+/* level-up */
 .menu-box.lvl{width:min(840px,95vw);border-color:var(--gold);
   box-shadow:0 0 0 1px rgba(216,178,106,.18),0 26px 80px rgba(0,0,0,.85)}
 .lvl-badge{font-size:15px;letter-spacing:.26em;text-transform:uppercase;color:var(--gold);
   margin-bottom:4px}
 .lvl-sub{margin:0 0 16px;font-size:12px;color:var(--muted)}
-/* Bara listan rullar — rubrik, räknare och knappar ska aldrig hamna utanför bild. */
-/* Två kolumner: attributen till vänster, hela trädet till höger. Ingenting
-   ligger bakom en knapp, och kolumnerna rullar var för sig. */
+/* Only the list scrolls — heading, counters and buttons must never leave the frame. */
+/* Two columns: attributes on the left, the whole tree on the right. Nothing
+   hides behind a button, and the columns scroll separately. */
 #lvl-stats{margin-bottom:16px;text-align:left;display:grid;gap:20px;
   grid-template-columns:minmax(0,0.85fr) minmax(0,1.15fr)}
 .lvl-col{min-width:0;max-height:56vh;overflow-y:auto;padding-right:6px}
@@ -358,7 +359,7 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
 .menu-box.tut p{margin:0 0 20px;color:var(--muted);font-size:13px;line-height:1.65}
 .menu-box.tut b{color:var(--gold);font-weight:600}
 
-/* ---------- poängräknare ---------- */
+/* ---------- point counters ---------- */
 .points{display:flex;align-items:baseline;gap:9px;margin:2px 0 12px;padding:9px 12px;
   border:1px solid var(--border);border-radius:5px;background:#0a0f18}
 .points.has{border-color:var(--gold);background:rgba(216,178,106,.09);
@@ -368,7 +369,7 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
 .points .l{font-size:11px;letter-spacing:.06em;color:var(--muted)}
 .points.has .l{color:var(--ink)}
 
-/* ---------- flikar i skill-trädet ---------- */
+/* ---------- skill tree tabs ---------- */
 .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:14px}
 .tab{padding:8px 4px;text-align:center;border:1px solid var(--border);border-radius:5px;
   background:#0a0f18;cursor:pointer;transition:.13s}
@@ -379,9 +380,9 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
 .tab i{font-style:normal;font-size:9.5px;font-family:var(--mono);color:var(--muted)}
 .tab.on i{color:var(--ink)}
 
-/* ---------- uthållighet: tydlig signal när den tar slut ---------- */
-/* Uthålligheten är närstridarens klocka och förtjänar en egen stapel mitt i
-   blickfånget — mana är magins resurs och får klotet till höger. */
+/* ---------- stamina: a clear signal when it runs out ---------- */
+/* Stamina is the melee fighter's clock and deserves its own bar in the centre
+   of the view — mana is magic's resource and gets the orb on the right. */
 #stamina-bar{position:relative;width:100%;height:15px;background:#0b1019;
   border:1px solid var(--border);border-radius:4px;overflow:hidden;
   box-shadow:inset 0 1px 4px rgba(0,0,0,.7)}
@@ -424,7 +425,7 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
 .ac-btn.off{opacity:.2;pointer-events:none}
 .ac-btn.plus{color:var(--gold)}
 
-/* ---------- skill-noder med väntande poäng ---------- */
+/* ---------- skill nodes with pending points ---------- */
 .node.sk .rk{display:flex;align-items:baseline;gap:1px;font-family:var(--mono)}
 .node.sk .rk b{font-size:13px;color:#e6eef8;font-weight:600}
 .node.sk .rk .rk-delta{color:var(--gold);font-size:11px}
@@ -433,7 +434,7 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
 .node.sk .sk-btns{margin-top:5px}
 .node.sk .ac-btn{width:26px;height:20px;font-size:13px}
 
-/* ---------- ångra / lås in ---------- */
+/* ---------- undo / confirm ---------- */
 .confirm-bar{position:sticky;bottom:0;display:grid;grid-template-columns:auto 1fr;gap:8px;
   margin-top:14px;padding-top:12px;background:linear-gradient(180deg,rgba(8,13,21,0),rgba(8,13,21,.96) 32%)}
 .confirm-bar button{font-family:var(--font);font-size:12px;letter-spacing:.1em;

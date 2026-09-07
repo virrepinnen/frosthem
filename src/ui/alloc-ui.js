@@ -9,33 +9,33 @@ import { skillPower } from '../systems/stats.js';
 import { showTextTooltip, hideTooltip, escape } from './tooltip.js';
 
 /**
- * Delade byggstenar för poängfördelning. Både nivårutan och panelerna ritar
- * exakt samma attributrutor och skill-träd, mot samma väntande hög — så det
- * kan aldrig stå olika saker på två ställen.
+ * Shared building blocks for point allocation. Both the level-up window and the
+ * panels draw exactly the same attribute cards and skill trees, against the same
+ * pending pile — so two places can never disagree.
  */
 
 /**
- * Enkla linjeikoner i stället för emoji: de tar färg från sitt sammanhang,
- * ser likadana ut på alla system och passar spelets torra ton.
+ * Simple line icons instead of emoji: they take colour from their context, look
+ * the same on every system and suit the game's dry tone.
  * @type {Record<string,string>}
  */
 const ATTR_ICON = {
-  // hantel
+  // dumbbell
   str: '<path d="M4 9v6M7.5 6.5v11M16.5 6.5v11M20 9v6M7.5 12h9"/>',
-  // dubbla vinklar — fart
+  // double chevrons — speed
   dex: '<path d="M6 5.5L12.5 12 6 18.5M13 5.5L19.5 12 13 18.5"/>',
-  // hjärta
+  // heart
   vit: '<path d="M12 19.5s-6.8-4.2-6.8-9A3.8 3.8 0 0 1 12 8.2a3.8 3.8 0 0 1 6.8 2.3c0 4.8-6.8 9-6.8 9z"/>',
-  // fyruddig gnista
+  // four-pointed spark
   will: '<path d="M12 3.8l2.1 6.1 6.1 2.1-6.1 2.1L12 20.2l-2.1-6.1L3.8 12l6.1-2.1z"/>',
 };
 
-/** Nyckeln heter 'will' av bakåtkompatibilitet; etiketten är Intelligens. */
+/** The key is called 'will' for backwards compatibility; the label is Intelligence. */
 export const ATTRS = /** @type {const} */ ([
-  { key: 'str', label: 'Styrka', gain: '+1% vapenskada' },
-  { key: 'dex', label: 'Smidighet', gain: '+0,15% attackhastighet · +0,4 rustning' },
-  { key: 'vit', label: 'Vitalitet', gain: '+4 liv · +2 uthållighet' },
-  { key: 'will', label: 'Intelligens', gain: '+4 mana' },
+  { key: 'str', label: 'Strength', gain: '+1% weapon damage' },
+  { key: 'dex', label: 'Dexterity', gain: '+0.15% attack speed · +0.4 armour' },
+  { key: 'vit', label: 'Vitality', gain: '+4 life · +2 stamina' },
+  { key: 'will', label: 'Intelligence', gain: '+4 mana' },
 ]);
 
 /** @param {string} key */
@@ -45,8 +45,8 @@ function lineIcon(key) {
 }
 
 /**
- * Attribut-tooltip som visar vad poängen *gör just nu*, inte bara vad den
- * heter. Ett tal utan sammanhang hjälper ingen att välja.
+ * Attribute tooltip showing what the point *does right now*, not just what it
+ * is called. A number without context helps nobody choose.
  * @param {any} p @param {string} key
  */
 export function attrTooltip(p, key) {
@@ -54,30 +54,30 @@ export function attrTooltip(p, key) {
     `<div class="tt-name" style="color:#d8b26a">${t}</div><div class="tt-core">${body}</div>`;
   switch (key) {
     case 'str':
-      return head('Styrka', 'Varje poäng ger <b>+1% vapenskada</b>.' +
-        `<hr>Nu: ${p.eff.str} styrka → +${p.eff.str}% skada` +
-        `<br>Din skada: <b>${p.dmgMin}–${p.dmgMax}</b>`) +
-        '<div class="tt-req">Tyngre vapen och rustningar kräver styrka för att kunna bäras.</div>';
+      return head('Strength', 'Every point gives <b>+1% weapon damage</b>.' +
+        `<hr>Now: ${p.eff.str} strength → +${p.eff.str}% damage` +
+        `<br>Your damage: <b>${p.dmgMin}–${p.dmgMax}</b>`) +
+        '<div class="tt-req">Heavier weapons and armour require strength to be carried.</div>';
     case 'dex':
-      return head('Smidighet', 'Varje poäng ger <b>+0,15% attackhastighet</b>, ' +
-        '<b>+0,12% kritisk träff</b> och <b>+0,4 rustning</b>.' +
-        `<hr>Nu: ${p.eff.dex} smidighet` +
-        `<br>Attackhastighet: <b>${p.attackSpeed.toFixed(2)}×</b>` +
-        `<br>Kritisk träff: <b>${p.critChance.toFixed(1)}%</b>`) +
-        '<div class="tt-req">Vissa vapen kräver smidighet.</div>';
+      return head('Dexterity', 'Every point gives <b>+0.15% attack speed</b>, ' +
+        '<b>+0.12% critical hit</b> and <b>+0.4 armour</b>.' +
+        `<hr>Now: ${p.eff.dex} dexterity` +
+        `<br>Attack speed: <b>${p.attackSpeed.toFixed(2)}×</b>` +
+        `<br>Critical hit: <b>${p.critChance.toFixed(1)}%</b>`) +
+        '<div class="tt-req">Some weapons require dexterity.</div>';
     case 'vit':
-      return head('Vitalitet', 'Varje poäng ger <b>+4 max liv</b> och <b>+2 uthållighet</b>.' +
-        `<hr>Nu: ${p.eff.vit} vitalitet` +
-        `<br>Liv: <b>${p.maxHp}</b> → ${p.maxHp + 4} med nästa poäng` +
-        `<br>Uthållighet: <b>${p.maxStamina}</b> · återhämtning ${p.staminaRegen.toFixed(1)}/s` +
-        `<br>Svep innan du är slut: <b>~${Math.floor(p.maxStamina / (p.attackCost || 8))}</b>`) +
-        '<div class="tt-req">Barbarens attribut: både hur mycket du tål och hur länge du orkar.</div>';
+      return head('Vitality', 'Every point gives <b>+4 max life</b> and <b>+2 stamina</b>.' +
+        `<hr>Now: ${p.eff.vit} vitality` +
+        `<br>Life: <b>${p.maxHp}</b> → ${p.maxHp + 4} with the next point` +
+        `<br>Stamina: <b>${p.maxStamina}</b> · regeneration ${p.staminaRegen.toFixed(1)}/s` +
+        `<br>Swings before you run dry: <b>~${Math.floor(p.maxStamina / (p.attackCost || 8))}</b>`) +
+        '<div class="tt-req">The Barbarian&rsquo;s attribute: both how much you take and how long you last.</div>';
     case 'will':
-      return head('Intelligens', 'Varje poäng ger <b>+4 mana</b> och snabbare manaåterhämtning.' +
-        `<hr>Nu: ${p.eff.will} intelligens → <b>${p.maxMana} mana</b>` +
-        `<br>Återhämtning: <b>${p.manaRegen.toFixed(1)}/s</b>`) +
-        '<div class="tt-req">Bara Frost-skills drar mana. Bygger du på stål och stryk ' +
-        'räcker det med lite intelligens.</div>';
+      return head('Intelligence', 'Every point gives <b>+4 mana</b> and faster mana regeneration.' +
+        `<hr>Now: ${p.eff.will} intelligence → <b>${p.maxMana} mana</b>` +
+        `<br>Regeneration: <b>${p.manaRegen.toFixed(1)}/s</b>`) +
+        '<div class="tt-req">Only Frost skills draw mana. Build on steel and force ' +
+        'and a little intelligence is enough.</div>';
   }
   return '';
 }
@@ -91,8 +91,8 @@ export function pointsBadge(n, label, icon) {
 }
 
 /**
- * Fyra breda brickor. Varje bricka säger rakt ut vad *ett klick* ger, så man
- * inte behöver hovra för att veta vad poängen köper.
+ * Four wide cards. Every card states outright what *one click* gives, so you do
+ * not have to hover to know what the point buys.
  * @param {any} game @param {()=>void} onChange
  */
 export function attributeCards(game, onChange) {
@@ -116,14 +116,14 @@ export function attributeCards(game, onChange) {
     const minus = document.createElement('span');
     minus.className = 'ac-btn minus' + (pend > 0 ? '' : ' off');
     minus.textContent = '−';
-    minus.title = 'Ta tillbaka en poäng';
+    minus.title = 'Take back a point';
     minus.onclick = (e) => { e.stopPropagation(); if (removeStat(p, q, a.key)) onChange(); };
     btns.appendChild(minus);
 
     const plus = document.createElement('span');
     plus.className = 'ac-btn plus' + (statPointsLeft(p, q) > 0 ? '' : ' off');
     plus.textContent = '+';
-    plus.title = 'Lägg en poäng';
+    plus.title = 'Spend a point';
     plus.onclick = (e) => { e.stopPropagation(); if (addStat(p, q, a.key)) onChange(); };
     btns.appendChild(plus);
 
@@ -171,8 +171,8 @@ function skillNode(game, s, onChange) {
   n.innerHTML =
     `<div class="ico">${s.icon}</div>` +
     `<div class="t"><b>${s.name}</b><i>${!avail.ok ? avail.reason
-      : s.type === 'passive' ? 'Passiv'
-      : `${s.mana ? s.mana + ' mana' : (s.stamina ?? 0) + ' uth'} · ${s.cooldown ?? 0}s`}</i></div>` +
+      : s.type === 'passive' ? 'Passive'
+      : `${s.mana ? s.mana + ' mana' : (s.stamina ?? 0) + ' sta'} · ${s.cooldown ?? 0}s`}</i></div>` +
     `<div class="rk"><b>${r}</b>${pend > 0 ? `<span class="rk-delta">+${pend}</span>` : ''}` +
     `<span class="rk-max">/${s.maxRank}</span></div>` +
     '<div class="sk-btns"></div>' +
@@ -196,14 +196,14 @@ function skillNode(game, s, onChange) {
     showTextTooltip(
       `<div class="tt-name" style="color:#d8b26a">${s.icon} ${escape(s.name)}</div>` +
       `<div class="tt-base">${TREES[s.tree]} · steg ${s.tier} · ${s.type === 'passive' ? 'passiv'
-        : s.mana ? `${s.mana} mana` : `${s.stamina ?? 0} uthållighet`} · rank ${r}/${s.maxRank}</div>` +
+        : s.mana ? `${s.mana} mana` : `${s.stamina ?? 0} stamina`} · rank ${r}/${s.maxRank}</div>` +
       (r > 0 ? `<div class="tt-core">${escape(s.desc(r, synergy)).replace(/\n/g, '<br>')}</div><hr>` : '') +
-      `<div class="tt-mod"><b>${r > 0 ? 'Nästa rank' : 'Rank 1'}:</b><br>` +
+      `<div class="tt-mod"><b>${r > 0 ? 'Next rank' : 'Rank 1'}:</b><br>` +
       `${escape(s.desc(next, synergy)).replace(/\n/g, '<br>')}</div>` +
       (!avail.ok ? `<div class="tt-req bad">${escape(avail.reason)}</div>`
-        : canSpend ? '<div class="tt-hint">Klicka + för att lägga en poäng</div>'
-          : skillPointsLeft(p, q) <= 0 && r < s.maxRank ? '<div class="tt-req">Inga skillpoäng kvar</div>' : '') +
-      (base > 0 && s.type === 'active' ? '<div class="tt-hint">Högerklick: flytta till nästa snabbfack</div>' : ''));
+        : canSpend ? '<div class="tt-hint">Click + to spend a point</div>'
+          : skillPointsLeft(p, q) <= 0 && r < s.maxRank ? '<div class="tt-req">No skill points left</div>' : '') +
+      (base > 0 && s.type === 'active' ? '<div class="tt-hint">Right click: move to the next hotbar slot</div>' : ''));
   };
   n.onmouseleave = hideTooltip;
   if (base > 0 && s.type === 'active') {
@@ -213,7 +213,7 @@ function skillNode(game, s, onChange) {
 }
 
 /**
- * Hela skill-trädet med flikar.
+ * The whole skill tree with tabs.
  * @param {any} game @param {()=>void} onChange
  */
 export function skillTreeEl(game, onChange) {
@@ -256,27 +256,27 @@ export function skillTreeEl(game, onChange) {
 
   const note = document.createElement('div');
   note.className = 'tt-req';
-  note.innerHTML = `Steg 2 öppnas på nivå ${TIER_LEVEL[2]}, steg 3 på nivå ${TIER_LEVEL[3]} — och först när ` +
-    'grenen ovanför har en poäng.';
+  note.innerHTML = `Tier 2 opens at level ${TIER_LEVEL[2]}, tier 3 at level ${TIER_LEVEL[3]} — and only once ` +
+    'the branch above has a point.';
   wrap.appendChild(note);
   return wrap;
 }
 
 /**
- * Ångra/lås in — en egen rad per sorts poäng. Attribut och skills är olika
- * beslut och ska inte kunna bekräftas av misstag med varandra.
+ * Undo/confirm — its own row per kind of point. Attributes and skills are
+ * different decisions and must not be confirmable by accident together.
  * @param {any} game @param {'stats'|'skills'} kind @param {()=>void} onChange
  */
 export function confirmBar(game, kind, onChange) {
   const q = game.pending;
   const n = kind === 'stats' ? pendingStats(q) : pendingSkills(q);
   if (n <= 0) return null;
-  const what = kind === 'stats' ? 'attributpoäng' : 'skillpoäng';
+  const what = kind === 'stats' ? 'attribute points' : 'skill points';
   const bar = document.createElement('div');
   bar.className = 'confirm-bar';
   bar.innerHTML =
-    '<button class="cb-undo">Ångra</button>' +
-    `<button class="cb-ok">Lås in ${n} ${what}</button>`;
+    '<button class="cb-undo">Undo</button>' +
+    `<button class="cb-ok">Confirm ${n} ${what}</button>`;
   /** @type {HTMLElement} */ (bar.querySelector('.cb-undo')).onclick = () => {
     if (kind === 'stats') resetStats(q); else resetSkills(q);
     onChange();

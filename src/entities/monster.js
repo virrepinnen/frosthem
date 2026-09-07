@@ -7,7 +7,7 @@ import { rng } from '../core/rng.js';
 let nextId = 1;
 
 /**
- * Skapar ett monster av en arketyp på given nivå.
+ * Creates a monster from an archetype at the given level.
  * @param {MonsterDef|any} def
  * @param {number} level
  * @param {number} x @param {number} y
@@ -46,9 +46,9 @@ export function createMonster(def, level, x, y, opts = {}) {
     isChampion: !!opts.champion,
     isBoss: !!opts.boss,
     /**
-     * Bossen står stilla i sin arena tills den träffas. Man ska hitta honom
-     * och ta första steget själv — inte bli anfallen av något man inte hunnit
-     * se. Väcks i hitMonster.
+     * The boss stands still in his arena until he is struck. You are meant to
+     * find him and take the first step yourself — not be jumped by something
+     * you never got to see. Woken in hitMonster.
      */
     dormant: !!opts.boss,
   };
@@ -57,7 +57,7 @@ export function createMonster(def, level, x, y, opts = {}) {
     m.title = def.title;
   }
   if (opts.champion) {
-    // Champions: tåligare versioner av vanliga monster, ingen egen modifierare.
+    // Champions: tougher versions of ordinary monsters, no modifier of their own.
     m.maxHp *= 2.4; m.dmgMin *= 1.3; m.dmgMax *= 1.3; m.xp *= 3; m.radius *= 1.18;
   }
   if (opts.elite) {
@@ -73,10 +73,10 @@ export function createMonster(def, level, x, y, opts = {}) {
 
 /** @typedef {ReturnType<typeof createMonster>} Monster */
 
-/** Namn med elitprefix, för HUD/tooltip. @param {Monster} m */
+/** Name with elite prefix, for the HUD/tooltip. @param {Monster} m */
 export function monsterTitle(m) {
   if (m.isBoss) return m.name;
-  if (m.elite) return `${m.elite.mods.map(x => x.name).join(' ')} ${m.name.toLowerCase()}`;
-  if (m.isChampion) return `Utvald ${m.name.toLowerCase()}`;
+  if (m.elite) return `${m.elite.mods.map(x => x.name).join(' ')} ${m.name}`;
+  if (m.isChampion) return `Champion ${m.name}`;
   return m.name;
 }

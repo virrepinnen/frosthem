@@ -4,20 +4,20 @@ import { grantXp } from '../entities/player.js';
 import { burst, floatText } from '../render/fx.js';
 
 /**
- * Erfarenhet faller som klot på marken i stället för att bokföras direkt.
+ * Experience falls as orbs on the ground instead of being credited straight away.
  *
- * Poängen är att belöningen får en plats i rummet: slår du på håll eller kitar
- * runt en flock måste du gå tillbaka och sopa upp det du tjänat. Det ger en
- * naturlig paus efter striden och gör räckvidd till en avvägning i stället för
- * en ren fördel.
+ * The point is that the reward occupies space: if you strike from afar or kite
+ * a pack around, you have to walk back and sweep up what you earned. It gives a
+ * natural pause after the fight and turns reach into a trade-off rather than a
+ * pure advantage.
  *
  * @typedef {{x:number, y:number, vx:number, vy:number, xp:number, tier:number,
  *            age:number, seed:number, pull:boolean}} Orb
  */
 
 /**
- * Valörerna. Varje färg har en liten och en stor variant, så att både
- * mängden och tyngden i ett byte syns på marken.
+ * The denominations. Every colour has a small and a large variant, so both the
+ * amount and the weight of a haul are visible on the ground.
  */
 export const ORB_TIERS = [
   { v: 2,    core: '#f2f6fb', glow: '#ffffff', r: 2.6 },
@@ -30,15 +30,15 @@ export const ORB_TIERS = [
   { v: 3600, core: '#b07af0', glow: '#dcc0ff', r: 6.2 },
 ];
 
-/** Så nära drar klotet till sig — och så nära räknas det som upplockat. */
+/** This close the orb is pulled in — and this close it counts as collected. */
 const MAGNET = 105;
 const EAT = 15;
-/** Tak på antal klot per byte, så en boss inte täcker arenan med vitt grus. */
+/** Cap on orbs per haul, so a boss does not carpet the arena in white gravel. */
 const MAX_ORBS = 11;
-/** Tak på antal klot i världen samtidigt — därutöver slås de ihop. */
+/** Cap on orbs in the world at once — beyond that they are merged. */
 const MAX_FIELD = 90;
 
-/** Lägsta valör som rymmer summan. @param {number} xp */
+/** The smallest denomination that holds the amount. @param {number} xp */
 function tierFor(xp) {
   let t = 0;
   for (let i = ORB_TIERS.length - 1; i >= 0; i--) if (xp >= ORB_TIERS[i].v) { t = i; break; }
@@ -46,8 +46,9 @@ function tierFor(xp) {
 }
 
 /**
- * Delar upp en summa i valörer, störst först. Blir det för många klot slås
- * resten ihop i det sista — hellre ett tungt klot än ett fält av smulor.
+ * Splits an amount into denominations, largest first. If there would be too
+ * many orbs the rest is merged into the last one — better one heavy orb than a
+ * field of crumbs.
  * @param {number} xp
  * @returns {number[]} tier-index
  */
@@ -70,8 +71,8 @@ export function splitXp(xp) {
  * @param {any} game @param {number} x @param {number} y @param {number} xp
  */
 export function spawnXpOrbs(game, x, y, xp) {
-  // Fältet fullt: lägg bytet i närmaste klot i stället för att strö ut fler.
-  // Ingen erfarenhet går förlorad — klotet växer bara i valör.
+  // Field full: add the haul to the nearest orb instead of scattering more.
+  // No experience is lost — the orb simply grows in denomination.
   if (game.orbs.length >= MAX_FIELD) {
     let near = null, bd = Infinity;
     for (const o of game.orbs) {
@@ -85,7 +86,7 @@ export function spawnXpOrbs(game, x, y, xp) {
     }
   }
   const tiers = splitXp(xp);
-  // Resten som inte gick jämnt ut läggs på det första klotet.
+  // Whatever did not divide evenly is added to the first orb.
   const accounted = tiers.reduce((a, i) => a + ORB_TIERS[i].v, 0);
   const extra = Math.max(0, Math.round(xp) - accounted);
   tiers.forEach((tier, i) => {
@@ -118,8 +119,8 @@ export function updateOrbs(game, dt) {
     const dx = p.pos.x - o.x, dy = p.pos.y - o.y;
     const d = Math.hypot(dx, dy) || 0.001;
 
-    // Klotet fastnar när man kommit nära nog och släpper sedan aldrig taget —
-    // annars kunde det halka av vid ett hastigt riktningsbyte.
+    // The orb latches on once you are close enough and never lets go again —
+    // otherwise it could slip off during a sharp change of direction.
     if (!o.pull && d < MAGNET && o.age > 0.25) o.pull = true;
     if (o.pull) {
       const speed = 190 + (1 - Math.min(1, d / MAGNET)) * 420;
@@ -142,8 +143,8 @@ export function updateOrbs(game, dt) {
   }
   if (gained > 0) {
     levels = grantXp(p, gained);
-    // En siffra per uppsopning i stället för en per klot — annars blir det
-    // ett textregn så fort man går genom en rensad flock.
+    // One number per sweep instead of one per orb — otherwise you get a rain
+    // of text the moment you walk through a cleared pack.
     if (best >= 2 || gained >= 15) {
       floatText(p.pos.x, p.pos.y - 46, `+${Math.round(gained)} xp`,
         ORB_TIERS[Math.max(0, best)].glow, best >= 4 ? 16 : 13);

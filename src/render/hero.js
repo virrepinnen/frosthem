@@ -3,23 +3,24 @@ import { rng } from '../core/rng.js';
 import { PROJ } from './camera.js';
 import { PORTAL_CAST, PORTAL_STEP } from '../entities/player.js';
 
-/** Figuren står på den hoptryckta marken men ritas i oförminskade pixlar. */
+/** The figure stands on the squashed ground but is drawn in unsquashed pixels. */
 const PY = (/** @type {number} */ y) => y * PROJ;
 
 /**
- * Barbaren — riggad figur sedd uppifrån.
+ * The Barbarian — a rigged figure seen from above.
  *
- * Spelet är top-down, så "hukad framåt" kan inte visas med en profil. I stället
- * bär silhuetten berättelsen: kåpan sitter *framför* axelmassan, manteln sveper
- * bakåt som en droppe, och trasorna hänger som lösa remsor längs bakkanten.
- * Allt ritas i figurens eget rum där +x är blickriktningen.
+ * The game is top-down, so "hunched forward" cannot be shown in profile.
+ * Instead the silhouette carries the story: the hood sits *in front of* the
+ * shoulder mass, the cloak sweeps back like a teardrop, and the rags hang as
+ * loose strips along the trailing edge. Everything is drawn in the figure's own
+ * space where +x is the facing direction.
  *
- * Ingen bilddata — figuren är ritad i banor och animeras av tillståndet. Det gör
- * att den kan ta färg av vapnets sällsynthet, blinka vid träff och byta hugg
- * utan att någon spritesheet behöver ritas om.
+ * No image data — the figure is drawn in paths and animated by state. That lets
+ * it take colour from the weapon's rarity, flash on hit and switch strikes
+ * without anyone redrawing a spritesheet.
  */
 
-/** Paletten följer förlagan: dämpad olivbrun rock, varmgrå päls, blekt hår. */
+/** The palette follows the reference: muted olive-brown robe, warm grey fur, pale hair. */
 const C = {
   silhouette: 'rgba(9,12,16,0.95)',
   robeDark: '#33332b',
@@ -52,15 +53,15 @@ const easeIn = (/** @type {number} */ k) => k * k;
 const mix = (a, b, k) => a + (b - a) * k;
 
 /**
- * Varje variant beskriver vapnets väg genom hugget: vinkel, räckvidd, hur
- * kroppen vrids och hur långt den kastar sig fram. Uppladdningen ligger i de
- * första ~30% — utan den ser slaget ut att komma från ingenstans.
+ * Every variant describes the weapon's path through the strike: angle, reach,
+ * how the body twists and how far it lunges. The wind-up lives in the first
+ * ~30% — without it the blow looks like it came from nowhere.
  *
  * @typedef {(k:number) => {ang:number, reach:number, twist:number, lunge:number}} Pose
  * @type {Record<string, {pose:Pose, trail:string}>}
  */
 export const ATTACKS = {
-  // Forehand: sveper från höger till vänster.
+  // Forehand: sweeps from right to left.
   slash: {
     trail: '#eaf3ff',
     pose: (k) => k < 0.28
@@ -71,7 +72,7 @@ export const ATTACKS = {
           twist: mix(-0.34, 0.28, easeOut((k - 0.28) / 0.72)),
           lunge: Math.sin((k - 0.28) / 0.72 * Math.PI) * 3 },
   },
-  // Backhand: samma svep tillbaka, så två slag i rad aldrig ser lika ut.
+  // Backhand: the same sweep back, so two strikes in a row never look alike.
   backhand: {
     trail: '#e6f0ff',
     pose: (k) => k < 0.28
@@ -82,7 +83,7 @@ export const ATTACKS = {
           twist: mix(0.3, -0.26, easeOut((k - 0.28) / 0.72)),
           lunge: Math.sin((k - 0.28) / 0.72 * Math.PI) * 2.5 },
   },
-  // Överhugg: vapnet dras runt bakifrån och faller rakt ner i mitten.
+  // Overhead: the weapon is drawn round from behind and falls straight down the middle.
   overhead: {
     trail: '#fff3d6',
     pose: (k) => k < 0.34
@@ -93,7 +94,7 @@ export const ATTACKS = {
           twist: mix(-0.2, 0.1, (k - 0.34) / 0.66),
           lunge: mix(-2, 6, easeOut((k - 0.34) / 0.66)) },
   },
-  // Stöt: kort indragning och ett rakt utfall.
+  // Thrust: a short pull-back and a straight lunge.
   thrust: {
     trail: '#dfeaff',
     pose: (k) => k < 0.32
@@ -106,12 +107,12 @@ export const ATTACKS = {
   },
 };
 
-/** Vilopose: vapnet sänkt vid sidan. */
+/** Rest pose: weapon lowered at the side. */
 const REST = { ang: -0.55, reach: 20, twist: 0, lunge: 0 };
 
 /**
- * Väljer hugg. Grundattacken växlar fram och tillbaka så att två slag i rad
- * aldrig är identiska, och var fjärde blir ett tyngre överhugg eller en stöt.
+ * Picks a strike. The basic attack alternates back and forth so two blows in a
+ * row are never identical, and every fourth becomes a heavier overhead or thrust.
  * @param {any} p @param {string} kind
  */
 export function pickAttack(p, kind) {
@@ -130,24 +131,24 @@ export function pickAttack(p, kind) {
 /* ------------------------------------------------------------------ */
 
 /**
- * Figuren står alltid lodrätt, som ett D2-sprite — riktningen byter *bild*,
- * inte rotation. Lokalt rum: y = 0 vid fötterna, negativt uppåt.
+ * The figure always stands upright, like a D2 sprite — direction changes the
+ * *image*, not the rotation. Local space: y = 0 at the feet, negative upward.
  */
 const H = {
   foot: 0, hem: -3, knee: -14, waist: -21, chest: -31,
   shoulder: -35, neck: -38, head: -43, crown: -50,
 };
 
-/** Fållens hörn — ojämna av ålder och slitage. */
+/** The hem's corners — uneven with age and wear. */
 const HEM = [-1, -0.62, -0.24, 0.16, 0.55, 0.9];
 
 /**
- * Rocken. Faller till marken och vidgar sig nedåt; fållen dras åt sidan av
- * mantelfjädern så att tyget släpar efter kroppen och pendlar tillbaka i vila.
+ * The robe. Falls to the ground and widens downward; the hem is pulled aside by
+ * the cloak spring so the cloth trails the body and swings back to rest.
  *
  * @param {CanvasRenderingContext2D} ctx
- * @param {number} sway Sidled i lokalt rum, positivt = åt figurens framsida
- * @param {number} lift Hur mycket fållen lyfter av farten, 0..1
+ * @param {number} sway Sideways in local space, positive = towards the figure's front
+ * @param {number} lift How much the hem lifts from the speed, 0..1
  * @param {number} t @param {boolean} flash @param {boolean} back
  */
 function robe(ctx, sway, lift, t, flash, back) {
@@ -158,7 +159,7 @@ function robe(ctx, sway, lift, t, flash, back) {
     const W = wBot + grow;
     ctx.beginPath();
     ctx.moveTo(-(wTop + grow), H.shoulder);
-    // bakre fall: släpar mest, eftersom tyget hänger efter
+    // rear fall: trails most, because the cloth hangs behind
     ctx.quadraticCurveTo(-(wTop + 4 + grow) + sway * 0.3, H.waist, -W + sway * 1.15, hemY + grow);
     HEM.forEach((u, i) => {
       const dip = (i % 2 ? 4.5 : 1.2) + Math.sin(t * 2.4 + i * 1.4) * (0.5 + lift * 1.4);
@@ -175,7 +176,7 @@ function robe(ctx, sway, lift, t, flash, back) {
 
   if (!flash) {
     ctx.save(); shape(0); ctx.clip();
-    // veck: lodräta skuggor som lutar med utslaget
+    // folds: vertical shadows that lean with the deflection
     ctx.strokeStyle = C.robeDark; ctx.lineWidth = 2.6;
     for (const x of [-6, 1, 8]) {
       ctx.beginPath();
@@ -193,8 +194,8 @@ function robe(ctx, sway, lift, t, flash, back) {
 }
 
 /**
- * Pälskragen över axlarna. Yttersta kanten är taggig — det är den som gör att
- * den läser som päls och inte som en axelplatta.
+ * The fur collar across the shoulders. The outer edge is jagged — that is what
+ * makes it read as fur rather than as a shoulder plate.
  * @param {CanvasRenderingContext2D} ctx @param {number} t @param {boolean} flash
  */
 function mantle(ctx, t, flash) {
@@ -228,8 +229,8 @@ function mantle(ctx, t, flash) {
 }
 
 /**
- * Huvudet: långt blekt hår, flätat skägg och ögonlapp. Ansiktet visas bara när
- * gestalten är vänd mot betraktaren — bakifrån ser man håret och kragen.
+ * The head: long pale hair, braided beard and an eye patch. The face only shows
+ * when the figure is turned towards the viewer — from behind you see hair and collar.
  * @param {CanvasRenderingContext2D} ctx
  * @param {number} sway @param {number} t @param {boolean} flash @param {boolean} back @param {number} fy
  */
@@ -237,7 +238,7 @@ function head(ctx, sway, t, flash, back, fy) {
   const hx = 1.6, hy = H.head;
   const drift = sway * 0.35 + Math.sin(t * 1.3) * 0.5;
 
-  // håret bakom: en tung massa som faller ner över kragen
+  // the hair behind: a heavy mass falling down over the collar
   ctx.fillStyle = flash ? '#ffffff' : C.hairDark;
   ctx.beginPath();
   ctx.moveTo(hx - 6, hy - 4);
@@ -249,8 +250,8 @@ function head(ctx, sway, t, flash, back, fy) {
   ctx.beginPath(); ctx.ellipse(hx, hy, 6.4, 6.6, -0.1, 0, Math.PI * 2); ctx.fill();
 
   if (back) {
-    // Bakifrån: hårmassan faller ner över kragen i stället för att sluta som en
-    // boll. Tonen är dämpad — ett ljust klot i nacken drog blicken helt fel.
+    // From behind: the hair mass falls down over the collar instead of ending as
+    // a ball. The tone is muted — a bright orb at the neck pulled the eye badly.
     ctx.fillStyle = flash ? '#ffffff' : C.hairDark;
     ctx.beginPath();
     ctx.moveTo(hx - 5.6, hy - 2);
@@ -275,7 +276,7 @@ function head(ctx, sway, t, flash, back, fy) {
   ctx.fillStyle = flash ? '#ffffff' : C.skin;
   ctx.beginPath(); ctx.ellipse(hx + 1.4, hy + 0.4, 4.6, 5.2, -0.08, 0, Math.PI * 2); ctx.fill();
 
-  // skägget: långt, avsmalnande, med en fläta som svajar
+  // the beard: long, tapering, with a braid that sways
   ctx.fillStyle = flash ? '#ffffff' : C.hair;
   ctx.beginPath();
   ctx.moveTo(hx - 3.4, hy + 1.5);
@@ -284,7 +285,7 @@ function head(ctx, sway, t, flash, back, fy) {
   ctx.quadraticCurveTo(hx + 2, hy + 3, hx - 3.4, hy + 1.5);
   ctx.closePath(); ctx.fill();
 
-  // hår som faller framför axeln
+  // hair falling in front of the shoulder
   ctx.fillStyle = flash ? '#ffffff' : C.hair;
   ctx.beginPath();
   ctx.moveTo(hx - 1, hy - 6);
@@ -293,12 +294,12 @@ function head(ctx, sway, t, flash, back, fy) {
   ctx.closePath(); ctx.fill();
 
   if (!flash) {
-    // ögonlappen — figurens tydligaste kännetecken
+    // the eye patch — the figure's clearest mark
     ctx.strokeStyle = C.patch; ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.moveTo(hx - 2.6, hy - 3.4); ctx.lineTo(hx + 5.4, hy - 1.2); ctx.stroke();
     ctx.fillStyle = C.patch;
     ctx.beginPath(); ctx.ellipse(hx + 3.9, hy - 0.8, 2.1, 1.9, -0.25, 0, Math.PI * 2); ctx.fill();
-    // det seende ögat
+    // the seeing eye
     ctx.fillStyle = '#2c2620';
     ctx.beginPath(); ctx.ellipse(hx + 0.4, hy - 1.4, 0.9, 1.1, 0, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 0.35 + fy * 0.3;
@@ -309,8 +310,8 @@ function head(ctx, sway, t, flash, back, fy) {
 }
 
 /**
- * Korpen på axeln. Den vaggar i sin egen takt och lyfter huvudet ibland — en
- * liten rörelse som gör gestalten levande även när spelaren står stilla.
+ * The raven on the shoulder. It rocks at its own pace and lifts its head now
+ * and then — a small motion that keeps the figure alive even while standing still.
  * @param {CanvasRenderingContext2D} ctx @param {number} t @param {boolean} flash
  */
 function raven(ctx, t, flash) {
@@ -322,11 +323,11 @@ function raven(ctx, t, flash) {
   ctx.beginPath(); ctx.ellipse(0, 0, 4.7, 4, -0.25, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = flash ? '#ffffff' : C.raven;
   ctx.beginPath(); ctx.ellipse(0, 0, 4, 3.4, -0.25, 0, Math.PI * 2); ctx.fill();
-  // stjärt
+  // tail
   ctx.beginPath();
   ctx.moveTo(3.6, 0.6); ctx.lineTo(8.4, 3.2); ctx.lineTo(3.4, 2.4);
   ctx.closePath(); ctx.fill();
-  // huvud och näbb
+  // head and beak
   ctx.beginPath(); ctx.ellipse(-4, -3.4 - peck, 2.5, 2.3, 0, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath();
   ctx.moveTo(-6, -3.8 - peck); ctx.lineTo(-9.6, -3 - peck * 1.6); ctx.lineTo(-5.8, -2.4 - peck);
@@ -339,7 +340,7 @@ function raven(ctx, t, flash) {
 }
 
 /**
- * Vapnet, ritat längs +x från handen.
+ * The weapon, drawn along +x from the hand.
  * @param {CanvasRenderingContext2D} ctx @param {any} item @param {number} reach
  */
 function weapon(ctx, item, reach) {
@@ -379,7 +380,7 @@ function weapon(ctx, item, reach) {
 }
 
 /**
- * Släpljuset efter eggen, ritat ur samma poskurva som vapnet.
+ * The trail behind the edge, drawn from the same pose curve as the weapon.
  * @param {CanvasRenderingContext2D} ctx @param {{pose:Pose, trail:string}} v
  * @param {number} k @param {number} mirror
  */
@@ -452,7 +453,7 @@ export function drawHero(ctx, game) {
   ctx.beginPath(); ctx.ellipse(gx, gy, rolling ? 15 : 12, 5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 
-  // Under portalens öppningsskede kliver gestalten in och tonar bort.
+  // During the portal's opening phase the figure steps in and fades away.
   if (p.cast) {
     const openK = Math.max(0, (p.cast.t - (PORTAL_CAST - PORTAL_STEP)) / PORTAL_STEP);
     if (openK > 0) ctx.globalAlpha = Math.max(0, 1 - openK * 1.05);
@@ -480,8 +481,8 @@ export function drawHero(ctx, game) {
 
   ctx.scale(mirror, 1);
 
-  // Mantelutslaget till lokalt rum: x speglas med figuren, y är hoptryckt av
-  // projektionen. Utslaget i djupled läser som en liten extra lyftning.
+  // The cloak deflection into local space: x mirrors with the figure, y is
+  // squashed by the projection. Depth-wise deflection reads as a small extra lift.
   const c = p.cloak;
   const sway = c.x * mirror * 0.5;
   const lift = Math.min(1, Math.hypot(c.x, c.y) / 26);
@@ -498,13 +499,13 @@ export function drawHero(ctx, game) {
   ctx.translate(pose.lunge * 0.5, -bob);
   ctx.rotate(pose.twist * 0.1 + sway * -0.004);
 
-  // --- stövlar, knappt synliga under fållen ------------------------------
+  // --- boots, barely visible under the hem -------------------------------
   ctx.fillStyle = flash ? '#ffffff' : C.boot;
   const stride = speed > 5 ? step * 3.5 : 0;
   ctx.beginPath(); ctx.ellipse(-2 + stride, H.foot - 1.5, 3.6, 2.2, 0, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.ellipse(3 - stride, H.foot - 1.5, 3.6, 2.2, 0, 0, Math.PI * 2); ctx.fill();
 
-  // --- staven i den fria handen: figurens lodräta linje ------------------
+  // --- the staff in the free hand: the figure's vertical line -------------
   const staffLean = -0.09 + sway * 0.004;
   ctx.save();
   ctx.translate(-6, H.chest);
@@ -515,7 +516,7 @@ export function drawHero(ctx, game) {
   if (!flash) {
     ctx.strokeStyle = C.staffLit; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(-0.7, H.foot - H.chest - 2); ctx.lineTo(-0.7, -18); ctx.stroke();
-    // knölen upptill
+    // the knot at the top
     ctx.fillStyle = C.staff;
     ctx.beginPath(); ctx.ellipse(1, -20, 2.6, 3.4, 0.35, 0, Math.PI * 2); ctx.fill();
   }
@@ -524,7 +525,7 @@ export function drawHero(ctx, game) {
   // --- rocken -------------------------------------------------------------
   robe(ctx, sway, lift, t, flash, back);
 
-  // --- fri arm som håller staven ------------------------------------------
+  // --- free arm holding the staff -----------------------------------------
   ctx.strokeStyle = flash ? '#ffffff' : C.robeLit;
   ctx.lineWidth = 4.4; ctx.lineCap = 'round';
   ctx.beginPath();
@@ -536,13 +537,13 @@ export function drawHero(ctx, game) {
     ctx.beginPath(); ctx.ellipse(-6.4, H.chest, 2.1, 2.4, 0, 0, Math.PI * 2); ctx.fill();
   }
 
-  // --- vapenarm: svänger i skärmplanet, riktad mot målet ------------------
-  // Blickriktningen projiceras till en skärmvinkel, så ett hugg uppåt eller
-  // snett verkligen går dit fienden står — inte bara åt höger eller vänster.
+  // --- weapon arm: swings in the screen plane, aimed at the target ---------
+  // The facing is projected into a screen angle, so a strike upward or diagonal
+  // really goes where the enemy stands — not just left or right.
   const aim = Math.atan2(Math.sin(p.facing) * PROJ, Math.cos(p.facing));
   ctx.save();
   ctx.translate(7, H.chest + 1);
-  ctx.scale(mirror, 1);     // tillbaka till skärmens rum
+  ctx.scale(mirror, 1);     // back into screen space
   ctx.rotate(aim);
   if (variant) trail(ctx, variant, k, mirror);
   ctx.rotate(-pose.ang * mirror);
@@ -559,7 +560,7 @@ export function drawHero(ctx, game) {
   if (p.equipment.weapon) weapon(ctx, p.equipment.weapon, pose.reach);
   ctx.restore();
 
-  // --- pälskrage, huvud och korp ------------------------------------------
+  // --- fur collar, head and raven -----------------------------------------
   mantle(ctx, t, flash);
   head(ctx, sway, t, flash, back, fy);
   raven(ctx, t, flash);

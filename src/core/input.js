@@ -1,26 +1,26 @@
 // @ts-check
 /**
- * Tangentbord + mus. Vi skiljer på "nere" (kontinuerligt) och "tryckt"
- * (kant, konsumeras en gång per bildruta) så att UI-toggles inte studsar.
+ * Keyboard + mouse. We separate "down" (continuous) from "pressed" (edge,
+ * consumed once per frame) so that UI toggles don't bounce.
  */
 export const input = {
   /** @type {Set<string>} */ down: new Set(),
   /** @type {Set<string>} */ pressed: new Set(),
   mouse: { x: 0, y: 0, down: false, rdown: false, clicked: false, rclicked: false },
   /**
-   * Spelet äger tangentbordet först när en karaktär är igång. Utan den här
-   * spärren hamnade varje bokstav man skrev i namnrutan i tangentkön, och
-   * första bildrutan konsumerade dem: "Sigrid" öppnade väskan (i), "Erik"
-   * öppnade väska och skills (i, k). Det var därför fönster kunde stå öppna
-   * direkt när man kom in i spelet.
+   * The game owns the keyboard only once a character is running. Without this
+   * gate every letter typed into the name field queued up as a keypress, and
+   * the first frame consumed them all: "Sigrid" opened the bag (i), "Erik"
+   * opened bag and skills (i, k). That is why panels could already be open the
+   * moment you entered the game.
    */
   enabled: false,
 };
 
 /**
- * Ett *synligt* textfält äger tangentbordet så länge det har fokus. Kravet på
- * synlighet är viktigt: fokus kan ligga kvar på namnrutan efter att menyn
- * gömts, och då hade spelet svalt alla tangenter i tysthet.
+ * A *visible* text field owns the keyboard while it has focus. The visibility
+ * requirement matters: focus can linger on the name field after the menu is
+ * hidden, and then the game would swallow every key in silence.
  */
 function typingInField() {
   const el = /** @type {HTMLElement|null} */ (document.activeElement);
@@ -28,10 +28,10 @@ function typingInField() {
   const tag = el.tagName;
   const isField = tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
   if (!isField) return false;
-  return el.offsetParent !== null; // dolt fält räknas inte
+  return el.offsetParent !== null; // a hidden field does not count
 }
 
-/** Nollställer allt — anropas när ett spel startar. */
+/** Clears everything — called when a game starts. */
 export function resetInput() {
   input.down.clear();
   input.pressed.clear();
@@ -56,8 +56,8 @@ export function initInput(canvas) {
     if (!input.down.has(k)) input.pressed.add(k);
     input.down.add(k);
   });
-  // Släpp alltid, även om spärren slog till på vägen ner — annars kan en
-  // tangent fastna i "nedtryckt".
+  // Always release, even if the gate stopped the keydown — otherwise a key
+  // can get stuck "held down".
   addEventListener('keyup', (e) => input.down.delete(e.key.toLowerCase()));
   addEventListener('blur', () => resetInput());
 
@@ -75,7 +75,7 @@ export function initInput(canvas) {
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 }
 
-/** Anropas i slutet av varje bildruta. */
+/** Called at the end of every frame. */
 export function endFrameInput() {
   input.pressed.clear();
   input.mouse.clicked = false;
@@ -84,7 +84,7 @@ export function endFrameInput() {
 
 /** @param {string} k */
 export const keyDown = (k) => input.down.has(k);
-/** @param {string} k Konsumerar tryckningen. */
+/** @param {string} k Consumes the press. */
 export function keyPressed(k) {
   if (input.pressed.has(k)) { input.pressed.delete(k); return true; }
   return false;

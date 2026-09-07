@@ -1,5 +1,5 @@
 // @ts-check
-/** Seedad slumpgenerator (mulberry32). Deterministisk -> samma seed ger samma zon. */
+/** Seeded random generator (mulberry32). Deterministic — the same seed gives the same zone. */
 export class Rng {
   /** @param {number} seed */
   constructor(seed) { this.s = seed >>> 0; }
@@ -14,13 +14,13 @@ export class Rng {
   }
   /** @param {number} a @param {number} b @returns {number} */
   range(a, b) { return a + this.next() * (b - a); }
-  /** Heltal i [a,b] inklusive. @param {number} a @param {number} b */
+  /** Integer in [a,b], inclusive. @param {number} a @param {number} b */
   int(a, b) { return Math.floor(this.range(a, b + 1)); }
   /** @param {number} p @returns {boolean} */
   chance(p) { return this.next() < p; }
   /** @template T @param {T[]} arr @returns {T} */
   pick(arr) { return arr[Math.floor(this.next() * arr.length)]; }
-  /** Viktad dragning. @template T @param {T[]} arr @param {(x:T)=>number} weight @returns {T} */
+  /** Weighted draw. @template T @param {T[]} arr @param {(x:T)=>number} weight @returns {T} */
   weighted(arr, weight) {
     let total = 0;
     for (const x of arr) total += Math.max(0, weight(x));
@@ -28,7 +28,7 @@ export class Rng {
     for (const x of arr) { roll -= Math.max(0, weight(x)); if (roll <= 0) return x; }
     return arr[arr.length - 1];
   }
-  /** @template T @param {T[]} arr @returns {T[]} ny blandad array */
+  /** @template T @param {T[]} arr @returns {T[]} a new shuffled array */
   shuffle(arr) {
     const a = arr.slice();
     for (let i = a.length - 1; i > 0; i--) {
@@ -39,5 +39,5 @@ export class Rng {
   }
 }
 
-/** Global rng för icke-deterministiska effekter (loot-rullningar, partiklar). */
+/** Global rng for non-deterministic effects (loot rolls, particles). */
 export const rng = new Rng((Math.random() * 0xffffffff) >>> 0);

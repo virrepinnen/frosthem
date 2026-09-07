@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="sv">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Frosthem — Barbaren</title>
+<title>Frosthem — The Barbarian</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -21,7 +21,7 @@
     <div id="xp-bar" title="Erfarenhet"><div id="xp-fill"></div></div>
     <div id="stamina-bar">
       <div id="stamina-fill"></div>
-      <div id="stamina-text"><span class="lbl">Uthållighet</span><span class="val" id="sta-text">0/0</span></div>
+      <div id="stamina-text"><span class="lbl">Stamina</span><span class="val" id="sta-text">0/0</span></div>
     </div>
     <div id="skillbar"></div>
   </div>
@@ -33,8 +33,8 @@
 </div>
 
 <div id="topleft">
-  <div id="charline"><span id="char-level">Nivå 1</span> <span class="dim">Barbar</span></div>
-  <div id="goldline"><span id="gold">0</span> guld</div>
+  <div id="charline"><span id="char-level">Level 1</span> <span class="dim">Barbarian</span></div>
+  <div id="goldline"><span id="gold">0</span> gold</div>
   <div id="alerts"></div>
 </div>
 
@@ -44,10 +44,10 @@
 </div>
 
 <div id="nav">
-  <div class="navbtn" data-panel="inventory" data-name="Väska &amp; utrustning" data-key="I">🎒</div>
-  <div class="navbtn" data-panel="character" data-name="Karaktär" data-key="C">📜</div>
-  <div class="navbtn" data-panel="skills" data-name="Skill-träd" data-key="K">🌟</div>
-  <div class="navbtn" data-act="help" data-name="Hur man spelar" data-key="F1"><span class="glyph">?</span></div>
+  <div class="navbtn" data-panel="inventory" data-name="Bag &amp; equipment" data-key="I">🎒</div>
+  <div class="navbtn" data-panel="character" data-name="Character" data-key="C">📜</div>
+  <div class="navbtn" data-panel="skills" data-name="Skill trees" data-key="K">🌟</div>
+  <div class="navbtn" data-act="help" data-name="How to play" data-key="F1"><span class="glyph">?</span></div>
 </div>
 
 <div id="banner"><div id="banner-name"></div><div id="banner-sub"></div></div>
@@ -57,23 +57,23 @@
 
 <div id="pause" class="hidden">
   <div class="menu-box">
-    <h1>Pausat</h1>
-    <button data-act="resume" class="primary">Fortsätt</button>
-    <button data-act="save">Spara nu</button>
-    <button data-act="autoaim">Auto-sikte: På</button>
-    <button data-act="autoattack">Auto-attack: På</button>
-    <button data-act="quit">Till startskärmen</button>
+    <h1>Paused</h1>
+    <button data-act="resume" class="primary">Resume</button>
+    <button data-act="save">Save now</button>
+    <button data-act="autoaim">Auto-aim: On</button>
+    <button data-act="autoattack">Auto-attack: On</button>
+    <button data-act="quit">Back to the start screen</button>
     <div class="menu-note" id="pause-note"></div>
   </div>
 </div>
 
 <div id="levelup" class="hidden">
   <div class="menu-box lvl">
-    <div class="lvl-badge" id="lvl-badge">Nivå 2</div>
+    <div class="lvl-badge" id="lvl-badge">Level 2</div>
     <p class="lvl-sub" id="lvl-sub"></p>
     <div id="lvl-stats"></div>
     <div class="lvl-actions" id="lvl-actions"></div>
-    <div class="menu-note">Du måste inte lägga poängen nu — de ligger kvar tills du vill.</div>
+    <div class="menu-note">You do not have to spend the points now — they wait until you want them.</div>
   </div>
 </div>
 
@@ -83,7 +83,7 @@
     <div class="tut-ico" id="tut-ico">🧭</div>
     <h1 id="tut-title"></h1>
     <p id="tut-body"></p>
-    <button data-act="next" class="primary" id="tut-next">Nästa</button>
+    <button data-act="next" class="primary" id="tut-next">Next</button>
   </div>
 </div>
 
@@ -96,37 +96,37 @@
 </div>
 
 <div id="hint">
-  <b>← ↑ ↓ →</b><span>gå</span>
-  <b>Klick</b><span>attack (siktar av sig själv)</span>
-  <b>Space</b><span>undanrullning</span>
+  <b>← ↑ ↓ →</b><span>walk</span>
+  <b>Click</b><span>attack (aims itself)</span>
+  <b>Space</b><span>dodge roll</span>
   <b>1 – 6</b><span>skills</span>
-  <b>Q</b><span>hälsodryck</span>
-  <b>E</b><span>använd · tala · res</span>
-  <b>T</b><span>stadsportal</span>
-  <b>Esc</b><span>paus &amp; spara</span>
-  <b>F1</b><span>hur man spelar</span>
-  <b>F2</b><span>dölj den här listan</span>
+  <b>Q</b><span>health potion</span>
+  <b>E</b><span>use · talk · travel</span>
+  <b>T</b><span>town portal</span>
+  <b>Esc</b><span>pause &amp; save</span>
+  <b>F1</b><span>how to play</span>
+  <b>F2</b><span>hide this list</span>
 </div>
 
 <div id="start">
   <canvas id="menu-bg"></canvas>
   <div id="start-box">
     <h1>Frosthem</h1>
-    <p class="sub">En barbar, en rostig yxa, och vildmarken norrut.</p>
+    <p class="sub">A barbarian, a rusty axe, and the wilderness to the north.</p>
 
     <div id="char-list-view">
-      <div class="menu-grp">Dina karaktärer</div>
+      <div class="menu-grp">Your characters</div>
       <div id="char-list"></div>
-      <button id="btn-newchar">Skapa ny karaktär</button>
+      <button id="btn-newchar">Create a new character</button>
     </div>
 
     <div id="create-view" class="hidden">
-      <div class="menu-grp">Välj klass</div>
+      <div class="menu-grp">Choose a class</div>
       <div id="class-list"></div>
-      <label for="hero-name">Vad ska barbaren heta?</label>
-      <input id="hero-name" maxlength="18" placeholder="Barbaren" autocomplete="off" spellcheck="false">
-      <button id="btn-new" class="primary">Börja vandringen</button>
-      <button id="btn-back">Tillbaka</button>
+      <label for="hero-name">What is the barbarian called?</label>
+      <input id="hero-name" maxlength="18" placeholder="Barbarian" autocomplete="off" spellcheck="false">
+      <button id="btn-new" class="primary">Begin the journey</button>
+      <button id="btn-back">Back</button>
     </div>
   </div>
 </div>

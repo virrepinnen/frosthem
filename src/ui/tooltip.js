@@ -7,7 +7,7 @@ import { requirementsOf } from '../systems/stats.js';
 
 const el = () => /** @type {HTMLElement} */ (document.getElementById('tooltip'));
 
-const RARITY_LABEL = { normal: '', magic: 'Magiskt', rare: 'Sällsynt', unique: 'Unikt' };
+const RARITY_LABEL = { normal: '', magic: 'Magic', rare: 'Rare', unique: 'Unique' };
 
 /**
  * @param {Item} item
@@ -42,17 +42,17 @@ export function showItemTooltip(item, p, compareTo, hint) {
     const d = itemScore(item) - itemScore(compareTo);
     const cls = d > 0 ? 'up' : d < 0 ? 'down' : '';
     const arrow = d > 0 ? '▲' : d < 0 ? '▼' : '=';
-    cmp = `<div class="tt-cmp">Jämfört med <b>${escape(compareTo.name)}</b>: <span class="${cls}">${arrow} ${d > 0 ? '+' : ''}${d}</span></div>`;
+    cmp = `<div class="tt-cmp">Compared with <b>${escape(compareTo.name)}</b>: <span class="${cls}">${arrow} ${d > 0 ? '+' : ''}${d}</span></div>`;
   }
 
   t.innerHTML = `
     <div class="tt-name" style="color:${RARITY_COLOR[item.rarity]}">${escape(item.name)}</div>
-    <div class="tt-base">${escape(b.name)}${RARITY_LABEL[item.rarity] ? ' · ' + RARITY_LABEL[item.rarity] : ''} · fnivå ${item.ilvl}</div>
+    <div class="tt-base">${escape(b.name)}${RARITY_LABEL[item.rarity] ? ' · ' + RARITY_LABEL[item.rarity] : ''} · item level ${item.ilvl}</div>
     ${core.length ? `<div class="tt-core">${core.join('<br>')}</div>` : ''}
     ${lines.length ? `<hr><div class="tt-mod">${lines.map(escape).join('<br>')}</div>` : ''}
     ${item.flavor ? `<hr><div class="tt-base" style="font-style:italic">${escape(item.flavor)}</div>` : ''}
-    ${(req.str || req.dex) ? `<div class="tt-req ${reqOk ? '' : 'bad'}">Kräver${req.str ? ` ${req.str} styrka` : ''}${req.dex ? ` ${req.dex} smidighet` : ''}</div>` : ''}
-    <div class="tt-req">Värde ${itemValue(item)} guld</div>
+    ${(req.str || req.dex) ? `<div class="tt-req ${reqOk ? '' : 'bad'}">Requires${req.str ? ` ${req.str} strength` : ''}${req.dex ? ` ${req.dex} dexterity` : ''}</div>` : ''}
+    <div class="tt-req">Worth ${itemValue(item)} gold</div>
     ${cmp}
     ${hint ? `<div class="tt-hint">${escape(hint)}</div>` : ''}
   `;

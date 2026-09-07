@@ -14,7 +14,7 @@ import { spawnXpOrbs } from './orbs.js';
 const COLD = '#8fd8f4', FIRE = '#f5a04a', LIGHT = '#d7c2ff', CRIT = '#ffd166', PHYS = '#f0f4fa';
 
 /* ------------------------------------------------------------------ */
-/* Statuseffekter                                                      */
+/* Status effects                                                      */
 /* ------------------------------------------------------------------ */
 
 /** @param {Monster} m @param {number} amt @param {number} dur */
@@ -39,7 +39,7 @@ export function applyBleed(m, dps, dur) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Skada mot monster                                                   */
+/* Damage to monsters                                                  */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -63,18 +63,18 @@ export function hitMonster(game, m, d) {
 
   total = Math.max(1, Math.round(total));
 
-  // Första träffen väcker det som sover. Slår man jarlen reser sig hela
-  // arenan med honom.
+  // The first hit wakes whatever is sleeping. Strike the jarl and the whole
+  // arena rises with him.
   if (m.dormant) {
     m.dormant = false;
     m.state = 'chase';
     if (m.isBoss) {
-      m.bossState = null;               // börjar om med full uppladdning
+      m.bossState = null;               // restarts with a full wind-up
       for (const o of game.monsters) {
         if (o === m || o.dead) continue;
         if (Math.hypot(o.pos.x - m.pos.x, o.pos.y - m.pos.y) < 460) { o.dormant = false; o.state = 'chase'; }
       }
-      game.alert(`${m.name} reser sig.`);
+      game.alert(`${m.name} rises.`);
       burst(m.pos.x, m.pos.y, 70, { color: '#a8e4f8', speed: 300, life: 1.1, size: 3.4, grav: -40 });
       screenFlash(0.3, '#7fd4f0');
       shake(14);
@@ -95,7 +95,7 @@ export function hitMonster(game, m, d) {
     });
   }
 
-  // livsdräneri från spelaren
+  // life steal for the player
   if (d.phys && p.lifeSteal > 0) {
     const heal = total * p.lifeSteal;
     p.hp = Math.min(p.maxHp, p.hp + heal);
@@ -111,8 +111,8 @@ export function killMonster(game, m) {
   m.dead = true;
   m.corpseT = 14;
   game.player.kills++;
-  // Ett fällt byte ger andrum. Det gör flockrensning hållbar samtidigt som
-  // bomsvep straffas — precis den avvägning uthålligheten ska skapa.
+  // A felled target grants breathing room. That keeps pack-clearing sustainable
+  // while punishing missed swings — exactly the trade-off stamina should create.
   game.player.stamina = Math.min(game.player.maxStamina, game.player.stamina + KILL_STAMINA);
 
   decal(m.pos.x, m.pos.y, m.radius * (m.isBoss ? 3.2 : 1.5), 'rgba(120,20,30,0.5)');
@@ -138,8 +138,8 @@ function dropLoot(game, m) {
   const ilvl = Math.max(1, m.level + (m.isBoss ? 4 : m.elite ? 2 : m.isChampion ? 1 : 0));
   const mf = p.magicFind;
 
-  // Droppfrekvensen är medvetet låg. Med automatisk upplockning blir varje
-  // föremål annars bara brus i väskan — sällsyntheten är hela poängen.
+  // The drop rate is deliberately low. With automatic pickup every item would
+  // otherwise be noise in the bag — the rarity is the whole point.
   let itemRolls = 0, boost = 1;
   if (m.isBoss) { itemRolls = 4; boost = 4; }
   else if (m.elite) { itemRolls = rng.chance(0.5) ? 2 : 1; boost = 2.8; }
@@ -150,12 +150,12 @@ function dropLoot(game, m) {
     const forced = m.isBoss && i === 0 ? /** @type {const} */ ('rare') : undefined;
     const item = rollItem(ilvl, { mf, boost, forceRarity: forced });
     if (!item) continue;
-    // Vitt skräp faller mest bort helt i stället för att skräpa ner marken.
+    // White junk mostly falls away entirely rather than littering the ground.
     if (item.rarity === 'normal' && !m.isBoss && rng.chance(0.85)) continue;
     spawnGround(game, m.pos.x, m.pos.y, { kind: 'item', item });
   }
 
-  // Färre men tyngre högar: marken blev plottrig av guld efter varje flock.
+  // Fewer but heavier piles: the ground got cluttered with gold after every pack.
   const goldChance = m.isBoss ? 1 : m.elite ? 1 : m.isChampion ? 0.5 : 0.2;
   if (rng.chance(goldChance)) {
     const base = 4 + m.level * 3.2;
@@ -178,13 +178,13 @@ export function spawnGround(game, x, y, payload) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Spelarens attacker                                                  */
+/* The player's attacks                                                */
 /* ------------------------------------------------------------------ */
 
 /**
- * Löser ett svep: allt inom bågen och räckvidden träffas direkt.
- * Omedelbar träffdetektion (ingen windup) gör att attacken känns responsiv,
- * medan animationen spelar upp efteråt.
+ * Resolves a swing: everything within the arc and reach is hit immediately.
+ * Instant hit detection (no wind-up) makes the attack feel responsive, while
+ * the animation plays out afterwards.
  * @param {any} game
  * @param {{arc:number, reach:number, mult:number, kind:string, cold?:number, freeze?:number,
  *          bleed?:{dps:number,dur:number}, stun?:number, ignoreArmor?:boolean,
@@ -201,7 +201,7 @@ export function performSwing(game, o) {
     const d = Math.hypot(dx, dy);
     if (d > o.reach + m.radius) continue;
     if (o.arc < Math.PI * 1.99 && angleDiff(Math.atan2(dy, dx), dir) > o.arc / 2) continue;
-    // Ingen skada genom klippväggar — det gick att döda hela stenbrottet utifrån.
+    // No damage through rock walls — you could clear the whole quarry from outside.
     if (lineBlocked(game.zone, p.pos.x, p.pos.y, m.pos.x, m.pos.y)) continue;
 
     const roll = rng.range(p.dmgMin, p.dmgMax) * o.mult * (1 + p.dmgBuff + (p.shrineDmg || 0));
@@ -228,8 +228,9 @@ export function performSwing(game, o) {
     hits++;
   }
 
-  // Varianten avgör både hur slaget ser ut och hur länge animationen tar.
-  // Tyngre hugg får mer tid — de ska kännas i handen, inte bara i siffrorna.
+  // The variant decides both how the strike looks and how long the animation
+  // takes. Heavier blows get more time — they should be felt in the hand, not
+  // just in the numbers.
   const variant = o.kind === 'whirl' ? null : pickAttack(p, o.kind);
   const stretch = variant === 'overhead' ? 1.5 : variant === 'thrust' ? 1.2 : 1;
   p.swing = {
@@ -241,7 +242,7 @@ export function performSwing(game, o) {
 }
 
 /**
- * Utför en skill. Returnerar false om den inte kunde användas.
+ * Uses a skill. Returns false if it could not be used.
  * @param {any} game @param {string} id
  */
 export function useSkill(game, id) {
@@ -252,9 +253,9 @@ export function useSkill(game, id) {
   if (r <= 0) return false;
   if ((p.cooldowns[id] ?? 0) > 0) return false;
   if (p.whirl || p.dash) return false;
-  // Varje skill drar sin egen resurs: Frost kostar mana, resten uthållighet.
-  if (def.mana && p.mana < def.mana) { game.alert('För lite mana.'); p.manaFlash = 0.45; return false; }
-  if (def.stamina && p.stamina < def.stamina) { game.alert('För lite uthållighet.'); p.staminaFlash = 0.45; return false; }
+  // Every skill draws its own resource: Frost costs mana, the rest stamina.
+  if (def.mana && p.mana < def.mana) { game.alert('Not enough mana.'); p.manaFlash = 0.45; return false; }
+  if (def.stamina && p.stamina < def.stamina) { game.alert('Not enough stamina.'); p.staminaFlash = 0.45; return false; }
 
   const { synergy } = skillPower(p, id);
   if (def.stamina) { p.stamina -= def.stamina; p.combatT = 1.5; }
@@ -335,7 +336,7 @@ export function useSkill(game, id) {
       p.dmgBuffT = 8;
       game.novas.push({ x: p.pos.x, y: p.pos.y, t: 0, dur: 0.6, r: 220, color: '#d8b26a' });
       shake(7);
-      if (n) floatText(p.pos.x, p.pos.y - 40, `${n} bedövade`, '#d8b26a', 13);
+      if (n) floatText(p.pos.x, p.pos.y - 40, `${n} stunned`, '#d8b26a', 13);
       break;
     }
     default: return false;
@@ -344,7 +345,7 @@ export function useSkill(game, id) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Skada mot spelaren                                                  */
+/* Damage to the player                                                */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -363,11 +364,11 @@ export function damagePlayer(game, raw, src) {
   total *= 1 - (p.dmgReduction || 0);
   total = Math.max(1, Math.round(total));
 
-  // En träff bryter stadsportalen — det är därför den kostar två sekunders lugn.
+  // A hit breaks the town portal — that is why it costs two seconds of calm.
   if (p.cast) {
     p.cast = null;
     burst(p.pos.x, p.pos.y - 8, 18, { color: '#7a8ea0', speed: 150, life: 0.5, size: 2.4 });
-    game.alert('Portalen bröts av träffen.');
+    game.alert('The portal was broken by the blow.');
   }
 
   p.hp -= total;
@@ -389,11 +390,11 @@ export function damagePlayer(game, raw, src) {
   }
 }
 
-/** Använd hälsodryck. @param {any} game */
+/** Drink a health potion. @param {any} game */
 export function drinkPotion(game) {
   const p = game.player;
   if (p.potions <= 0 || p.dead) return false;
-  if (p.hp >= p.maxHp) { game.alert('Du är oskadd.'); return false; }
+  if (p.hp >= p.maxHp) { game.alert('You are unhurt.'); return false; }
   p.potions--;
   const heal = Math.round(p.maxHp * 0.45 + 20);
   p.hp = Math.min(p.maxHp, p.hp + heal);

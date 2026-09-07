@@ -5,26 +5,26 @@ import { SKILL_BY_ID } from '../data/skills.js';
 /** @typedef {import('./loot.js').Item} Item */
 /** @typedef {import('../entities/player.js').Player} Player */
 
-/** Uthållighetskostnad för ett grundsvep vid normal vapenhastighet. */
+/** Stamina cost of a basic swing at normal weapon speed. */
 export const ATTACK_COST_BASE = 8;
-/** Hur mycket av återhämtningen som är kvar medan man är i strid. */
+/** How much of the regeneration is left while you are in combat. */
 export const COMBAT_REGEN = 0.4;
-/** Hur länge en attack räknas som "i strid". */
+/** How long an attack counts as "in combat". */
 export const COMBAT_WINDOW = 1.5;
-/** Uthållighet man får tillbaka när en fiende faller. */
+/** Stamina returned when an enemy falls. */
 export const KILL_STAMINA = 8;
 
-/** Grundtak för motstånd — som i D2 gör taket att man aldrig blir immun.
- *  Isblod kan höja taket, vilket är ett av få sätt att bli märkbart tåligare sent. */
+/** Base resistance cap — as in D2, the cap means you never become immune.
+ *  Ice Blood can raise it, one of the few ways to get noticeably tougher late. */
 export const RES_CAP = 75;
 
-/** XP som krävs för att gå från `level` till nästa nivå. @param {number} level */
+/** XP required to go from `level` to the next one. @param {number} level */
 export function xpToNext(level) {
   return Math.floor(46 * Math.pow(level, 1.62) + 24 * level);
 }
 
 /**
- * Slår ihop alla modifierare från utrustningen.
+ * Merges every modifier from the equipment.
  * @param {Player} p @returns {Record<string, number>}
  */
 export function gearMods(p) {
@@ -42,8 +42,8 @@ export function gearMods(p) {
 export const rank = (p, id) => p.skills[id] || 0;
 
 /**
- * Räknar ut alla härledda värden. Körs om varje gång utrustning, nivå eller
- * skills ändras — aldrig i den heta loopen.
+ * Computes every derived value. Re-run whenever equipment, level or skills
+ * change — never in the hot loop.
  * @param {Player} p
  */
 export function recalc(p) {
@@ -66,20 +66,20 @@ export function recalc(p) {
   p.maxHp = Math.round(45 + vit * 4 + p.level * 5 + (g.life || 0) + rSecond * 9);
   p.lifeRegen = 0.35 + (g.lifeRegen || 0) + rSecond * 0.5;
 
-  // Två skilda resurser, som D2:s vitality/energy:
-  //   Uthållighet = kroppen. Vitalitet bär den, den dräneras av svep och rullar.
-  //   Mana = viljan. Bara magi drar den, så en närstridsbyggd bryr sig knappt.
+  // Two separate resources, like D2's vitality/energy:
+  //   Stamina = the body. Vitality carries it; swings and rolls drain it.
+  //   Mana = the will. Only magic draws on it, so a melee build barely cares.
   p.maxStamina = Math.round(40 + vit * 2 + (g.stamina || 0) + rSecond * 6);
   p.staminaRegen = 8 + vit * 0.18;
   p.maxMana = Math.round(25 + will * 4 + (g.mana || 0));
   p.manaRegen = 3 + will * 0.3;
 
-  // Varje grundattack kostar uthållighet. Tunga vapen svingar långsammare men
-  // tar mer per svep, så att ett stort vapen inte blir gratis.
+  // Every basic attack costs stamina. Heavy weapons swing slower but take more
+  // per swing, so a big weapon is never free.
   const wSpeed = w?.base.speed ?? 1.15;
   p.attackCost = Math.max(3.5, ATTACK_COST_BASE / wSpeed);
 
-  // rustning: bas från utrustning, skalad av procentmods och Härdad hud
+  // armour: base from equipment, scaled by percentage mods and Tough Hide
   let baseArmor = 0;
   for (const slot in p.equipment) {
     const it = /** @type {Item|null} */ (p.equipment[slot]);
@@ -102,7 +102,7 @@ export function recalc(p) {
   p.lightDmg = g.lightDmg || 0;
   p.freezeChance = (g.freezeChance || 0) + rBite * 2;
   p.lifeSteal = ((g.lifeSteal || 0) + rBlood * 0.7) / 100;
-  // Orubblig: platt reduktion ovanpå rustningen, och stunimmunitet vid rank 5.
+  // Unbreakable: flat reduction on top of armour, and stun immunity at rank 5.
   p.dmgReduction = Math.min(0.25, rUnbreak * 0.025);
   p.stunImmune = rUnbreak >= 5;
   p.magicFind = g.magicFind || 0;
@@ -122,8 +122,8 @@ export function recalc(p) {
 }
 
 /**
- * Kan spelaren bära föremålet? Krav på styrka/smidighet är D2:s sätt att göra
- * attributpoäng meningsfulla.
+ * Can the player carry the item? Strength/dexterity requirements are D2's way
+ * of making attribute points meaningful.
  * @param {Player} p @param {Item} item
  */
 export function canEquip(p, item) {
@@ -137,7 +137,7 @@ export function requirementsOf(item) {
 }
 
 /**
- * Effektiv rank inklusive synergi-bonus.
+ * Effective rank including the synergy bonus.
  * @param {Player} p @param {string} id
  * @returns {{rank:number, synergy:number}}
  */
@@ -149,7 +149,7 @@ export function skillPower(p, id) {
 }
 
 /**
- * Fysisk skadereduktion från rustning.
+ * Physical damage reduction from armour.
  * @param {number} armor @param {number} attackerLevel
  */
 export function armorReduction(armor, attackerLevel) {

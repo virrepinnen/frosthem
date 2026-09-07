@@ -34,8 +34,8 @@ import { rng } from '../core/rng.js';
 let nextUid = 1;
 
 /**
- * Väljer bastyp. Vikten favoriserar bastyper nära föremålets ilvl så att
- * "Rostig yxa" gradvis slutar droppa medan "Krosshammare" tar över.
+ * Picks a base type. The weighting favours bases near the item's ilvl so that
+ * "Rusty Axe" gradually stops dropping while "War Hammer" takes over.
  * @param {number} ilvl @param {Slot} [slot]
  * @returns {BaseItem|null}
  */
@@ -46,8 +46,8 @@ function pickBase(ilvl, slot) {
 }
 
 /**
- * Väljer en affixnivå bland dem som ilvl tillåter, med tydlig lutning mot
- * de högsta tillgängliga nivåerna.
+ * Picks an affix tier among those the ilvl allows, leaning clearly towards the
+ * highest available tiers.
  * @param {AffixDef} def @param {number} ilvl
  */
 function pickTier(def, ilvl) {
@@ -83,8 +83,8 @@ function combineMods(affixes, extra) {
 }
 
 /**
- * Slår sällsynthet. Magic find förskjuter kurvan uppåt — precis som i D2
- * påverkar MF chansen att uppgradera, inte att något alls droppar.
+ * Rolls rarity. Magic find shifts the curve upward — exactly as in D2, MF
+ * affects the chance to upgrade, not the chance that anything drops at all.
  * @param {number} mf @param {number} boost
  * @returns {Rarity}
  */
@@ -98,7 +98,7 @@ function rollRarity(mf, boost) {
 }
 
 /**
- * Genererar ett föremål.
+ * Generates an item.
  * @param {number} ilvl
  * @param {{mf?:number, boost?:number, slot?:Slot, forceRarity?:Rarity}} [opts]
  * @returns {Item|null}
@@ -108,7 +108,7 @@ export function rollItem(ilvl, opts = {}) {
   const boost = opts.boost ?? 1;
   let rarity = opts.forceRarity ?? rollRarity(mf, boost);
 
-  // ---- unikt: välj bland de unika vars ilvl-krav uppfylls ------------------
+  // ---- unique: pick among the uniques whose ilvl requirement is met --------
   if (rarity === 'unique') {
     const pool = UNIQUES.filter(u => u.ilvl <= ilvl);
     if (pool.length) {
@@ -123,7 +123,7 @@ export function rollItem(ilvl, opts = {}) {
         };
       }
     }
-    rarity = 'rare'; // inget unikt tillgängligt än på den här nivån
+    rarity = 'rare'; // no unique available at this level yet
   }
 
   const base = pickBase(ilvl, opts.slot);
@@ -143,7 +143,7 @@ export function rollItem(ilvl, opts = {}) {
     nPre = Math.min(3, Math.ceil(total / 2));
     nSuf = Math.min(3, total - nPre);
   }
-  // Smycken har ingen bas-nytta alls, så de måste alltid få minst en affix.
+  // Jewellery has no base value at all, so it must always get at least one affix.
   if (rarity === 'normal' && (base.slot === 'ring' || base.slot === 'amulet')) { rarity = 'magic'; nSuf = 1; }
 
   /** @type {RolledAffix[]} */
@@ -178,12 +178,12 @@ function buildName(base, rarity, affixes) {
   const pre = affixes.find(a => a.kind === 'prefix');
   const suf = affixes.find(a => a.kind === 'suffix');
   let n = base.name;
-  if (pre) n = `${pre.label} ${n.charAt(0).toLowerCase()}${n.slice(1)}`;
+  if (pre) n = `${pre.label} ${n}`;
   if (suf) n = `${n} ${suf.label}`;
   return n;
 }
 
-/** Guldvärde vid försäljning. @param {Item} item */
+/** Gold value when sold. @param {Item} item */
 export function itemValue(item) {
   const rMult = { normal: 1, magic: 2.6, rare: 5.5, unique: 12 }[item.rarity];
   let v = item.base.value * rMult;
@@ -192,8 +192,8 @@ export function itemValue(item) {
 }
 
 /**
- * Grov poäng för att avgöra om ett föremål är en uppgradering. Används bara
- * för pilarna i tooltipen — spelaren avgör själv.
+ * A rough score for deciding whether an item is an upgrade. Used only for the
+ * arrows in the tooltip — the player decides for themselves.
  * @param {Item|null} item
  */
 export function itemScore(item) {
@@ -211,7 +211,7 @@ export function itemScore(item) {
   return Math.round(s);
 }
 
-/** Sorterade, läsbara modrader. @param {Item} item */
+/** Sorted, readable mod lines. @param {Item} item */
 export function modLines(item) {
   return Object.entries(item.mods)
     .filter(([, v]) => v !== 0)

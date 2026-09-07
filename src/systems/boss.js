@@ -10,20 +10,21 @@ import { resolveCollision } from './world.js';
 /** @typedef {import('../entities/monster.js').Monster} Monster */
 
 /**
- * Jarl Hravns AI.
+ * Jarl Hravn's AI.
  *
- * Bossen kör en egen loop i stället för det vanliga monstermönstret, av två skäl:
- *  1. Den vanliga separationskraften från livvakterna kunde överrösta jaktvektorn,
- *     så att bossen puttades runt utan att någonsin komma inom räckhåll.
- *  2. En boss ska ha *läsbara* attacker. Varje move har en telegraf som ritas på
- *     marken innan den träffar, så att den som ser upp kan gå undan.
+ * The boss runs its own loop instead of the ordinary monster pattern, for two
+ * reasons:
+ *  1. The usual separation force from the bodyguards could drown out the chase
+ *     vector, so the boss was shoved around without ever getting in reach.
+ *  2. A boss should have *readable* attacks. Every move has a telegraph drawn on
+ *     the ground before it lands, so anyone paying attention can step aside.
  */
 
 const MOVES = {
-  sweep:  { name: 'Frostsvep',      wind: 0.75, cd: 2.6, range: 130, mult: 1.00 },
-  slam:   { name: 'Iskross',        wind: 1.10, cd: 4.2, range: 340, mult: 1.35 },
-  charge: { name: 'Rimlans',        wind: 0.90, cd: 5.5, range: 620, mult: 1.15 },
-  summon: { name: 'Kallar vålnader', wind: 1.20, cd: 99,  range: 999, mult: 0 },
+  sweep:  { name: 'Frost Sweep',    wind: 0.75, cd: 2.6, range: 130, mult: 1.00 },
+  slam:   { name: 'Ice Crush',      wind: 1.10, cd: 4.2, range: 340, mult: 1.35 },
+  charge: { name: 'Rime Lance',     wind: 0.90, cd: 5.5, range: 620, mult: 1.15 },
+  summon: { name: 'Calls Wraiths',  wind: 1.20, cd: 99,  range: 999, mult: 0 },
 };
 
 /** @param {Monster} m */
@@ -41,7 +42,7 @@ function state(m) {
 
 /**
  * @param {any} game @param {Monster} m @param {number} dt
- * @returns {{mx:number, my:number, handled:boolean}} rörelse som ai.js ska applicera
+ * @returns {{mx:number, my:number, handled:boolean}} movement for ai.js to apply
  */
 export function updateBoss(game, m, dt) {
   const p = game.player;
@@ -51,16 +52,16 @@ export function updateBoss(game, m, dt) {
 
   for (const k in B.moveCd) B.moveCd[k] = Math.max(0, B.moveCd[k] - dt);
 
-  // Sovande: står kvar i arenan och gör ingenting förrän han blir slagen.
+  // Dormant: stays in the arena and does nothing until he is struck.
   if (m.dormant) {
-    m.facing = Math.atan2(dy, dx);   // följer dig med blicken
+    m.facing = Math.atan2(dy, dx);   // he follows you with his eyes
     return { mx: 0, my: 0, handled: true };
   }
 
-  // Frusen eller bedövad: allt pausar, även pågående telegraf.
+  // Frozen or stunned: everything pauses, including a telegraph in progress.
   if (m.freezeT > 0 || m.stunT > 0) return { mx: 0, my: 0, handled: true };
 
-  // ---- pågående rusning ---------------------------------------------------
+  // ---- charge in progress -------------------------------------------------
   if (B.charge) {
     B.charge.t -= dt;
     const sp = 720;
@@ -77,7 +78,7 @@ export function updateBoss(game, m, dt) {
     return { mx: 0, my: 0, handled: true };
   }
 
-  // ---- pågående telegraf --------------------------------------------------
+  // ---- telegraph in progress ----------------------------------------------
   if (B.move) {
     B.t -= dt;
     if (m.telegraph) m.telegraph.t = 1 - B.t / B.dur;
@@ -90,7 +91,7 @@ export function updateBoss(game, m, dt) {
     return { mx: 0, my: 0, handled: true };
   }
 
-  // ---- fasbyten: kalla fram vålnader vid 66% och 33% ----------------------
+  // ---- phase changes: summon wraiths at 66% and 33% -----------------------
   const frac = m.hp / m.maxHp;
   const wantSummons = frac < 0.34 ? 2 : frac < 0.67 ? 1 : 0;
   if (wantSummons > B.summons) {
@@ -99,7 +100,7 @@ export function updateBoss(game, m, dt) {
     return { mx: 0, my: 0, handled: true };
   }
 
-  // ---- välj nästa move ----------------------------------------------------
+  // ---- choose the next move -----------------------------------------------
   B.cd -= dt;
   if (B.cd <= 0 && dist < 700) {
     /** @type {(keyof MOVES)[]} */
@@ -113,7 +114,7 @@ export function updateBoss(game, m, dt) {
     }
   }
 
-  // ---- annars: gå mot spelaren -------------------------------------------
+  // ---- otherwise: walk towards the player ---------------------------------
   m.facing = Math.atan2(dy, dx);
   if (dist > 90) return { mx: dx / dist, my: dy / dist, handled: true };
   return { mx: 0, my: 0, handled: true };
@@ -131,7 +132,7 @@ function begin(m, B, move, p) {
   if (p) {
     B.dir = Math.atan2(p.pos.y - m.pos.y, p.pos.x - m.pos.x);
     m.facing = B.dir;
-    // Iskrossen siktar där spelaren *är* — går man därifrån missar den.
+    // The ice crush aims where the player *is* — walk away and it misses.
     B.aim = { x: p.pos.x, y: p.pos.y };
   }
   m.telegraph = move === 'sweep'
@@ -179,7 +180,7 @@ function execute(game, m, B, move) {
     shake(5);
 
   } else {
-    // Vålnader ur snön
+    // Wraiths out of the snow
     const n = 3;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2 + rng.range(0, 1);
@@ -188,7 +189,7 @@ function execute(game, m, B, move) {
       burst(x, y, 26, { color: '#9a7ad0', speed: 200, life: 0.8, size: 3, grav: -40 });
     }
     game.novas.push({ x: m.pos.x, y: m.pos.y, t: 0, dur: 0.6, r: 220, color: '#9a7ad0' });
-    floatText(m.pos.x, m.pos.y - m.radius - 30, 'Vålnader!', '#c4a8f0', 15);
+    floatText(m.pos.x, m.pos.y - m.radius - 30, 'Wraiths!', '#c4a8f0', 15);
     shake(8);
   }
 }

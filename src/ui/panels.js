@@ -12,8 +12,8 @@ import { showItemTooltip, showTextTooltip, hideTooltip, escape } from './tooltip
 
 export const panels = {
   inventory: false, character: false, skills: false, vendor: false, waypoint: false,
-  /** @type {'stal'|'frost'|'uthallighet'} */
-  skillTab: 'stal',
+  /** @type {'steel'|'frost'|'endurance'} */
+  skillTab: 'steel',
 };
 
 export function anyPanelOpen() {
@@ -52,7 +52,7 @@ export function renderPanels(game) {
 }
 
 /**
- * Flera paneler på samma sida får inte lägga sig ovanpå varandra.
+ * Several panels on the same side must not stack on top of each other.
  * @param {HTMLElement} root
  */
 function stackPanels(root) {
@@ -62,8 +62,8 @@ function stackPanels(root) {
     let offset = 22;
     for (const el of list) {
       const w = el.getBoundingClientRect().width || (el.classList.contains('wide') ? 392 : 330);
-      // Två paneler får ligga sida vid sida så länge de inte äter upp mer än
-      // 62% av bredden — resten behövs för panelen på andra sidan.
+      // Two panels may sit side by side as long as they do not eat more than
+      // 62% of the width — the rest is needed for the panel on the other side.
       if (offset + w > innerWidth * 0.62 && list.length > 1) {
         el.style[side] = (22 + list.indexOf(el) * 18) + 'px';
         el.style.top = (64 + list.indexOf(el) * 18) + 'px';
@@ -87,7 +87,7 @@ function shell(title, side, onClose, wide) {
 /** @param {any} game */
 function inventoryPanel(game) {
   const p = game.player;
-  const d = shell('Utrustning &amp; väska', 'right',
+  const d = shell('Equipment &amp; bag', 'right',
     () => { panels.inventory = false; panels.vendor = false; game.dirtyUI = true; }, true);
 
   const doll = document.createElement('div');
@@ -101,7 +101,7 @@ function inventoryPanel(game) {
       ? `<div class="ic">${item.base.icon}</div><div class="nm" style="color:${RARITY_COLOR[item.rarity]}">${escape(shorten(item.name))}</div>`
       : SLOT_LABEL[slot];
     if (item) {
-      c.onmouseenter = () => showItemTooltip(item, p, null, 'Klicka för att ta av');
+      c.onmouseenter = () => showItemTooltip(item, p, null, 'Click to take off');
       c.onmouseleave = hideTooltip;
       c.onclick = () => { unequip(game, slot); hideTooltip(); };
     }
@@ -111,18 +111,18 @@ function inventoryPanel(game) {
 
   const info = document.createElement('div');
   info.className = 'row';
-  info.innerHTML = `<span>Drycker</span><span>🧪 ${p.potions}</span>`;
+  info.innerHTML = `<span>Potions</span><span>🧪 ${p.potions}</span>`;
   d.appendChild(info);
 
   const usage = bagUsage(p.inventory);
   const head = document.createElement('div');
   head.className = 'grp';
-  head.textContent = `Väska ${usage.used}/${usage.total} rutor` +
-    (panels.vendor ? ' — klicka för att sälja' : '');
+  head.textContent = `Bag ${usage.used}/${usage.total} cells` +
+    (panels.vendor ? ' — click to sell' : '');
   d.appendChild(head);
 
-  // Rutnätet ritas i två lager: tomma rutor underst, föremålen ovanpå med
-  // explicit grid-area. Då kan ett svärd spänna över flera rutor utan att
+  // The grid is drawn in two layers: empty cells underneath, items on top with
+  // an explicit grid-area. That lets a sword span several cells without
   // knuffa runt bakgrunden.
   const bag = document.createElement('div');
   bag.id = 'bag';
@@ -143,7 +143,7 @@ function inventoryPanel(game) {
     const eqSlot = item.base.slot === 'ring' ? (p.equipment.ring1 ? 'ring2' : 'ring1') : item.base.slot;
     const cur = /** @type {Item|null} */ (p.equipment[eqSlot] ?? null);
     c.onmouseenter = () => showItemTooltip(item, p, cur,
-      panels.vendor ? `Klicka: sälj för ${itemValue(item)} guld` : 'Klicka: utrusta · Högerklick: släng');
+      panels.vendor ? `Click: sell for ${itemValue(item)} gold` : 'Click: equip · Right click: drop');
     c.onmouseleave = hideTooltip;
     c.onclick = () => { panels.vendor ? sellItem(game, item) : equip(game, item); hideTooltip(); };
     c.oncontextmenu = (e) => { e.preventDefault(); if (!panels.vendor) dropItem(game, item); hideTooltip(); };
@@ -158,7 +158,7 @@ function inventoryPanel(game) {
 function shorten(s) { return s.length > 20 ? s.slice(0, 18) + '…' : s; }
 
 /* ------------------------------------------------------------------ */
-/* Karaktär                                                            */
+/* Character                                                           */
 /* ------------------------------------------------------------------ */
 
 /** @param {any} game */
@@ -178,63 +178,63 @@ function characterPanel(game) {
     const e = document.createElement('div'); e.className = 'grp'; e.textContent = t; return e;
   };
 
-  d.appendChild(row('Klass', 'Barbar'));
-  d.appendChild(row('Nivå', String(p.level)));
-  d.appendChild(row('Erfarenhet', `${p.xp} / ${p.xpNext}`));
-  d.appendChild(row('Fällda fiender', String(p.kills)));
-  d.appendChild(row('Dödsfall', String(p.deaths)));
+  d.appendChild(row('Class', 'Barbarian'));
+  d.appendChild(row('Level', String(p.level)));
+  d.appendChild(row('Experience', `${p.xp} / ${p.xpNext}`));
+  d.appendChild(row('Enemies felled', String(p.kills)));
+  d.appendChild(row('Deaths', String(p.deaths)));
 
-  d.appendChild(g('Attribut'));
-  d.appendChild(pointsBadge(statPointsLeft(p, game.pending), 'attributpoäng att lägga', '✦'));
+  d.appendChild(g('Attributes'));
+  d.appendChild(pointsBadge(statPointsLeft(p, game.pending), 'attribute points to spend', '✦'));
   d.appendChild(attributeCards(game, () => { game.dirtyUI = true; }));
   const cbar = confirmBar(game, 'stats', () => { game.dirtyUI = true; });
   if (cbar) d.appendChild(cbar);
 
-  d.appendChild(g('Strid'));
-  d.appendChild(row('Skada', `${p.dmgMin}–${p.dmgMax}`));
-  d.appendChild(row('Attackhastighet', `${p.attackSpeed.toFixed(2)}×`));
-  d.appendChild(row('Kritisk träff', `${p.critChance.toFixed(1)}% (×${(p.critMult / 100).toFixed(2)})`));
-  if (p.coldDmg) d.appendChild(row('Köldskada', `+${Math.round(p.coldDmg)}`));
-  if (p.fireDmg) d.appendChild(row('Eldskada', `+${p.fireDmg}`));
-  if (p.lightDmg) d.appendChild(row('Blixtskada', `+${p.lightDmg}`));
-  if (p.freezeChance) d.appendChild(row('Chans att frysa', `${p.freezeChance}%`));
-  if (p.lifeSteal) d.appendChild(row('Livsdräneri', `${(p.lifeSteal * 100).toFixed(1)}%`));
+  d.appendChild(g('Combat'));
+  d.appendChild(row('Damage', `${p.dmgMin}–${p.dmgMax}`));
+  d.appendChild(row('Attack speed', `${p.attackSpeed.toFixed(2)}×`));
+  d.appendChild(row('Critical hit', `${p.critChance.toFixed(1)}% (×${(p.critMult / 100).toFixed(2)})`));
+  if (p.coldDmg) d.appendChild(row('Cold damage', `+${Math.round(p.coldDmg)}`));
+  if (p.fireDmg) d.appendChild(row('Fire damage', `+${p.fireDmg}`));
+  if (p.lightDmg) d.appendChild(row('Lightning damage', `+${p.lightDmg}`));
+  if (p.freezeChance) d.appendChild(row('Chance to freeze', `${p.freezeChance}%`));
+  if (p.lifeSteal) d.appendChild(row('Life steal', `${(p.lifeSteal * 100).toFixed(1)}%`));
 
-  d.appendChild(g('Försvar'));
-  d.appendChild(row('Rustning', String(p.armor),
-    '<b>Rustning</b><br>Minskar fysisk skada. Effekten avtar mot högre monsternivåer — ' +
-    'du behöver mer rustning för samma skydd längre in i vildmarken.'));
-  if (p.dmgReduction) d.appendChild(row('Skadereduktion', `${(p.dmgReduction * 100).toFixed(1)}%`));
-  d.appendChild(row('Max liv', String(p.maxHp)));
-  d.appendChild(row('Livsåterhämtning', `${p.lifeRegen.toFixed(1)}/s`));
+  d.appendChild(g('Defence'));
+  d.appendChild(row('Armour', String(p.armor),
+    '<b>Armour</b><br>Reduces physical damage. The effect falls off against higher monster levels — ' +
+    'you need more armour for the same protection deeper into the wild.'));
+  if (p.dmgReduction) d.appendChild(row('Damage reduction', `${(p.dmgReduction * 100).toFixed(1)}%`));
+  d.appendChild(row('Max life', String(p.maxHp)));
+  d.appendChild(row('Life regeneration', `${p.lifeRegen.toFixed(1)}/s`));
   const cap = p.resCap ?? RES_CAP;
-  d.appendChild(row('Köldmotstånd', `${p.res.cold}% / ${cap}%`));
-  d.appendChild(row('Eldmotstånd', `${p.res.fire}% / ${cap}%`));
-  d.appendChild(row('Blixtmotstånd', `${p.res.light}% / ${cap}%`));
+  d.appendChild(row('Cold resistance', `${p.res.cold}% / ${cap}%`));
+  d.appendChild(row('Fire resistance', `${p.res.fire}% / ${cap}%`));
+  d.appendChild(row('Lightning resistance', `${p.res.light}% / ${cap}%`));
 
-  d.appendChild(g('Uthållighet'));
-  d.appendChild(row('Max uthållighet', String(p.maxStamina),
-    '<div class="tt-name">Uthållighet</div><div class="tt-core">Varje svep och varje skill kostar. ' +
-    'Under strid återhämtar du dig bara till 40% — bryt kontakten för full takt.</div>' +
-    '<div class="tt-req">Varje fälld fiende ger 8 tillbaka.</div>'));
+  d.appendChild(g('Stamina'));
+  d.appendChild(row('Max stamina', String(p.maxStamina),
+    '<div class="tt-name">Stamina</div><div class="tt-core">Every swing and every skill costs. ' +
+    'In combat you recover at only 40% — break contact for the full rate.</div>' +
+    '<div class="tt-req">Every enemy felled gives 8 back.</div>'));
   d.appendChild(row('Kostnad per svep', (p.attackCost ?? 8).toFixed(1)));
-  d.appendChild(row('Återhämtning', `${p.staminaRegen.toFixed(1)}/s · ${(p.staminaRegen * 0.4).toFixed(1)}/s i strid`));
+  d.appendChild(row('Regeneration', `${p.staminaRegen.toFixed(1)}/s · ${(p.staminaRegen * 0.4).toFixed(1)}/s in combat`));
 
   d.appendChild(g('Mana'));
   d.appendChild(row('Max mana', String(p.maxMana),
-    '<div class="tt-name">Mana</div><div class="tt-core">Bara Frost-skills drar mana. ' +
-    'Den återhämtar sig i jämn takt och bryr sig inte om huruvida du slåss.</div>' +
-    '<div class="tt-req">Intelligens är det enda attributet som höjer den.</div>'));
-  d.appendChild(row('Återhämtning', `${p.manaRegen.toFixed(1)}/s`));
+    '<div class="tt-name">Mana</div><div class="tt-core">Only Frost skills draw mana. ' +
+    'It refills at a steady rate and does not care whether you are fighting.</div>' +
+    '<div class="tt-req">Intelligence is the only attribute that raises it.</div>'));
+  d.appendChild(row('Regeneration', `${p.manaRegen.toFixed(1)}/s`));
 
-  d.appendChild(g('Övrigt'));
-  d.appendChild(row('Gånghastighet', `${Math.round(p.moveSpeed)}`));
-  d.appendChild(row('Bättre fynd', `+${p.magicFind}%`));
+  d.appendChild(g('Other'));
+  d.appendChild(row('Movement speed', `${Math.round(p.moveSpeed)}`));
+  d.appendChild(row('Magic find', `+${p.magicFind}%`));
   return d;
 }
 
 /* ------------------------------------------------------------------ */
-/* Skill-träd                                                          */
+/* Skill trees                                                         */
 /* ------------------------------------------------------------------ */
 
 /** @param {any} game */
@@ -242,7 +242,7 @@ function skillsPanel(game) {
   const p = game.player;
   const d = shell('Skills', 'left', () => { game.dropPending(); panels.skills = false; game.dirtyUI = true; });
   const redraw = () => { game.dirtyUI = true; };
-  d.appendChild(pointsBadge(skillPointsLeft(p, game.pending), 'skillpoäng att lägga', '🌟'));
+  d.appendChild(pointsBadge(skillPointsLeft(p, game.pending), 'skill points to spend', '🌟'));
   d.appendChild(skillTreeEl(game, redraw));
   const bar = confirmBar(game, 'skills', redraw);
   if (bar) d.appendChild(bar);
@@ -250,25 +250,25 @@ function skillsPanel(game) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Vägstenar (waypoints)                                               */
+/* Waystones                                                           */
 /* ------------------------------------------------------------------ */
 
 /** @param {any} game */
 function waypointPanel(game) {
-  const d = shell('Vägstenar', 'left', () => { panels.waypoint = false; game.dirtyUI = true; });
+  const d = shell('Waystones', 'left', () => { panels.waypoint = false; game.dirtyUI = true; });
 
   const intro = document.createElement('div');
   intro.className = 'tt-base';
   intro.style.marginBottom = '10px';
-  intro.textContent = 'Res till en plats du redan hittat.';
+  intro.textContent = 'Travel to a place you have already found.';
   d.appendChild(intro);
 
   for (const z of game.waypointList()) {
     const row = document.createElement('div');
     row.className = 'node' + (z.known ? '' : ' locked');
     row.innerHTML = `<div class="ico">${z.index === 0 ? '🔥' : '🗿'}</div>` +
-      `<div class="t"><b>${escape(z.name)}</b><i>${z.known ? (z.index === 0 ? 'Byn' : `Monsternivå ${z.level}`) : 'Inte upptäckt'}</i></div>` +
-      `<div class="rk">${z.here ? 'här' : z.known ? '→' : '🔒'}</div>`;
+      `<div class="t"><b>${escape(z.name)}</b><i>${z.known ? (z.index === 0 ? 'The village' : `Monster level ${z.level}`) : 'Not discovered'}</i></div>` +
+      `<div class="rk">${z.here ? 'here' : z.known ? '→' : '🔒'}</div>`;
     row.style.marginBottom = '6px';
     if (z.known && !z.here) row.onclick = () => { game.travelToWaypoint(z.index); closeAllPanels(game); };
     d.appendChild(row);
@@ -288,7 +288,7 @@ function vendorPanel(game) {
   const intro = document.createElement('div');
   intro.className = 'tt-base';
   intro.style.marginBottom = '10px';
-  intro.textContent = 'Klicka på något i väskan för att sälja det.';
+  intro.textContent = 'Click something in the bag to sell it.';
   d.appendChild(intro);
 
   const potionPrice = 35 + p.level * 6;
@@ -299,26 +299,26 @@ function vendorPanel(game) {
     b.style.marginBottom = '6px';
     b.innerHTML = `<div class="ico">${icon}</div><div class="t"><b>${title}</b><i>${sub}</i></div><div class="rk">${price}g</div>`;
     b.onclick = () => {
-      if (p.gold < price) { game.alert('För lite guld.'); return; }
+      if (p.gold < price) { game.alert('Not enough gold.'); return; }
       p.gold -= price; act(); game.dirtyUI = true; game.autosave?.();
     };
     d.appendChild(b);
   };
-  offer('🧪', 'Hälsodryck', 'Återställer 45% av ditt liv', potionPrice, () => p.potions++);
-  offer('🧪', 'Fem hälsodrycker', 'Fyll bältet inför vildmarken', potionPrice * 5, () => { p.potions += 5; });
+  offer('🧪', 'Health potion', 'Restores 45% of your life', potionPrice, () => p.potions++);
+  offer('🧪', 'Five health potions', 'Fill the belt before the wild', potionPrice * 5, () => { p.potions += 5; });
 
   const junk = p.inventory.filter((/** @type {Item} */ i) => i.rarity === 'normal');
   const junkGold = junk.reduce((/** @type {number} */ a, /** @type {Item} */ i) => a + itemValue(i), 0);
   const sellAll = document.createElement('div');
   sellAll.className = 'node';
-  sellAll.innerHTML = `<div class="ico">🪙</div><div class="t"><b>Sälj allt vanligt</b><i>${junk.length} föremål</i></div><div class="rk">+${junkGold}g</div>`;
+  sellAll.innerHTML = `<div class="ico">🪙</div><div class="t"><b>Sell all common</b><i>${junk.length} items</i></div><div class="rk">+${junkGold}g</div>`;
   sellAll.onclick = () => { for (const i of junk.slice()) sellItem(game, i); game.autosave?.(); };
   d.appendChild(sellAll);
 
   const gold = document.createElement('div');
   gold.className = 'row';
   gold.style.marginTop = '12px';
-  gold.innerHTML = `<span>Ditt guld</span><span style="color:#d8b26a">${p.gold}</span>`;
+  gold.innerHTML = `<span>Your gold</span><span style="color:#d8b26a">${p.gold}</span>`;
   d.appendChild(gold);
   return d;
 }
