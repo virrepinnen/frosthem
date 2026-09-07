@@ -5,6 +5,7 @@ import { rng } from '../core/rng.js';
 import { hashNoise, clamp } from '../core/math.js';
 import { RARITY_COLOR } from '../data/items.js';
 import { FOG_CELL } from '../systems/world.js';
+import { drawHero } from './hero.js';
 
 /**
  * All världsrendering. Canvas 2D, top-down, med djupsortering på y så att
@@ -867,18 +868,9 @@ function drawPlayer(ctx, game) {
   const p = game.player;
   const t = performance.now() / 1000;
 
-  if (p.dead) {
-    ctx.save();
-    ctx.globalAlpha = 0.6;
-    ctx.fillStyle = '#2b1c22';
-    ctx.beginPath(); ctx.ellipse(p.pos.x, p.pos.y, 20, 11, 0.5, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-    return;
-  }
+  if (p.dead) { drawHero(ctx, game); return; }
 
-  shadow(ctx, p.pos.x, p.pos.y + 6, 14, 6, 0.38);
-
-  // Rimfrostaura
+  // Rimfrostaura under figuren
   if ((p.skills.rimeaura ?? 0) > 0) {
     ctx.save();
     const g = ctx.createRadialGradient(p.pos.x, p.pos.y, 30, p.pos.x, p.pos.y, 150);
@@ -887,23 +879,12 @@ function drawPlayer(ctx, game) {
     ctx.restore();
   }
 
-  ctx.save();
-  ctx.translate(p.pos.x, p.pos.y);
+  drawHero(ctx, game);
 
-  // svep-animation
-  if (p.swing) {
-    const k = p.swing.t / p.swing.dur;
-    ctx.save();
-    ctx.globalAlpha = (1 - k) * 0.7;
-    const spread = p.swing.arc / 2;
-    const a0 = p.swing.dir - spread + p.swing.arc * k * 0.55;
-    ctx.strokeStyle = p.swing.kind === 'rend' ? '#e0566a' : p.swing.kind === 'shatter' ? '#8fd8f4' : '#e8f0fa';
-    ctx.lineWidth = 5 * (1 - k) + 1.5;
-    ctx.beginPath(); ctx.arc(0, 0, p.swing.reach * (0.65 + k * 0.35), a0, a0 + p.swing.arc * 0.7); ctx.stroke();
-    ctx.restore();
-  }
+  // Virvelvindens ringar ligger ovanpå figuren
   if (p.whirl) {
     ctx.save();
+    ctx.translate(p.pos.x, p.pos.y);
     ctx.globalAlpha = 0.55;
     ctx.strokeStyle = '#e8f0fa'; ctx.lineWidth = 3;
     for (let i = 0; i < 3; i++) {
@@ -914,56 +895,12 @@ function drawPlayer(ctx, game) {
     ctx.restore();
   }
 
-  const bob = Math.sin(p.walkPhase * 8) * 1.6;
-  if (p.roll) {
-    // Under rullningen ritas figuren hopkurad och roterad — läsbar signal om
-    // att man är osårbar just nu.
-    const k = 1 - p.roll.t / p.roll.dur;
-    ctx.rotate(p.roll.dir + k * Math.PI * 2);
-    const squash = 1 - Math.sin(k * Math.PI) * 0.38;
-    ctx.scale(squash, 1 / squash);
-    ctx.globalAlpha = 0.92;
-  } else {
-    ctx.rotate(p.facing);
-  }
-
-  // Mörk siluett — spelaren måste gå att hitta i en hop på vit mark.
-  ctx.fillStyle = 'rgba(8,13,20,0.95)';
-  ctx.beginPath(); ctx.ellipse(-2, bob * 0.3, 17, 14.5, 0, 0, Math.PI * 2); ctx.fill();
-  // ben
-  ctx.fillStyle = '#232a36';
-  ctx.fillRect(-3, -8 + Math.sin(p.walkPhase * 8) * 3, 9, 6);
-  ctx.fillRect(-3, 2 - Math.sin(p.walkPhase * 8) * 3, 9, 6);
-  // mantel
-  ctx.fillStyle = p.hitFlash > 0 ? '#ffffff' : '#1f4258';
-  ctx.beginPath(); ctx.ellipse(-4, bob * 0.3, 13, 11, 0, 0, Math.PI * 2); ctx.fill();
-  // kropp (varm läderton — enda varma färgen bland fienderna)
-  ctx.fillStyle = p.hitFlash > 0 ? '#ffffff' : '#c2a678';
-  ctx.beginPath(); ctx.ellipse(1, bob * 0.3, 10.5, 9, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = p.hitFlash > 0 ? '#ffffff' : '#d8b26a';
-  ctx.beginPath(); ctx.ellipse(1, bob * 0.3, 10.5, 3, 0, 0, Math.PI * 2); ctx.fill();
-  // huvud
-  ctx.fillStyle = p.hitFlash > 0 ? '#ffffff' : '#e8d3ae';
-  ctx.beginPath(); ctx.arc(5.5, bob * 0.3, 5.6, 0, Math.PI * 2); ctx.fill();
-  // vapen
-  const w = p.equipment.weapon;
-  if (w) {
-    ctx.save();
-    const sw = p.swing ? Math.sin((p.swing.t / p.swing.dur) * Math.PI) * 0.9 : 0;
-    ctx.rotate(-0.5 + sw);
-    ctx.fillStyle = '#6b5238'; ctx.fillRect(6, -1.5, 16, 3);
-    ctx.fillStyle = w.rarity === 'unique' ? '#c08a3e' : w.rarity === 'rare' ? '#e8d15a' : '#c8d4e2';
-    ctx.beginPath(); ctx.moveTo(20, -7); ctx.lineTo(30, -3); ctx.lineTo(30, 3); ctx.lineTo(20, 7); ctx.closePath(); ctx.fill();
-    ctx.restore();
-  }
-  ctx.restore();
-
-  // riktningsmarkör mot muspekaren
+  // riktningsmarkör
   ctx.save();
-  ctx.globalAlpha = 0.3;
+  ctx.globalAlpha = 0.26;
   ctx.strokeStyle = '#cfe4f2'; ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.arc(p.pos.x, p.pos.y, 26, p.facing - 0.25, p.facing + 0.25);
+  ctx.arc(p.pos.x, p.pos.y, 28, p.facing - 0.22, p.facing + 0.22);
   ctx.stroke();
   ctx.restore();
 }

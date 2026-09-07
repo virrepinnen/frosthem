@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Frosthem — figurlabb</title>
+<style>
+  body{margin:0;background:#0a1018;color:#cfdcec;font:13px/1.5 system-ui,sans-serif}
+  h2{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#7b8da8;margin:22px 0 8px 16px}
+  canvas{display:block;margin:0 16px;background:#8f9fb4;border-radius:6px}
+  .row{display:flex;gap:14px;flex-wrap:wrap;margin:0 16px}
+  .cell{text-align:center}
+  .cell canvas{margin:0}
+  .cell span{font-size:10px;color:#7b8da8}
+</style>
+</head>
+<body>
+<h2>Levande lägen</h2>
+<div class="row" id="live"></div>
+<h2>Hugg, bildruta för bildruta</h2>
+<div id="strips"></div>
+<script type="module">
+import { drawHero, ATTACKS } from './src/render/hero.js';
+import { createPlayer } from './src/entities/player.js';
+
+const SCALE = 2.6, W = 170, H = 170;
+
+function mkPlayer() {
+  const p = createPlayer('Labb');
+  p.equipment.weapon = { rarity: 'rare', base: { icon: '🪓' }, mods: {} };
+  p.pos = { x: W / 2 / SCALE, y: H / 2 / SCALE };
+  return p;
+}
+function cell(label) {
+  const d = document.createElement('div'); d.className = 'cell';
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const s = document.createElement('span'); s.textContent = label;
+  d.appendChild(c); d.appendChild(s);
+  return { d, ctx: c.getContext('2d') };
+}
+function paint(ctx, p) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#96a6ba'; ctx.fillRect(0, 0, W, H);
+  ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+  drawHero(ctx, { player: p });
+}
+
+// --- levande lägen ---
+const live = document.getElementById('live');
+const modes = [
+  ['stilla', p => { p.moving = false; }],
+  ['springer', p => { p.moving = true; p.moveAngle = p.facing; p.walkPhase = performance.now() / 260; }],
+  ['springer i sidled', p => { p.moving = true; p.moveAngle = p.facing + 1.9; p.walkPhase = performance.now() / 260; }],
+  ['rullar', p => { p.roll = { t: 0.28 - (performance.now() / 1000 % 0.28), dur: 0.28, dir: p.facing }; }],
+  ['träffad', p => { p.hitFlash = 0.2; }],
+];
+const liveCells = modes.map(([label, setup]) => {
+  const c = cell(label); live.appendChild(c.d);
+  return { ...c, setup, p: mkPlayer() };
+});
+function tick() {
+  for (const c of liveCells) { c.p.roll = null; c.p.hitFlash = 0; c.setup(c.p); paint(c.ctx, c.p); }
+  requestAnimationFrame(tick);
+}
+tick();
+
+// --- i spelets egen skala, för att se att silhuetten håller ---
+const gh = document.createElement('h2'); gh.textContent = 'i spelets skala (zoom 1,5)';
+document.getElementById('strips').appendChild(gh);
+const gameRow = document.createElement('div'); gameRow.className = 'row';
+document.getElementById('strips').appendChild(gameRow);
+for (const [label, dir] of [['höger',0],['ner',Math.PI/2],['vänster',Math.PI],['upp',-Math.PI/2]]) {
+  const c = cell(label); gameRow.appendChild(c.d);
+  const p = mkPlayer(); p.facing = dir; p.moving = true; p.moveAngle = dir; p.walkPhase = 3;
+  c.ctx.setTransform(1,0,0,1,0,0); c.ctx.fillStyle='#96a6ba'; c.ctx.fillRect(0,0,W,H);
+  c.ctx.setTransform(1.5,0,0,1.5,0,0);
+  p.pos = { x: W/2/1.5, y: H/2/1.5 };
+  drawHero(c.ctx, { player: p });
+}
+
+// --- huggen, frusna bildrutor ---
+const strips = document.getElementById('strips');
+for (const name of Object.keys(ATTACKS)) {
+  const h = document.createElement('h2'); h.textContent = name; strips.appendChild(h);
+  const row = document.createElement('div'); row.className = 'row'; strips.appendChild(row);
+  for (let i = 0; i <= 8; i++) {
+    const k = i / 8;
+    const c = cell(k.toFixed(2)); row.appendChild(c.d);
+    const p = mkPlayer();
+    p.moving = false;
+    p.swing = { t: k * 0.3, dur: 0.3, dir: 0, arc: 1.5, reach: 66, kind: 'basic', variant: name };
+    paint(c.ctx, p);
+  }
+}
+</script>
+</body>
+</html>

@@ -5,6 +5,7 @@ import { armorReduction, skillPower, rank, KILL_STAMINA } from './stats.js';
 import { rollItem } from './loot.js';
 import { burst, floatText, decal, shake, screenFlash } from '../render/fx.js';
 import { lineBlocked } from './world.js';
+import { pickAttack } from '../render/hero.js';
 import { grantXp } from '../entities/player.js';
 
 /** @typedef {import('../entities/monster.js').Monster} Monster */
@@ -220,7 +221,14 @@ export function performSwing(game, o) {
     hits++;
   }
 
-  p.swing = { t: 0, dur: Math.max(0.14, 0.3 / p.attackSpeed), dir, arc: o.arc, reach: o.reach, kind: o.kind };
+  // Varianten avgör både hur slaget ser ut och hur länge animationen tar.
+  // Tyngre hugg får mer tid — de ska kännas i handen, inte bara i siffrorna.
+  const variant = o.kind === 'whirl' ? null : pickAttack(p, o.kind);
+  const stretch = variant === 'overhead' ? 1.5 : variant === 'thrust' ? 1.2 : 1;
+  p.swing = {
+    t: 0, dur: Math.max(0.16, 0.3 / p.attackSpeed) * stretch,
+    dir, arc: o.arc, reach: o.reach, kind: o.kind, variant,
+  };
   if (hits) shake(o.kind === 'basic' ? 1.6 : 3.4);
   return hits;
 }

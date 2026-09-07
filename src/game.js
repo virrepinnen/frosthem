@@ -377,6 +377,11 @@ function updatePlayer(game, dt) {
     p.pos.x += (mx / len) * speed * dt;
     p.pos.y += (my / len) * speed * dt;
     p.walkPhase += dt * (speed / 168);
+    // Manteln släpar åt det håll man kommer ifrån, inte rakt bakåt.
+    p.moveAngle = Math.atan2(my, mx);
+    p.moving = true;
+  } else {
+    p.moving = false;
   }
   resolveCollision(zone, p.pos, p.radius);
 
@@ -496,7 +501,7 @@ function resolveDash(game) {
     });
     if (rng.chance(o.freeze / 100)) applyFreeze(m, 2);
     shake(5);
-    p.swing = { t: 0, dur: 0.22, dir: p.dash.dir, arc: 1.8, reach: 70, kind: 'shatter' };
+    p.swing = { t: 0, dur: 0.3, dir: p.dash.dir, arc: 1.8, reach: 70, kind: 'shatter', variant: 'thrust' };
     p.dash.t = 0;
     break;
   }
