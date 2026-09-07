@@ -118,50 +118,50 @@ export const GROUPS = {
 /** @type {AffixDef[]} */
 export const PREFIXES = [
   { id: 'wdmg', kind: 'prefix', stat: 'dmgPct', slots: GROUPS.weapon, tiers: [
-    { label: 'Honed',      ilvl: 1,  min: 10, max: 20 },
-    { label: 'Forged',     ilvl: 7,  min: 21, max: 38 },
-    { label: "Warrior's",  ilvl: 14, min: 39, max: 60 },
-    { label: "Headsman's", ilvl: 22, min: 61, max: 90, w: 6 },
-    { label: "Giant's",    ilvl: 32, min: 91, max: 130, w: 3 },
+    { label: 'Honed',      ilvl: 1,  min: 6, max: 12 },
+    { label: 'Forged',     ilvl: 7,  min: 13, max: 22 },
+    { label: "Warrior's",  ilvl: 14, min: 23, max: 34 },
+    { label: "Headsman's", ilvl: 22, min: 35, max: 50, w: 6 },
+    { label: "Giant's",    ilvl: 32, min: 51, max: 72, w: 3 },
   ]},
   { id: 'wflat', kind: 'prefix', stat: 'dmgFlat', slots: GROUPS.weapon, tiers: [
-    { label: 'Weighted',   ilvl: 1,  min: 1,  max: 2 },
-    { label: 'Iron-shod',  ilvl: 6,  min: 3,  max: 6 },
-    { label: 'Ore-fed',    ilvl: 14, min: 7,  max: 12 },
-    { label: "Mountain's", ilvl: 24, min: 13, max: 20, w: 6 },
+    { label: 'Weighted',   ilvl: 1,  min: 1, max: 2 },
+    { label: 'Iron-shod',  ilvl: 6,  min: 2, max: 4 },
+    { label: 'Ore-fed',    ilvl: 14, min: 5, max: 8 },
+    { label: "Mountain's", ilvl: 24, min: 9, max: 13, w: 6 },
   ]},
   { id: 'aspd', kind: 'prefix', stat: 'attackSpeed', slots: GROUPS.weapon, tiers: [
-    { label: 'Nimble',   ilvl: 4,  min: 8,  max: 12 },
-    { label: 'Wrathful', ilvl: 12, min: 13, max: 19 },
-    { label: 'Furious',  ilvl: 22, min: 20, max: 27, w: 5 },
+    { label: 'Nimble',   ilvl: 4,  min: 5, max: 8 },
+    { label: 'Wrathful', ilvl: 12, min: 9, max: 13 },
+    { label: 'Furious',  ilvl: 22, min: 14, max: 19, w: 5 },
   ]},
   { id: 'cold', kind: 'prefix', stat: 'coldDmg', slots: [...GROUPS.weapon, ...GROUPS.jewel], tiers: [
-    { label: 'Hoarfrost',   ilvl: 3,  min: 2,  max: 5 },
-    { label: 'Glacial',     ilvl: 10, min: 6,  max: 13 },
-    { label: "Blizzard's",  ilvl: 19, min: 14, max: 26 },
-    { label: "Winter's",    ilvl: 29, min: 27, max: 46, w: 5 },
+    { label: 'Hoarfrost',   ilvl: 3,  min: 2, max: 4 },
+    { label: 'Glacial',     ilvl: 10, min: 5, max: 9 },
+    { label: "Blizzard's",  ilvl: 19, min: 10, max: 17 },
+    { label: "Winter's",    ilvl: 29, min: 18, max: 29, w: 5 },
   ]},
   { id: 'fire', kind: 'prefix', stat: 'fireDmg', slots: [...GROUPS.weapon, ...GROUPS.jewel], tiers: [
-    { label: 'Ember',   ilvl: 3,  min: 2,  max: 6 },
-    { label: 'Flame',   ilvl: 11, min: 7,  max: 15 },
-    { label: 'Pyre',    ilvl: 21, min: 16, max: 30 },
+    { label: 'Ember',   ilvl: 3,  min: 2, max: 5 },
+    { label: 'Flame',   ilvl: 11, min: 6, max: 11 },
+    { label: 'Pyre',    ilvl: 21, min: 12, max: 20 },
   ]},
   { id: 'light', kind: 'prefix', stat: 'lightDmg', slots: [...GROUPS.weapon, ...GROUPS.jewel], tiers: [
-    { label: 'Sparking',   ilvl: 5,  min: 1,  max: 9 },
-    { label: 'Thunderous', ilvl: 14, min: 2,  max: 20 },
-    { label: 'Storm-torn', ilvl: 26, min: 4,  max: 38 },
+    { label: 'Sparking',   ilvl: 5,  min: 1, max: 7 },
+    { label: 'Thunderous', ilvl: 14, min: 2, max: 14 },
+    { label: 'Storm-torn', ilvl: 26, min: 3, max: 25 },
   ]},
   { id: 'apct', kind: 'prefix', stat: 'armorPct', slots: GROUPS.armor, tiers: [
-    { label: 'Leathered',  ilvl: 1,  min: 10, max: 22 },
-    { label: 'Ringed',     ilvl: 8,  min: 23, max: 45 },
-    { label: 'Plated',     ilvl: 16, min: 46, max: 75 },
-    { label: "Fortress'",  ilvl: 26, min: 76, max: 115, w: 6 },
+    { label: 'Leathered',  ilvl: 1,  min: 8, max: 16 },
+    { label: 'Ringed',     ilvl: 8,  min: 17, max: 30 },
+    { label: 'Plated',     ilvl: 16, min: 31, max: 48 },
+    { label: "Fortress'",  ilvl: 26, min: 49, max: 72, w: 6 },
   ]},
   { id: 'life', kind: 'prefix', stat: 'life', slots: [...GROUPS.armor, ...GROUPS.jewel], tiers: [
-    { label: 'Vital',     ilvl: 1,  min: 5,  max: 11 },
-    { label: "Heart's",   ilvl: 8,  min: 12, max: 24 },
-    { label: "Soul's",    ilvl: 17, min: 25, max: 42 },
-    { label: 'Undying',   ilvl: 27, min: 43, max: 72, w: 5 },
+    { label: 'Vital',     ilvl: 1,  min: 4, max: 8 },
+    { label: "Heart's",   ilvl: 8,  min: 9, max: 16 },
+    { label: "Soul's",    ilvl: 17, min: 17, max: 28 },
+    { label: 'Undying',   ilvl: 27, min: 29, max: 46, w: 5 },
   ]},
 ];
 
@@ -175,67 +175,69 @@ export const PREFIXES = [
 /** @type {AffixDef[]} */
 export const SUFFIXES = [
   { id: 'armorflat', kind: 'suffix', stat: 'armor', slots: [...GROUPS.armor, ...GROUPS.jewel], tiers: [
-    { label: 'of the Shield', ilvl: 1,  min: 3,  max: 9 },
-    { label: 'of the Shield', ilvl: 10, min: 10, max: 22 },
-    { label: 'of the Shield', ilvl: 20, min: 23, max: 44 },
+    { label: 'of the Shield', ilvl: 1,  min: 2, max: 6 },
+    { label: 'of the Shield', ilvl: 10, min: 7, max: 15 },
+    { label: 'of the Shield', ilvl: 20, min: 16, max: 29 },
   ]},
   { id: 'rescold', kind: 'suffix', stat: 'resCold', slots: GROUPS.all, tiers: [
-    { label: 'of Frost', ilvl: 1,  min: 6,  max: 13 },
-    { label: 'of Frost', ilvl: 12, min: 14, max: 26 },
-    { label: 'of Frost', ilvl: 24, min: 27, max: 42 },
+    { label: 'of Frost', ilvl: 1,  min: 4, max: 9 },
+    { label: 'of Frost', ilvl: 12, min: 10, max: 18 },
+    { label: 'of Frost', ilvl: 24, min: 19, max: 28 },
   ]},
   { id: 'resfire', kind: 'suffix', stat: 'resFire', slots: GROUPS.all, tiers: [
-    { label: 'of the Flame', ilvl: 1,  min: 6,  max: 13 },
-    { label: 'of the Flame', ilvl: 12, min: 14, max: 26 },
-    { label: 'of the Flame', ilvl: 24, min: 27, max: 42 },
+    { label: 'of the Flame', ilvl: 1,  min: 4, max: 9 },
+    { label: 'of the Flame', ilvl: 12, min: 10, max: 18 },
+    { label: 'of the Flame', ilvl: 24, min: 19, max: 28 },
   ]},
   { id: 'reslight', kind: 'suffix', stat: 'resLight', slots: GROUPS.all, tiers: [
-    { label: 'of the Storm', ilvl: 1,  min: 6,  max: 13 },
-    { label: 'of the Storm', ilvl: 12, min: 14, max: 26 },
-    { label: 'of the Storm', ilvl: 24, min: 27, max: 42 },
+    { label: 'of the Storm', ilvl: 1,  min: 4, max: 9 },
+    { label: 'of the Storm', ilvl: 12, min: 10, max: 18 },
+    { label: 'of the Storm', ilvl: 24, min: 19, max: 28 },
   ]},
   { id: 'resall', kind: 'suffix', stat: 'resAll', slots: [...GROUPS.armor, ...GROUPS.jewel], tiers: [
-    { label: 'of Warding', ilvl: 15, min: 5,  max: 11, w: 6 },
-    { label: 'of Warding', ilvl: 28, min: 12, max: 20, w: 3 },
+    { label: 'of Warding', ilvl: 15, min: 3, max: 7, w: 6 },
+    { label: 'of Warding', ilvl: 28, min: 8, max: 13, w: 3 },
   ]},
   { id: 'ms', kind: 'suffix', stat: 'moveSpeed', slots: ['boots', 'ring', 'amulet'], tiers: [
-    { label: 'of the Wind', ilvl: 4,  min: 5,  max: 9 },
-    { label: 'of the Wind', ilvl: 15, min: 10, max: 16 },
+    { label: 'of the Wind', ilvl: 4,  min: 3, max: 6 },
+    { label: 'of the Wind', ilvl: 15, min: 7, max: 11 },
   ]},
   { id: 'crit', kind: 'suffix', stat: 'critChance', slots: [...GROUPS.weapon, ...GROUPS.jewel, 'gloves'], tiers: [
-    { label: 'of the Hunter', ilvl: 6,  min: 2, max: 5 },
-    { label: 'of the Hunter', ilvl: 18, min: 6, max: 11 },
+    { label: 'of the Hunter', ilvl: 6,  min: 1, max: 3 },
+    { label: 'of the Hunter', ilvl: 18, min: 4, max: 7 },
   ]},
   { id: 'critmult', kind: 'suffix', stat: 'critMult', slots: [...GROUPS.weapon, ...GROUPS.jewel], tiers: [
-    { label: 'of Murder', ilvl: 10, min: 15, max: 32 },
-    { label: 'of Murder', ilvl: 24, min: 33, max: 58, w: 6 },
+    { label: 'of Murder', ilvl: 10, min: 10, max: 20 },
+    { label: 'of Murder', ilvl: 24, min: 21, max: 36, w: 6 },
   ]},
   { id: 'leech', kind: 'suffix', stat: 'lifeSteal', slots: [...GROUPS.weapon, ...GROUPS.jewel], tiers: [
-    { label: 'of the Wolf', ilvl: 12, min: 2, max: 4, w: 7 },
-    { label: 'of the Wolf', ilvl: 24, min: 5, max: 8, w: 4 },
+    { label: 'of the Wolf', ilvl: 12, min: 1, max: 2, w: 7 },
+    { label: 'of the Wolf', ilvl: 24, min: 3, max: 5, w: 4 },
   ]},
   { id: 'regen', kind: 'suffix', stat: 'lifeRegen', slots: [...GROUPS.armor, ...GROUPS.jewel], float: true, tiers: [
-    { label: 'of the Hearth', ilvl: 2,  min: 0.4, max: 1.2 },
-    { label: 'of the Hearth', ilvl: 14, min: 1.3, max: 3.0 },
+    { label: 'of the Hearth', ilvl: 2, min: 0.3, max: 0.8 },
+    { label: 'of the Hearth', ilvl: 14, min: 0.9, max: 2.0 },
   ]},
   { id: 'sta', kind: 'suffix', stat: 'stamina', slots: [...GROUPS.armor, ...GROUPS.jewel], tiers: [
-    { label: 'of Endurance', ilvl: 1,  min: 4,  max: 10 },
-    { label: 'of Endurance', ilvl: 13, min: 11, max: 22 },
+    { label: 'of Endurance', ilvl: 1,  min: 3, max: 7 },
+    { label: 'of Endurance', ilvl: 13, min: 8, max: 15 },
   ]},
   { id: 'mana', kind: 'suffix', stat: 'mana', slots: [...GROUPS.armor, ...GROUPS.jewel], tiers: [
-    { label: 'of Wisdom', ilvl: 1,  min: 5,  max: 12 },
-    { label: 'of Wisdom', ilvl: 13, min: 13, max: 26 },
-    { label: 'of Wisdom', ilvl: 25, min: 27, max: 44 },
+    { label: 'of Wisdom', ilvl: 1,  min: 4, max: 9 },
+    { label: 'of Wisdom', ilvl: 13, min: 10, max: 18 },
+    { label: 'of Wisdom', ilvl: 25, min: 19, max: 30 },
   ]},
   { id: 'mf', kind: 'suffix', stat: 'magicFind', slots: [...GROUPS.jewel, 'helm', 'boots'], tiers: [
-    { label: 'of Fortune', ilvl: 4,  min: 6,  max: 16 },
-    { label: 'of Fortune', ilvl: 16, min: 17, max: 34, w: 6 },
+    { label: 'of Fortune', ilvl: 4,  min: 4, max: 10 },
+    { label: 'of Fortune', ilvl: 16, min: 11, max: 22, w: 6 },
   ]},
 ];
 
 /**
  * Unique items — fixed, memorable and rare. These are the drops that make a
- * player shout. Keep them few and clearly distinct.
+ * player shout. Keep them few and clearly distinct — and, now that gear
+ * survives a run, keep their numbers modest. A unique should change how a
+ * character feels, not replace the character.
  * @typedef {Object} UniqueDef
  * @property {string} id
  * @property {string} name
@@ -247,17 +249,17 @@ export const SUFFIXES = [
 /** @type {UniqueDef[]} */
 export const UNIQUES = [
   { id: 'wolfbite', name: 'Wolfbite', base: 'handaxe', ilvl: 5, flavor: '"It bit first. It bit last."',
-    mods: { dmgPct: 55, attackSpeed: 15, lifeSteal: 4, moveSpeed: 8, critChance: 5 } },
+    mods: { dmgPct: 32, attackSpeed: 10, lifeSteal: 2, moveSpeed: 5, critChance: 3 } },
   { id: 'wintertongue', name: "Winter's Tongue", base: 'longsword', ilvl: 12, flavor: '"Steel that breathes out instead of in."',
-    mods: { dmgPct: 60, coldDmg: 22, freezeChance: 18, resCold: 20 } },
+    mods: { dmgPct: 36, coldDmg: 14, freezeChance: 12, resCold: 14 } },
   { id: 'jarlsburden', name: "The Jarl's Burden", base: 'chainmail', ilvl: 16, flavor: '"He wore it until the ground gave way."',
-    mods: { armorPct: 90, life: 45, resAll: 12, moveSpeed: -10, dmgFlat: 6 } },
+    mods: { armorPct: 55, life: 28, resAll: 8, moveSpeed: -8, dmgFlat: 4 } },
   { id: 'lasthearth', name: 'The Last Hearth', base: 'silveramulet', ilvl: 13, flavor: '"For as long as one ember remains."',
-    mods: { resAll: 16, lifeRegen: 3.5, life: 30, resFire: 15 } },
+    mods: { resAll: 10, lifeRegen: 2.0, life: 20, resFire: 10 } },
   { id: 'iceeye', name: 'Ice Eye', base: 'silverring', ilvl: 11, flavor: '"It sees what the snow has buried."',
-    mods: { coldDmg: 14, resCold: 28, magicFind: 25, mana: 25 } },
+    mods: { coldDmg: 9, resCold: 18, magicFind: 16, mana: 16 } },
   { id: 'stormstride', name: 'Stormstride', base: 'chainboots', ilvl: 14, flavor: '"No drift ever held him."',
-    mods: { moveSpeed: 22, armorPct: 40, resLight: 22, stamina: 20 } },
+    mods: { moveSpeed: 13, armorPct: 26, resLight: 14, stamina: 13 } },
 ];
 
 /** Readable names + formatting for every stat. */

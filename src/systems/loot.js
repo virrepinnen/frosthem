@@ -201,10 +201,10 @@ export function itemScore(item) {
   const b = item.base;
   let s = ((b.dmgMin ?? 0) + (b.dmgMax ?? 0)) * 1.6 * (b.speed ?? 1) + (b.armor ?? 0) * 0.5;
   const w = /** @type {Record<string,number>} */ ({
-    dmgPct: 0.55, dmgFlat: 2.4, attackSpeed: 0.9, critChance: 1.8, critMult: 0.35,
-    coldDmg: 1.1, fireDmg: 1.1, lightDmg: 0.6, freezeChance: 0.6, lifeSteal: 3.0,
-    armorPct: 0.3, armor: 0.5, life: 0.7, lifeRegen: 6, stamina: 0.15, moveSpeed: 2.2,
-    resCold: 0.5, resFire: 0.5, resLight: 0.5, resAll: 1.6, magicFind: 0.35,
+    dmgPct: 0.9, dmgFlat: 3.4, attackSpeed: 1.4, critChance: 2.8, critMult: 0.5,
+    coldDmg: 1.6, fireDmg: 1.6, lightDmg: 0.9, freezeChance: 0.8, lifeSteal: 5.0,
+    armorPct: 0.5, armor: 0.8, life: 1.1, lifeRegen: 9, stamina: 0.25, moveSpeed: 3.4,
+    resCold: 0.8, resFire: 0.8, resLight: 0.8, resAll: 2.5, magicFind: 0.55,
   });
   for (const k in item.mods) s += (item.mods[k] || 0) * (w[k] ?? 0.5);
   return Math.round(s);

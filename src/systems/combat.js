@@ -142,14 +142,15 @@ function dropLoot(game, m) {
   const ilvl = Math.max(1, m.level + (m.isBoss ? 4 : m.elite ? 2 : m.isChampion ? 1 : 0));
   const mf = p.magicFind;
 
-  // The drop rate is deliberately low, and lower than it was. With automatic
-  // pickup every item is otherwise noise in the bag — the rarity is the point,
-  // and a drop that happens once a pack should stop you where you stand.
+  // The drop rate is deliberately low, and lower again now that gear survives a
+  // run: what you find is permanent, so finding something has to be an event.
+  // Roughly one item per thirty ordinary enemies; the rest comes from chests,
+  // champions and elites, which is where looking around gets rewarded.
   let itemRolls = 0, boost = 1;
   if (m.isBoss) { itemRolls = 3; boost = 4.5; }
-  else if (m.elite) { itemRolls = rng.chance(0.35) ? 2 : 1; boost = 3.2; }
-  else if (m.isChampion) { itemRolls = rng.chance(0.2) ? 1 : 0; boost = 2.4; }
-  else if (rng.chance(0.02)) itemRolls = 1;
+  else if (m.elite) { itemRolls = rng.chance(0.25) ? 2 : 1; boost = 3.2; }
+  else if (m.isChampion) { itemRolls = rng.chance(0.15) ? 1 : 0; boost = 2.4; }
+  else if (rng.chance(0.013)) itemRolls = 1;
 
   for (let i = 0; i < itemRolls; i++) {
     const forced = m.isBoss ? /** @type {const} */ ('rare') : undefined;
