@@ -110,26 +110,34 @@ Simuleringen är fortfarande ren 2D: kollisioner, avstånd och AI räknar i
 världsplanet. Bara ritningen och mus-till-värld-omräkningen känner till
 projektionen, vilket gör att spelreglerna inte behövde röras alls.
 
-**Figuren.** Barbaren är ritad i banor, inte i bild — en upprätt gestalt som
-alltid står lodrätt, precis som ett D2-sprite. Riktningen ändrar *bilden*: vilket
-håll gestalten vänder sig och om vi ser ansiktet i huvan eller bara ryggen och
-kåpans spets. Manteln hänger från axlarna med trasig fåll som fladdrar, ett
-axelskydd är kvar medan det andra slogs bort för länge sedan.
+**Figuren.** Barbaren är en gammal, enögd vandrare — pälskrage över axlarna,
+lång rock till marken, vandringsstav i den fria handen och en korp på axeln som
+vaggar i sin egen takt. Hon är ritad i banor, inte i bild, och står alltid
+lodrätt som ett D2-sprite: riktningen byter *bild*, inte rotation. Framifrån ser
+du ansiktet med ögonlappen och det långa skägget; bakifrån bara hårmassan som
+faller ner över kragen.
+
+**Manteln har fysik.** Fållens utslag är en dämpad fjäder som strävar mot
+*motsatt* håll än rörelsen, så tyget alltid släpar efter kroppen. Stannar du
+faller det tillbaka, pendlar en gång förbi vilan och lägger sig — underdämpat med
+flit, för ett kritiskt dämpat tyg ser stelt ut. Fjädern lever i speltillståndet
+och integreras med samma dt som allt annat, och hastigheten mäts ur den faktiska
+förflyttningen så den gäller lika bra för gång som för rusning och rullning.
+Utslaget är taklistat: en rullning går i nästan 1 000 px/s och skulle annars
+slänga fållen långt utanför figuren.
 
 Fyra hugg växlar så att två slag i rad aldrig ser lika ut: **svep**, **backhand**,
 ett tyngre **överhugg** och en **stöt** med utfall. Grundattacken alternerar de
 två första och slår in ett tungt hugg var fjärde slag; skills har sina egna.
-Varje hugg har uppladdning, kroppsvridning och ett släpljus som ritas ur samma
-kurva som klingan — bandet följer alltså exakt den väg vapnet tog. Det har både
-mörk kärna och ljus framkant, för ett rent vitt svep försvinner mot snön.
+Släpljuset ritas ur samma kurva som klingan — bandet följer alltså exakt den väg
+vapnet tog, med mörk kärna och ljus framkant eftersom ett rent vitt svep
+försvinner mot snön.
 
 Monstren står upp på samma villkor: vargar på fyra ben från sidan, plundrare med
-båge, vålnader som svävar utan skugga, och bossen med sin iskrona. Att låta dem
-ligga platt medan hjälten stod upp läste som två olika spel.
+båge, vålnader som svävar utan skugga, och bossen med sin iskrona.
 
-`sprite-lab.html` ritar figuren i alla åtta riktningar och varje hugg bildruta
-för bildruta. Öppna den när du ändrar något — figuren syns annars bara några
-tiotal pixlar stor mitt i en flock.
+`sprite-lab.html` ritar figuren i alla åtta riktningar, mantelutslaget steg för
+steg och varje hugg bildruta för bildruta.
 
 **Strid.** Svep med båge och räckvidd, omedelbar träffdetektion (responsivitet
 före windup), knockback, kritiska träffar, blödning, frysning, bedövning och

@@ -94,6 +94,14 @@ export function createPlayer(name) {
     /** @type {{t:number, dir:number, hit:Set<number>}|null} */ dash: null,
     /** @type {{t:number, dur:number, dir:number}|null} */ roll: null,
     rollCd: 0,
+    /** Faktisk hastighet, mätt ur förflyttningen — täcker gång, rusning och rullning. */
+    velX: 0, velY: 0,
+    /**
+     * Mantelns utslag som en dämpad fjäder. Den strävar mot *motsatt* håll än
+     * rörelsen, så tyget släpar efter, och svänger tillbaka till vila med ett
+     * par avtagande pendlingar när man stannar.
+     */
+    cloak: { x: 0, y: 0, vx: 0, vy: 0 },
     /** @type {{t:number, tick:number}|null} */ whirl: null,
     dmgBuff: 0, dmgBuffT: 0,
     hitFlash: 0, invuln: 0,

@@ -336,6 +336,7 @@ function updatePlayer(game, dt) {
   p.manaFlash = Math.max(0, (p.manaFlash ?? 0) - dt);
 
   // ---- rörelse -------------------------------------------------------------
+  const wasX = p.pos.x, wasY = p.pos.y;
   let mx = 0, my = 0;
   // Bara piltangenter. WASD är borttaget med flit: vänsterhanden ska tillhöra
   // 1–6 och Q, inte konkurrera med rörelsen.
@@ -384,6 +385,13 @@ function updatePlayer(game, dt) {
     p.moving = false;
   }
   resolveCollision(zone, p.pos, p.radius);
+
+  // Hastigheten mäts ur den faktiska förflyttningen — då gäller den lika bra
+  // för gång som för rusning, rullning och att bli stoppad av en vägg.
+  const inst = dt > 0 ? { x: (p.pos.x - wasX) / dt, y: (p.pos.y - wasY) / dt } : { x: 0, y: 0 };
+  p.velX += (inst.x - p.velX) * Math.min(1, dt * 18);
+  p.velY += (inst.y - p.velY) * Math.min(1, dt * 18);
+  updateCloak(p, dt);
 
   if (p.whirl) {
     p.whirl.t -= dt;
@@ -504,6 +512,38 @@ function resolveDash(game) {
     p.swing = { t: 0, dur: 0.3, dir: p.dash.dir, arc: 1.8, reach: 70, kind: 'shatter', variant: 'thrust' };
     p.dash.t = 0;
     break;
+  }
+}
+
+/**
+ * Mantelns fysik: en dämpad fjäder som strävar mot motsatt håll än rörelsen.
+ *
+ * Tyget hinner aldrig ifatt kroppen, så det släpar efter när man springer och
+ * pendlar tillbaka till vila när man stannar — underdämpat med flit, för ett
+ * kritiskt dämpat tyg ser stelt ut. Fjädern lever i speltillståndet och inte i
+ * renderaren, eftersom den måste integreras med samma dt som allt annat.
+ *
+ * @param {any} p @param {number} dt
+ */
+function updateCloak(p, dt) {
+  const c = p.cloak;
+  // Vilar tyget mot ryggen är utslaget noll; springer man dras fållen bakåt.
+  let tx = -p.velX * 0.13, ty = -p.velY * 0.13;
+  // Tak: en rullning eller ett krosshugg går i ~950 px/s, vilket annars skulle
+  // slänga fållen 99 px åt sidan — långt utanför figuren. Riktningen behålls,
+  // bara längden kapas, så utfallet fortfarande ger en tydlig flärp.
+  const MAX = 26;
+  const tl = Math.hypot(tx, ty);
+  if (tl > MAX) { tx = tx / tl * MAX; ty = ty / tl * MAX; }
+  const STIFF = 52, DAMP = 8.5;
+  const h = Math.min(dt, 1 / 60);   // stabil integration även vid tapp
+  let steps = Math.max(1, Math.ceil(dt / h));
+  const sh = dt / steps;
+  for (let i = 0; i < steps; i++) {
+    c.vx += ((tx - c.x) * STIFF - c.vx * DAMP) * sh;
+    c.vy += ((ty - c.y) * STIFF - c.vy * DAMP) * sh;
+    c.x += c.vx * sh;
+    c.y += c.vy * sh;
   }
 }
 

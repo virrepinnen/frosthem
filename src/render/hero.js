@@ -18,21 +18,26 @@ const PY = (/** @type {number} */ y) => y * PROJ;
  * utan att någon spritesheet behöver ritas om.
  */
 
+/** Paletten följer förlagan: dämpad olivbrun rock, varmgrå päls, blekt hår. */
 const C = {
-  silhouette: 'rgba(7,11,18,0.95)',
-  cloakDark: '#152636',
-  cloakMid: '#22415a',
-  cloakLit: '#35617a',
-  leather: '#54412b',
-  leatherLit: '#6b543a',
-  strap: '#c9a256',
-  pauldron: '#7d848f',
-  pauldronLit: '#9aa2ae',
-  hood: '#3d647e',
-  hoodLit: '#537f9a',
-  hoodInner: '#070c12',
-  face: '#b89772',
-  boot: '#2b2218',
+  silhouette: 'rgba(9,12,16,0.95)',
+  robeDark: '#33332b',
+  robe: '#585640',
+  robeLit: '#6e6b51',
+  furDark: '#584833',
+  fur: '#8d7a5e',
+  furTip: '#ab9779',
+  hair: '#cdc8b6',
+  hairDark: '#9a9584',
+  skin: '#c9a382',
+  skinDark: '#a37f61',
+  patch: '#191512',
+  gold: '#c9a256',
+  staff: '#6b5136',
+  staffLit: '#85745a',
+  raven: '#1b2028',
+  ravenLit: '#36445a',
+  boot: '#2b2318',
   haft: '#5d472f',
 };
 
@@ -124,65 +129,212 @@ export function pickAttack(p, kind) {
 /* ------------------------------------------------------------------ */
 
 /**
- * Figuren står alltid upprätt, som i Diablo 2 — kameravinkeln är låst och det
- * är *vilken bild* som ritas som ändras med riktningen, inte figurens rotation.
- * Lokalt rum: y = 0 vid fötterna, negativt uppåt.
+ * Figuren står alltid lodrätt, som ett D2-sprite — riktningen byter *bild*,
+ * inte rotation. Lokalt rum: y = 0 vid fötterna, negativt uppåt.
  */
 const H = {
-  foot: 0, hem: -8, waist: -19, chest: -28, shoulder: -31, neck: -35, crown: -44,
+  foot: 0, hem: -3, knee: -14, waist: -21, chest: -31,
+  shoulder: -35, neck: -38, head: -43, crown: -50,
 };
 
-/** Trasornas fästen längs mantelfållen. */
-const TATTERS = [-9, -5.5, -2, 1.5, 5, 8.5];
+/** Fållens hörn — ojämna av ålder och slitage. */
+const HEM = [-1, -0.62, -0.24, 0.16, 0.55, 0.9];
 
 /**
- * Manteln hänger från axlarna och vidgar sig nedåt, med trasig fåll.
- * Bakifrån täcker den hela kroppen; framifrån delar den sig och visar harnesket.
+ * Rocken. Faller till marken och vidgar sig nedåt; fållen dras åt sidan av
+ * mantelfjädern så att tyget släpar efter kroppen och pendlar tillbaka i vila.
+ *
  * @param {CanvasRenderingContext2D} ctx
- * @param {number} fy Blickriktningens djupled: -1 bort från kameran, +1 mot
- * @param {number} sway @param {number} t @param {number} speed @param {boolean} flash
+ * @param {number} sway Sidled i lokalt rum, positivt = åt figurens framsida
+ * @param {number} lift Hur mycket fållen lyfter av farten, 0..1
+ * @param {number} t @param {boolean} flash @param {boolean} back
  */
-function cloak(ctx, fy, sway, t, speed, flash) {
-  const back = fy < 0;
-  const wTop = 9.5, wBot = back ? 18 : 15.5;
-  const hem = H.hem + Math.sin(t * 2.2) * 0.6;
+function robe(ctx, sway, lift, t, flash, back) {
+  const wTop = 8, wBot = 12.5 + lift * 3.5;
+  const hemY = H.hem - lift * 5;
 
   const shape = (/** @type {number} */ grow) => {
+    const W = wBot + grow;
     ctx.beginPath();
     ctx.moveTo(-(wTop + grow), H.shoulder);
-    ctx.quadraticCurveTo(-(wBot + grow) - sway * 0.5, H.waist, -(wBot + grow) - sway, hem);
-    // trasig fåll: hörnen hoppar upp och ner i olika takt
-    TATTERS.forEach((x, i) => {
-      const dip = (i % 2 ? 5.5 : 1.5) + Math.sin(t * 3.2 + i * 1.3) * (0.8 + speed * 1.6);
-      ctx.lineTo(x + sway * (0.4 + i * 0.05), hem + dip + grow);
+    // bakre fall: släpar mest, eftersom tyget hänger efter
+    ctx.quadraticCurveTo(-(wTop + 4 + grow) + sway * 0.3, H.waist, -W + sway * 1.15, hemY + grow);
+    HEM.forEach((u, i) => {
+      const dip = (i % 2 ? 4.5 : 1.2) + Math.sin(t * 2.4 + i * 1.4) * (0.5 + lift * 1.4);
+      ctx.lineTo(u * W + sway * (1.15 - (u + 1) * 0.5), hemY + dip + grow);
     });
-    ctx.lineTo(wBot + grow + sway * 0.6, hem + grow);
-    ctx.quadraticCurveTo(wBot + grow, H.waist, wTop + grow, H.shoulder);
-    ctx.quadraticCurveTo(0, H.shoulder - 3 - grow, -(wTop + grow), H.shoulder);
+    ctx.quadraticCurveTo(wTop + 4 + grow + sway * 0.55, H.waist, wTop + grow, H.shoulder);
+    ctx.quadraticCurveTo(0, H.shoulder - 2.5 - grow, -(wTop + grow), H.shoulder);
     ctx.closePath();
   };
 
   ctx.fillStyle = C.silhouette; shape(2); ctx.fill();
-  ctx.fillStyle = flash ? '#ffffff' : (back ? C.cloakMid : C.cloakDark);
+  ctx.fillStyle = flash ? '#ffffff' : (back ? C.robeDark : C.robe);
   shape(0); ctx.fill();
 
   if (!flash) {
     ctx.save(); shape(0); ctx.clip();
-    // veck: några lodräta skuggor som ger tyget tyngd
-    ctx.strokeStyle = C.cloakDark; ctx.lineWidth = 2.4;
-    for (const x of [-7, 0, 7]) {
+    // veck: lodräta skuggor som lutar med utslaget
+    ctx.strokeStyle = C.robeDark; ctx.lineWidth = 2.6;
+    for (const x of [-6, 1, 8]) {
       ctx.beginPath();
-      ctx.moveTo(x * 0.7, H.shoulder + 2);
-      ctx.quadraticCurveTo(x + sway * 0.4, H.waist, x * 1.25 + sway * 0.7, hem + 4);
+      ctx.moveTo(x * 0.6, H.shoulder + 2);
+      ctx.quadraticCurveTo(x + sway * 0.4, H.waist, x * 1.5 + sway, hemY + 3);
       ctx.stroke();
     }
-    ctx.strokeStyle = C.cloakLit; ctx.lineWidth = 1.6;
+    ctx.strokeStyle = C.robeLit; ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(-wTop + 1, H.shoulder + 1);
-    ctx.quadraticCurveTo(-wBot - sway * 0.5, H.waist, -wBot - sway + 1, hem);
+    ctx.moveTo(wTop - 1, H.shoulder + 1);
+    ctx.quadraticCurveTo(wTop + 4 + sway * 0.5, H.waist, wBot - 2 + sway * 0.6, hemY + 1);
     ctx.stroke();
     ctx.restore();
   }
+}
+
+/**
+ * Pälskragen över axlarna. Yttersta kanten är taggig — det är den som gör att
+ * den läser som päls och inte som en axelplatta.
+ * @param {CanvasRenderingContext2D} ctx @param {number} t @param {boolean} flash
+ */
+function mantle(ctx, t, flash) {
+  const y = H.shoulder;
+  const tufts = 13, w = 11.5, h = 7.5;
+  const path = (/** @type {number} */ grow) => {
+    ctx.beginPath();
+    ctx.moveTo(-(w + grow), y - 2);
+    for (let i = 0; i <= tufts; i++) {
+      const u = i / tufts;
+      const a = Math.PI - u * Math.PI;
+      const spike = (i % 2 ? 1.16 : 0.94) + Math.sin(t * 1.6 + i) * 0.04;
+      ctx.lineTo(Math.cos(a) * (w + grow) * spike, y + 2 + Math.sin(a) * (h + grow) * spike);
+    }
+    ctx.quadraticCurveTo(0, y - 9 - grow, -(w + grow), y - 2);
+    ctx.closePath();
+  };
+  ctx.fillStyle = C.silhouette; path(1.8); ctx.fill();
+  ctx.fillStyle = flash ? '#ffffff' : C.fur; path(0); ctx.fill();
+  if (!flash) {
+    ctx.save(); path(0); ctx.clip();
+    ctx.fillStyle = C.furDark;
+    ctx.beginPath(); ctx.ellipse(2, y + 4, w, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = C.furTip; ctx.lineWidth = 1.4;
+    for (let i = 0; i < 6; i++) {
+      const x = -9 + i * 3.6;
+      ctx.beginPath(); ctx.moveTo(x, y - 6); ctx.lineTo(x + 1.5, y + 2); ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+/**
+ * Huvudet: långt blekt hår, flätat skägg och ögonlapp. Ansiktet visas bara när
+ * gestalten är vänd mot betraktaren — bakifrån ser man håret och kragen.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} sway @param {number} t @param {boolean} flash @param {boolean} back @param {number} fy
+ */
+function head(ctx, sway, t, flash, back, fy) {
+  const hx = 1.6, hy = H.head;
+  const drift = sway * 0.35 + Math.sin(t * 1.3) * 0.5;
+
+  // håret bakom: en tung massa som faller ner över kragen
+  ctx.fillStyle = flash ? '#ffffff' : C.hairDark;
+  ctx.beginPath();
+  ctx.moveTo(hx - 6, hy - 4);
+  ctx.quadraticCurveTo(hx - 11 - drift, hy + 3, hx - 8 - drift * 1.4, H.shoulder - 1);
+  ctx.quadraticCurveTo(hx - 2, H.shoulder - 4, hx + 3, hy + 4);
+  ctx.closePath(); ctx.fill();
+
+  ctx.fillStyle = C.silhouette;
+  ctx.beginPath(); ctx.ellipse(hx, hy, 6.4, 6.6, -0.1, 0, Math.PI * 2); ctx.fill();
+
+  if (back) {
+    // Bakifrån: hårmassan faller ner över kragen i stället för att sluta som en
+    // boll. Tonen är dämpad — ett ljust klot i nacken drog blicken helt fel.
+    ctx.fillStyle = flash ? '#ffffff' : C.hairDark;
+    ctx.beginPath();
+    ctx.moveTo(hx - 5.6, hy - 2);
+    ctx.quadraticCurveTo(hx - 6.5 - drift, hy + 5, hx - 5 - drift, H.shoulder - 2);
+    ctx.quadraticCurveTo(hx + 1, H.shoulder + 1, hx + 5.5 - drift * 0.4, H.shoulder - 3);
+    ctx.quadraticCurveTo(hx + 6.4, hy + 3, hx + 5, hy - 2.5);
+    ctx.quadraticCurveTo(hx, hy - 7.5, hx - 5.6, hy - 2);
+    ctx.closePath(); ctx.fill();
+    if (!flash) {
+      ctx.strokeStyle = C.hair; ctx.lineWidth = 1.3;
+      for (const dx of [-3.2, -0.6, 2.2, 4.2]) {
+        ctx.beginPath();
+        ctx.moveTo(hx + dx, hy - 4.5);
+        ctx.quadraticCurveTo(hx + dx * 1.2 - drift * 0.5, hy + 2, hx + dx * 1.3 - drift, hy + 8);
+        ctx.stroke();
+      }
+    }
+    return;
+  }
+
+  // ansiktet
+  ctx.fillStyle = flash ? '#ffffff' : C.skin;
+  ctx.beginPath(); ctx.ellipse(hx + 1.4, hy + 0.4, 4.6, 5.2, -0.08, 0, Math.PI * 2); ctx.fill();
+
+  // skägget: långt, avsmalnande, med en fläta som svajar
+  ctx.fillStyle = flash ? '#ffffff' : C.hair;
+  ctx.beginPath();
+  ctx.moveTo(hx - 3.4, hy + 1.5);
+  ctx.quadraticCurveTo(hx - 2 + drift * 0.5, H.chest + 2, hx + 2.5 + drift, H.chest);
+  ctx.quadraticCurveTo(hx + 6.5, hy + 4, hx + 5.6, hy - 0.5);
+  ctx.quadraticCurveTo(hx + 2, hy + 3, hx - 3.4, hy + 1.5);
+  ctx.closePath(); ctx.fill();
+
+  // hår som faller framför axeln
+  ctx.fillStyle = flash ? '#ffffff' : C.hair;
+  ctx.beginPath();
+  ctx.moveTo(hx - 1, hy - 6);
+  ctx.quadraticCurveTo(hx + 7.5, hy - 5, hx + 6.5, hy + 1.5);
+  ctx.quadraticCurveTo(hx + 3, hy - 4, hx - 1, hy - 3);
+  ctx.closePath(); ctx.fill();
+
+  if (!flash) {
+    // ögonlappen — figurens tydligaste kännetecken
+    ctx.strokeStyle = C.patch; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(hx - 2.6, hy - 3.4); ctx.lineTo(hx + 5.4, hy - 1.2); ctx.stroke();
+    ctx.fillStyle = C.patch;
+    ctx.beginPath(); ctx.ellipse(hx + 3.9, hy - 0.8, 2.1, 1.9, -0.25, 0, Math.PI * 2); ctx.fill();
+    // det seende ögat
+    ctx.fillStyle = '#2c2620';
+    ctx.beginPath(); ctx.ellipse(hx + 0.4, hy - 1.4, 0.9, 1.1, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 0.35 + fy * 0.3;
+    ctx.fillStyle = C.skinDark;
+    ctx.beginPath(); ctx.ellipse(hx + 2.4, hy + 3.2, 2.4, 1.4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+/**
+ * Korpen på axeln. Den vaggar i sin egen takt och lyfter huvudet ibland — en
+ * liten rörelse som gör gestalten levande även när spelaren står stilla.
+ * @param {CanvasRenderingContext2D} ctx @param {number} t @param {boolean} flash
+ */
+function raven(ctx, t, flash) {
+  const bob = Math.sin(t * 2.3) * 0.7;
+  const peck = Math.sin(t * 0.7) > 0.93 ? 1 : 0;
+  ctx.save();
+  ctx.translate(-9, H.shoulder - 4.5 + bob);
+  ctx.fillStyle = C.silhouette;
+  ctx.beginPath(); ctx.ellipse(0, 0, 4.7, 4, -0.25, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = flash ? '#ffffff' : C.raven;
+  ctx.beginPath(); ctx.ellipse(0, 0, 4, 3.4, -0.25, 0, Math.PI * 2); ctx.fill();
+  // stjärt
+  ctx.beginPath();
+  ctx.moveTo(3.6, 0.6); ctx.lineTo(8.4, 3.2); ctx.lineTo(3.4, 2.4);
+  ctx.closePath(); ctx.fill();
+  // huvud och näbb
+  ctx.beginPath(); ctx.ellipse(-4, -3.4 - peck, 2.5, 2.3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(-6, -3.8 - peck); ctx.lineTo(-9.6, -3 - peck * 1.6); ctx.lineTo(-5.8, -2.4 - peck);
+  ctx.closePath(); ctx.fill();
+  if (!flash) {
+    ctx.fillStyle = C.ravenLit;
+    ctx.beginPath(); ctx.ellipse(-0.6, -1.4, 3, 1.6, -0.35, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
 }
 
 /**
@@ -195,13 +347,13 @@ function weapon(ctx, item, reach) {
     : rarity === 'magic' ? '#9dc0f5' : '#c3cfdd';
   const icon = item?.base?.icon ?? '';
   const heavy = icon === '🔨', axe = icon === '🪓';
-  const haft = reach * 0.7;
-  const x = haft;
+  const haft = reach * 0.7, x = haft;
 
   ctx.fillStyle = C.haft;
   ctx.fillRect(-3, -1.8, haft + 3, 3.6);
-  ctx.fillStyle = C.strap;
+  ctx.fillStyle = C.gold;
   ctx.fillRect(-3, -1.8, 5, 3.6);
+  ctx.fillRect(x - 2, -3.2, 2.6, 6.4);
 
   ctx.fillStyle = blade;
   ctx.beginPath();
@@ -226,12 +378,10 @@ function weapon(ctx, item, reach) {
 }
 
 /**
- * Släpljuset efter eggen, ritat ur samma poskurva som vapnet. Både mörk kärna
- * och ljus framkant — ett rent vitt svep försvinner mot snön.
- * @param {CanvasRenderingContext2D} ctx @param {{pose:Pose, trail:string}} v
- * @param {number} k @param {number} mirror
+ * Släpljuset efter eggen, ritat ur samma poskurva som vapnet.
+ * @param {CanvasRenderingContext2D} ctx @param {{pose:Pose, trail:string}} v @param {number} k
  */
-function trail(ctx, v, k, mirror) {
+function trail(ctx, v, k) {
   const from = Math.max(0, k - 0.34);
   if (k - from < 0.03) return;
   const steps = 12;
@@ -239,10 +389,9 @@ function trail(ctx, v, k, mirror) {
   /** @type {{x:number,y:number}[]} */ const inner = [];
   for (let i = 0; i <= steps; i++) {
     const q = v.pose(mix(from, k, i / steps));
-    const ang = -q.ang * mirror;
-    const len = 6 + q.reach;
-    outer.push({ x: Math.cos(ang) * len * mirror, y: Math.sin(ang) * len });
-    inner.push({ x: Math.cos(ang) * len * 0.42 * mirror, y: Math.sin(ang) * len * 0.42 });
+    const ang = -q.ang, len = 6 + q.reach;
+    outer.push({ x: Math.cos(ang) * len, y: Math.sin(ang) * len });
+    inner.push({ x: Math.cos(ang) * len * 0.42, y: Math.sin(ang) * len * 0.42 });
   }
   const fade = 1 - Math.pow(k, 2.4);
   const ribbon = () => {
@@ -252,15 +401,13 @@ function trail(ctx, v, k, mirror) {
     ctx.closePath();
   };
   ctx.save();
-  ctx.globalAlpha = 0.32 * fade;
-  ctx.fillStyle = '#16222f';
+  ctx.globalAlpha = 0.32 * fade; ctx.fillStyle = '#16222f';
   ribbon(); ctx.fill();
   const g = ctx.createLinearGradient(inner[0].x, inner[0].y, outer[steps].x, outer[steps].y);
   g.addColorStop(0, 'rgba(255,255,255,0)');
   g.addColorStop(0.55, v.trail + '77');
   g.addColorStop(1, v.trail);
-  ctx.globalAlpha = 0.72 * fade;
-  ctx.fillStyle = g;
+  ctx.globalAlpha = 0.72 * fade; ctx.fillStyle = g;
   ribbon(); ctx.fill();
   ctx.globalAlpha = 0.9 * fade;
   ctx.strokeStyle = v.trail; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
@@ -293,144 +440,116 @@ export function drawHero(ctx, game) {
 
   const rolling = !!p.roll;
   const rollK = rolling ? 1 - p.roll.t / p.roll.dur : 0;
-  const speed = p.moving ? 1 : 0;
-
-  // Riktningen: x avgör vilket håll gestalten vänder sig, y om vi ser fram- eller baksidan.
   const fx = Math.cos(p.facing), fy = Math.sin(p.facing);
   const mirror = fx < 0 ? -1 : 1;
-  const back = fy < -0.25;
+  const back = fy < -0.3;
 
-  // skugga på den hoptryckta marken
   ctx.save();
   ctx.globalAlpha = 0.36;
   ctx.fillStyle = '#16202e';
-  const sSq = rolling ? 1.25 : 1;
-  ctx.beginPath(); ctx.ellipse(gx, gy, 13 * sSq, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(gx, gy, rolling ? 15 : 12, 5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 
   ctx.save();
   ctx.translate(gx, gy);
 
   if (rolling) {
-    // Rullningen: gestalten kurar ihop sig till ett klot och rullar i färdriktningen.
     const tuck = 1 - Math.sin(rollK * Math.PI) * 0.22;
     ctx.translate(0, -13 * tuck);
-    ctx.rotate(rollK * Math.PI * 2 * (Math.cos(p.roll.dir) < 0 ? -1 : 1));
+    ctx.rotate(rollK * Math.PI * 2 * (fx < 0 ? -1 : 1));
     ctx.scale(tuck, tuck);
     ctx.fillStyle = C.silhouette;
     ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = flash ? '#ffffff' : C.cloakMid;
+    ctx.fillStyle = flash ? '#ffffff' : C.robe;
     ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = C.cloakDark;
+    ctx.fillStyle = C.fur;
     ctx.beginPath(); ctx.arc(4, -3, 7, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = C.hood;
-    ctx.beginPath(); ctx.arc(-4, 4, 5.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = C.hair;
+    ctx.beginPath(); ctx.arc(-4, 4, 5, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
     return;
   }
 
   ctx.scale(mirror, 1);
 
+  // Mantelutslaget till lokalt rum: x speglas med figuren, y är hoptryckt av
+  // projektionen. Utslaget i djupled läser som en liten extra lyftning.
+  const c = p.cloak;
+  const sway = c.x * mirror * 0.5;
+  const lift = Math.min(1, Math.hypot(c.x, c.y) / 26);
+
   const step = Math.sin(p.walkPhase * 8);
-  const breath = Math.sin(t * 1.9) * 0.6;
-  const bob = p.moving ? Math.abs(step) * 1.8 : breath;
-  const sway = p.moving ? 4 + step * 2.5 : Math.sin(t * 1.4) * 1.2;
+  const breath = Math.sin(t * 1.9) * 0.5;
+  const speed = Math.hypot(p.velX, p.velY);
+  const bob = speed > 5 ? Math.abs(step) * 1.6 : breath;
 
   const variant = p.swing?.variant ? ATTACKS[p.swing.variant] : null;
   const k = p.swing ? Math.min(1, p.swing.t / p.swing.dur) : 0;
   const pose = variant ? variant.pose(k) : REST;
 
   ctx.translate(pose.lunge * 0.5, -bob);
-  ctx.rotate(pose.twist * 0.12);
+  ctx.rotate(pose.twist * 0.1 + sway * -0.004);
 
-  // --- ben ---------------------------------------------------------------
-  ctx.strokeStyle = flash ? '#ffffff' : C.boot;
-  ctx.lineWidth = 6; ctx.lineCap = 'round';
-  const stride = p.moving ? step * 5 : 0;
-  ctx.beginPath(); ctx.moveTo(-2, H.waist + 4); ctx.lineTo(-2 + stride, H.foot - 1); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(3, H.waist + 4); ctx.lineTo(3 - stride, H.foot - 1); ctx.stroke();
+  // --- stövlar, knappt synliga under fållen ------------------------------
+  ctx.fillStyle = flash ? '#ffffff' : C.boot;
+  const stride = speed > 5 ? step * 3.5 : 0;
+  ctx.beginPath(); ctx.ellipse(-2 + stride, H.foot - 1.5, 3.6, 2.2, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(3 - stride, H.foot - 1.5, 3.6, 2.2, 0, 0, Math.PI * 2); ctx.fill();
 
-  // --- bakre mantelhalva när vi ser framsidan ----------------------------
-  if (!back) cloak(ctx, fy, sway, t, speed, flash);
-
-  // --- bål ----------------------------------------------------------------
-  ctx.fillStyle = flash ? '#ffffff' : C.leather;
-  ctx.beginPath();
-  ctx.moveTo(-9, H.shoulder);
-  ctx.quadraticCurveTo(-10, H.waist, -6.5, H.waist + 2);
-  ctx.lineTo(6.5, H.waist + 2);
-  ctx.quadraticCurveTo(10, H.waist, 9, H.shoulder);
-  ctx.quadraticCurveTo(0, H.shoulder - 3, -9, H.shoulder);
-  ctx.closePath(); ctx.fill();
+  // --- staven i den fria handen: figurens lodräta linje ------------------
+  const staffLean = -0.09 + sway * 0.004;
+  ctx.save();
+  ctx.translate(-6, H.chest);
+  ctx.rotate(staffLean);
+  ctx.strokeStyle = flash ? '#ffffff' : C.staff;
+  ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(0, H.foot - H.chest); ctx.lineTo(0, -20); ctx.stroke();
   if (!flash) {
-    ctx.strokeStyle = C.strap; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(-7, H.chest + 6); ctx.lineTo(7, H.chest - 3); ctx.stroke();
-    ctx.fillStyle = C.leatherLit;
-    ctx.beginPath(); ctx.ellipse(3, H.chest, 4.5, 5, 0.1, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = C.staffLit; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(-0.7, H.foot - H.chest - 2); ctx.lineTo(-0.7, -18); ctx.stroke();
+    // knölen upptill
+    ctx.fillStyle = C.staff;
+    ctx.beginPath(); ctx.ellipse(1, -20, 2.6, 3.4, 0.35, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+
+  // --- rocken -------------------------------------------------------------
+  robe(ctx, sway, lift, t, flash, back);
+
+  // --- fri arm som håller staven ------------------------------------------
+  ctx.strokeStyle = flash ? '#ffffff' : C.robeLit;
+  ctx.lineWidth = 4.4; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-5, H.shoulder + 2);
+  ctx.quadraticCurveTo(-9, H.chest + 3, -6.5, H.chest);
+  ctx.stroke();
+  if (!flash) {
+    ctx.fillStyle = C.skin;
+    ctx.beginPath(); ctx.ellipse(-6.4, H.chest, 2.1, 2.4, 0, 0, Math.PI * 2); ctx.fill();
   }
 
-  // --- fri arm ------------------------------------------------------------
-  ctx.strokeStyle = flash ? '#ffffff' : C.leather;
-  ctx.lineWidth = 4.6;
-  ctx.beginPath();
-  ctx.moveTo(-7, H.shoulder + 2);
-  ctx.quadraticCurveTo(-11, H.chest + 6, -9 + (p.moving ? step * 2.5 : 0), H.waist + 1);
-  ctx.stroke();
-
-  // --- vapenarm: svänger i skärmplanet, som ett D2-svep ------------------
+  // --- vapenarm: svänger i skärmplanet ------------------------------------
   ctx.save();
-  ctx.translate(7, H.shoulder + 2);
-  if (variant) trail(ctx, variant, k, 1);
+  ctx.translate(7, H.chest + 1);
+  if (variant) trail(ctx, variant, k);
   ctx.rotate(-pose.ang);
-  ctx.strokeStyle = flash ? '#ffffff' : C.leather;
-  ctx.lineWidth = 4.8;
+  ctx.strokeStyle = flash ? '#ffffff' : C.robeLit;
+  ctx.lineWidth = 4.6;
   ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(7, 0); ctx.stroke();
   ctx.translate(7, 0);
+  if (!flash) {
+    ctx.fillStyle = C.gold;
+    ctx.beginPath(); ctx.ellipse(-2, 0, 1.6, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = C.skin;
+    ctx.beginPath(); ctx.ellipse(0.5, 0, 2.2, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+  }
   if (p.equipment.weapon) weapon(ctx, p.equipment.weapon, pose.reach);
   ctx.restore();
 
-  // --- axelskydd: ett kvar, ett bortslaget för länge sedan ---------------
-  ctx.fillStyle = flash ? '#ffffff' : C.pauldron;
-  ctx.beginPath(); ctx.ellipse(8, H.shoulder + 1, 5.4, 4.2, -0.35, 0, Math.PI * 2); ctx.fill();
-  if (!flash) {
-    ctx.fillStyle = C.pauldronLit;
-    ctx.beginPath(); ctx.ellipse(8.6, H.shoulder - 0.4, 3.4, 2.2, -0.35, 0, Math.PI * 2); ctx.fill();
-  }
-
-  // --- huvudet: hukat framåt, kåpan drar ner över pannan -----------------
-  // Huvudet sitter något framför axellinjen — det är så framåtlutningen läser
-  // i en upprätt gestalt. Huvan täcker pannan och lämnar bara en mörk springa.
-  const hx = 2.2, hy = H.neck - 3.6;
-  // kragen som huvan vilar i
-  ctx.fillStyle = flash ? '#ffffff' : C.cloakDark;
-  ctx.beginPath(); ctx.ellipse(0, H.shoulder + 1.5, 8, 3.6, 0, 0, Math.PI * 2); ctx.fill();
-
-  ctx.fillStyle = C.silhouette;
-  ctx.beginPath(); ctx.ellipse(hx, hy, 7.4, 7, -0.18, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = flash ? '#ffffff' : C.hood;
-  ctx.beginPath(); ctx.ellipse(hx, hy, 6.3, 6, -0.18, 0, Math.PI * 2); ctx.fill();
-  if (!flash) {
-    ctx.fillStyle = C.hoodLit;
-    ctx.beginPath(); ctx.ellipse(hx - 0.8, hy - 2.4, 4.8, 3.1, -0.22, 0, Math.PI * 2); ctx.fill();
-    if (!back) {
-      ctx.fillStyle = C.hoodInner;
-      ctx.beginPath(); ctx.ellipse(hx + 1.8, hy + 1.6, 3.7, 3.9, -0.12, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 0.45 + fy * 0.3;
-      ctx.fillStyle = C.face;
-      ctx.beginPath(); ctx.ellipse(hx + 2.4, hy + 2.2, 2.2, 2.6, -0.12, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 1;
-    }
-    // huvans spets faller bakåt över ryggen
-    ctx.fillStyle = C.hood;
-    ctx.beginPath();
-    ctx.moveTo(hx - 4.6, hy - 2.6);
-    ctx.quadraticCurveTo(hx - 11 - sway * 0.35, hy + 1, hx - 7.5, hy + 7.5);
-    ctx.quadraticCurveTo(hx - 5, hy + 2.5, hx - 3, hy + 1.5);
-    ctx.closePath(); ctx.fill();
-  }
-
-  // --- främre mantelhalva när vi ser ryggen ------------------------------
-  if (back) cloak(ctx, fy, sway, t, speed, flash);
+  // --- pälskrage, huvud och korp ------------------------------------------
+  mantle(ctx, t, flash);
+  head(ctx, sway, t, flash, back, fy);
+  raven(ctx, t, flash);
 
   ctx.restore();
 }
