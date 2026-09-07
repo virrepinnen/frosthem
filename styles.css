@@ -58,9 +58,12 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
   animation:fade 5s forwards}
 @keyframes fade{0%{opacity:0;transform:translateX(-8px)}8%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
 #topright{position:fixed;top:14px;right:16px;z-index:10}
-#minimap-wrap{border:1px solid var(--border);border-radius:4px;overflow:hidden;
-  background:rgba(6,10,17,.7);box-shadow:0 0 18px rgba(0,0,0,.6)}
-#minimap{display:block;opacity:.85}
+/* Storleken måste stå i CSS. Utan den blir width-attributet också
+   layoutstorlek, och eftersom renderaren sätter attributet från clientWidth
+   fick vi en återkoppling som fördubblade kartan varje bildruta. */
+#minimap-wrap{width:180px;height:180px;border:1px solid var(--border);border-radius:4px;
+  overflow:hidden;background:rgba(6,10,17,.7);box-shadow:0 0 18px rgba(0,0,0,.6)}
+#minimap{display:block;width:180px;height:180px;opacity:.85}
 /* Hjälptexten ligger i nedre vänstra hörnet, utanför både orbarna och
    skillfältet. På smala fönster finns ingen sådan ficka — då göms den, och
    F1 tvingar fram den igen. */

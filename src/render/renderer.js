@@ -13,6 +13,8 @@ import { FOG_CELL } from '../systems/world.js';
  */
 
 const SNOW_TILE = 512;
+/** Minimapens logiska storlek i CSS-pixlar. Måste stämma med styles.css. */
+export const MINIMAP_SIZE = 180;
 /** @type {HTMLCanvasElement|null} */
 let snowTile = null;
 /** @type {{x:number,y:number,z:number,r:number}[]} */
@@ -1045,7 +1047,11 @@ function drawVignette(ctx, W, H, zone) {
  */
 export function renderMinimap(ctx, game) {
   const canvas = ctx.canvas;
-  const S = canvas.clientWidth || 180;
+  // Logisk storlek är en konstant, aldrig något vi läser ur elementet.
+  // Att läsa clientWidth och skriva tillbaka den i width-attributet är en
+  // återkoppling: attributet är även layoutstorlek när CSS inte säger annat,
+  // så kartan fördubblades varje bildruta tills den täckte hela skärmen.
+  const S = MINIMAP_SIZE;
   const dpr = Math.min(devicePixelRatio || 1, 2);
   if (canvas.width !== Math.round(S * dpr)) {
     canvas.width = canvas.height = Math.round(S * dpr);
