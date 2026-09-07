@@ -48,6 +48,9 @@ export function startRun(game) {
   p.hp = p.maxHp; p.stamina = p.maxStamina; p.mana = p.maxMana;
   game.run = newRunStats();
   game.runNo = (game.runNo ?? 0) + 1;
+  // A line you have read four times stops being a line, but a new run is a new
+  // walk — the places get to introduce themselves again.
+  game.seen?.clear();
 }
 
 /**

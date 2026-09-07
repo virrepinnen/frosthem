@@ -491,3 +491,25 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
 #overlay-box .sum-note{font-size:12.5px;line-height:1.65;color:#93a6c0;margin-bottom:22px}
 #overlay-box .sum-note b{color:var(--ink)}
 @media (max-width:560px){ .sum{grid-template-columns:repeat(3,1fr)} .sum b{font-size:17px} }
+
+/* ---------- inscriptions ---------- */
+/* What a stone says, what a villager says, what a place says about itself.
+   Low on the screen, above the HUD, gone on its own — lore that has to be
+   dismissed gets clicked away unread. */
+#inscription{position:fixed;left:50%;bottom:170px;transform:translateX(-50%);
+  z-index:22;max-width:min(620px,74vw);text-align:center;pointer-events:none;opacity:0;
+  padding:14px 26px;border-radius:6px;
+  background:linear-gradient(180deg,rgba(8,12,20,.82),rgba(5,8,14,.9));
+  border:1px solid rgba(39,54,77,.75);backdrop-filter:blur(2px);
+  box-shadow:0 12px 40px rgba(0,0,0,.6)}
+#inscription span{display:block;font-size:14px;line-height:1.65;color:#cbdaec;
+  letter-spacing:.015em;text-shadow:0 1px 3px #000}
+#inscription span + span{color:#93a6c0}
+#inscription.show{animation:inscribe 7.5s ease-out forwards}
+@keyframes inscribe{
+  0%{opacity:0;transform:translate(-50%,8px)}
+  7%{opacity:1;transform:translate(-50%,0)}
+  82%{opacity:1}
+  100%{opacity:0}
+}
+@media (max-height:640px){ #inscription{bottom:148px} }

@@ -13,9 +13,11 @@ import { input, keyPressed, keyDown } from './core/input.js';
 import { camera, updateCamera, toWorld } from './render/camera.js';
 import { updateFx, clearFx, burst, floatText, screenFlash, shake } from './render/fx.js';
 import { pushAlert, showOverlay, showLevelUp, hideLevelUp, levelUpOpen,
-         showPauseMenu, hidePauseMenu, pauseMenuOpen, showZoneBanner } from './ui/hud.js';
+         showPauseMenu, hidePauseMenu, pauseMenuOpen, showZoneBanner,
+         showInscription } from './ui/hud.js';
 import { panels, togglePanel, closeAllPanels, anyPanelOpen } from './ui/panels.js';
 import { startRun, endRun, markDepth, newRunStats } from './systems/run.js';
+import { ZONE_LINE, npcLine, HRAVN } from './data/lore.js';
 import { hideTooltip } from './ui/tooltip.js';
 import { saveGame } from './systems/save.js';
 import { COMBAT_REGEN, COMBAT_WINDOW } from './systems/stats.js';
@@ -47,6 +49,8 @@ export function createGame(existing, progress) {
     bestDepth: progress?.bestDepth ?? 0,
     runNo: 0,
     /** @type {ReturnType<typeof newRunStats>} */ run: newRunStats(),
+    /** Maps whose arrival line has already played this run. @type {Set<number>} */
+    seen: new Set(),
     /** @type {string|undefined} The save slot's id; set on the first save. */
     charId: progress?.charId,
     victoryT: 3,
@@ -113,6 +117,7 @@ export function createGame(existing, progress) {
     /** Starts a fresh run with the same character. Gear and gold stay. */
     beginRun() {
       startRun(game);
+      game.seen.clear();
       game.bossDefeated = false;
       travel(game, 0);
       game.alert(`${game.player.name} sets out again.`);
@@ -204,6 +209,13 @@ function travel(game, to, from, opts = {}) {
   showZoneBanner(game.zone.name, game.zone.isTown
     ? 'the hearth still burns'
     : `${game.zone.area} · monster level ${game.zone.level}`);
+  // The place says one thing about itself as you arrive, a beat after the name.
+  // Once per run per map: a line you have read four times stops being a line.
+  if (!game.seen.has(idx)) {
+    game.seen.add(idx);
+    const line = ZONE_LINE[idx];
+    if (line) setTimeout(() => showInscription(line), 900);
+  }
   if (game.zone.isTown) {
     p.hp = p.maxHp; p.stamina = p.maxStamina; p.mana = p.maxMana;
     game.waypoints.add(0);
@@ -445,8 +457,7 @@ function update(game, dt) {
 function runSummary(game, s) {
   const p = game.player;
   const carried = p.inventory.length + Object.values(p.equipment).filter(Boolean).length;
-  const head = s.cause === 'victory'
-    ? 'The cold in the barrow lets go. Whatever was keeping him has nothing left to keep.'
+  const head = s.cause === 'victory' ? HRAVN.fall
     : 'The cold took you. Gerd drags you back to the hearth — with everything you were carrying.';
   // The place you reached gets its own line: it is the headline of the run, and
   // a long name like "Den frusna graven" wrapped to three lines when it had to
@@ -858,6 +869,11 @@ export function findInteract(game) {
       return { kind: 'chest', obj: c, x: c.x, y: c.y - 60, label: 'Open' };
     }
   }
+  for (const rn of game.zone.runes ?? []) {
+    if (near(rn, rn.r + 44)) {
+      return { kind: 'rune', obj: rn, x: rn.x, y: rn.y - 76, label: rn.read ? 'Read again' : 'Read' };
+    }
+  }
   for (const n of game.zone.npcs) {
     if (near(n, 115)) {
       return { kind: 'npc', obj: n, x: n.x, y: n.y - 64,
@@ -886,6 +902,10 @@ function interact(game) {
       game.dirtyUI = true;
       break;
     case 'chest': openChest(game, hit.obj); break;
+    case 'rune':
+      hit.obj.read = true;
+      showInscription(hit.obj.text);
+      break;
     case 'hearth':
       game.atHearth = true;
       panels.skills = true;
@@ -893,7 +913,7 @@ function interact(game) {
       break;
     case 'npc':
       if (hit.obj.id === 'gerd') { panels.vendor = true; panels.inventory = true; game.dirtyUI = true; }
-      else game.alert(`${hit.obj.name}: ${hit.obj.line}`);
+      else showInscription(`${hit.obj.name}\n"${npcLine(hit.obj.id, game.bestDepth ?? 0)}"`);
       break;
   }
 }

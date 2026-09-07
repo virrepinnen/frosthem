@@ -59,6 +59,24 @@ export function updateHud(game) {
 }
 
 /**
+ * The inscription band: what a runestone says, what a villager says, what a
+ * place says about itself when you walk into it.
+ *
+ * Deliberately not a window. Lore that stops the game and asks to be dismissed
+ * gets clicked away unread; lore that appears low on the screen and fades on
+ * its own gets read, or does not, and either is fine.
+ * @param {string} text Newlines break lines
+ */
+export function showInscription(text) {
+  const el = $('inscription');
+  el.innerHTML = String(text).split('\n')
+    .map(l => `<span>${escape(l)}</span>`).join('');
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.classList.add('show');
+}
+
+/**
  * The place name that fades in high on the screen when you arrive somewhere.
  * The animation has to restart from zero every time — hence removing the class
  * and forcing a reflow before setting it back.

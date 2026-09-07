@@ -4,6 +4,8 @@ import { angleDiff, clamp } from '../core/math.js';
 import { armorReduction, skillPower, rank, KILL_STAMINA } from './stats.js';
 import { rollItem } from './loot.js';
 import { RARITY_COLOR } from '../data/items.js';
+import { HRAVN } from '../data/lore.js';
+import { showInscription } from '../ui/hud.js';
 import { burst, floatText, decal, shake, screenFlash } from '../render/fx.js';
 import { lineBlocked } from './world.js';
 import { pickAttack } from '../render/hero.js';
@@ -76,6 +78,7 @@ export function hitMonster(game, m, d) {
         if (Math.hypot(o.pos.x - m.pos.x, o.pos.y - m.pos.y) < 460) { o.dormant = false; o.state = 'chase'; }
       }
       game.alert(`${m.name} rises.`);
+      showInscription(`${m.name}\n"${HRAVN.wake}"`);
       burst(m.pos.x, m.pos.y, 70, { color: '#a8e4f8', speed: 300, life: 1.1, size: 3.4, grav: -40 });
       screenFlash(0.3, '#7fd4f0');
       shake(14);
