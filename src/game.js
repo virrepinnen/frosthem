@@ -12,7 +12,7 @@ import { input, keyPressed, keyDown } from './core/input.js';
 import { camera, updateCamera, toWorld } from './render/camera.js';
 import { updateFx, clearFx, burst, floatText, screenFlash, shake } from './render/fx.js';
 import { pushAlert, showOverlay, showLevelUp, hideLevelUp, levelUpOpen,
-         showPauseMenu, hidePauseMenu, pauseMenuOpen } from './ui/hud.js';
+         showPauseMenu, hidePauseMenu, pauseMenuOpen, showZoneBanner } from './ui/hud.js';
 import { panels, togglePanel, closeAllPanels, anyPanelOpen } from './ui/panels.js';
 import { hideTooltip } from './ui/tooltip.js';
 import { saveGame } from './systems/save.js';
@@ -52,6 +52,10 @@ export function createGame(existing, progress) {
     aim: { x: 0, y: 0 },
     /** @type {any} */ aimTarget: null,
     /** @type {any} */ interact: null,
+    /** @type {null|{t:number, to:number, from:number|undefined, done:boolean}} Zonbyte som pågår. */
+    transit: null,
+    /** Skärmens mörkning 0..1 under ett zonbyte. */
+    veil: 0,
     time: 0,
     paused: false,
     saveT: 0,
@@ -162,7 +166,8 @@ function travel(game, to, from, opts = {}) {
   let spawn = opts.at ?? { ...game.zone.entry };
   if (!opts.at && from !== undefined) {
     const back = game.zone.exits.find(e => e.to === from);
-    if (back) spawn = { x: back.x, y: back.y + (back.dir === 'söder' ? -90 : 90) };
+    // En bit innanför tröskeln, annars hade första steget skickat en rakt ut igen.
+    if (back) spawn = { x: back.x, y: back.trigger + (back.edge === 'n' ? 132 : -132) };
   }
   p.pos.x = spawn.x; p.pos.y = spawn.y;
   p.vel.x = p.vel.y = 0;
@@ -172,16 +177,54 @@ function travel(game, to, from, opts = {}) {
   camera.x = p.pos.x - camera.w / 2;
   camera.y = p.pos.y - camera.h / 2;
 
+  // Namnet tonas in över skärmen i stället för att stå i notislistan — man
+  // ska märka att man kommit någonstans utan att behöva läsa i ett hörn.
+  showZoneBanner(game.zone.name, game.zone.isTown
+    ? 'härden brinner ännu' : `monsternivå ${game.zone.level}`);
   if (game.zone.isTown) {
     p.hp = p.maxHp; p.stamina = p.maxStamina; p.mana = p.maxMana;
     game.waypoints.add(0);
-    game.alert('Frosthem. Härden brinner ännu.');
-  } else {
-    game.alert(`${game.zone.name} — monsternivå ${game.zone.level}`);
   }
   game.dirtyUI = true;
   hideTooltip();
   game.autosave();
+}
+
+/** Hur länge skärmen mörknar respektive ljusnar vid ett zonbyte. */
+const FADE_OUT = 0.3, FADE_IN = 0.55;
+
+/**
+ * Gränsen mellan två zoner. Ingen portal och ingen knapp: stigen leder ut ur
+ * bilden, och går man dit *av egen kraft* så fortsätter man in i nästa zon.
+ * Kravet på egen rörelse är viktigt — annars kunde en knuff i ryggen mitt i en
+ * strid slänga ut dig ur kartan.
+ * @param {Game} game
+ */
+function checkZoneEdge(game) {
+  const p = game.player;
+  if (game.transit || p.dead) return;
+  for (const e of game.zone.exits) {
+    if (Math.abs(p.pos.x - e.x) > e.r) continue;
+    const out = e.edge === 'n' ? p.pos.y < e.trigger : p.pos.y > e.trigger;
+    if (!out) continue;
+    const willing = e.edge === 'n' ? p.inY < -0.05 : p.inY > 0.05;
+    if (!willing) continue;
+    game.transit = { t: 0, to: e.to, from: game.zone.index, done: false };
+    return;
+  }
+}
+
+/** @param {Game} game @param {number} dt */
+function updateTransit(game, dt) {
+  const tr = game.transit;
+  if (!tr) return;
+  tr.t += dt;
+  if (!tr.done && tr.t >= FADE_OUT) {
+    tr.done = true;
+    travel(game, tr.to, tr.from);
+  }
+  game.veil = tr.done ? 1 : Math.min(1, tr.t / FADE_OUT);
+  if (tr.done) { game.transit = null; game.veil = 1; }
 }
 
 /** @param {Game} game @param {number} index */
@@ -312,6 +355,8 @@ function update(game, dt) {
     if (game.saveT <= 0) saveGame(game);
   }
 
+  if (game.transit) { updateTransit(game, dt); updateFx(dt); updateCamera(game, dt); return; }
+  if (game.veil > 0) game.veil = Math.max(0, game.veil - dt / FADE_IN);
   if (game.paused) { updateFx(dt); return; }
 
   game.playerSlow = 0;
@@ -420,6 +465,8 @@ function updatePlayer(game, dt) {
   if (keyDown('arrowdown')) my += 1;
   if (keyDown('arrowleft')) mx -= 1;
   if (keyDown('arrowright')) mx += 1;
+  // Sparas för zongränsen: den vill veta att du *själv* går utåt.
+  p.inX = mx; p.inY = my;
 
   // ---- sikte ---------------------------------------------------------------
   // Med auto-sikte behöver högerhanden bara sköta rörelsen: figuren vänder sig
@@ -542,6 +589,8 @@ function updatePlayer(game, dt) {
     }
   }
   game.interact = findInteract(game);
+
+  checkZoneEdge(game);
 
   const wp = zone.waypoint;
   if (wp && !game.waypoints.has(zone.index)
@@ -716,11 +765,6 @@ export function findInteract(game) {
       return { kind: 'chest', obj: c, x: c.x, y: c.y - 60, label: 'Öppna' };
     }
   }
-  for (const e of game.zone.exits) {
-    if (near(e, e.r + 34)) {
-      return { kind: 'exit', obj: e, x: e.x, y: e.y - e.r * 0.5 - 40, label: 'Res' };
-    }
-  }
   for (const n of game.zone.npcs) {
     if (near(n, 115)) {
       return { kind: 'npc', obj: n, x: n.x, y: n.y - 64,
@@ -749,7 +793,6 @@ function interact(game) {
       game.dirtyUI = true;
       break;
     case 'chest': openChest(game, hit.obj); break;
-    case 'exit': travel(game, hit.obj.to, game.zone.index); break;
     case 'npc':
       if (hit.obj.id === 'gerd') { panels.vendor = true; panels.inventory = true; game.dirtyUI = true; }
       else game.alert(`${hit.obj.name}: ${hit.obj.line}`);

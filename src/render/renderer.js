@@ -677,19 +677,63 @@ function drawShrines(ctx, game) {
   }
 }
 
-/** @param {CanvasRenderingContext2D} ctx @param {any} game */
+/**
+ * Zongränsen. Ingen portal — bara stigen som går ut ur bilden och försvinner i
+ * yrsnö, med två resta stenar som grind och namnet på det som ligger bortom.
+ * @param {CanvasRenderingContext2D} ctx @param {any} game
+ */
 function drawExits(ctx, game) {
   const t = performance.now() / 1000;
   for (const e of game.zone.exits) {
-    ctx.save(); ctx.translate(e.x, PY(e.y));
-    const pulse = 0.4 + Math.sin(t * 1.8) * 0.18;
-    const g = ctx.createRadialGradient(0, 0, 4, 0, 0, e.r * 1.5);
-    g.addColorStop(0, `rgba(140,214,244,${pulse})`); g.addColorStop(1, 'rgba(140,214,244,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, e.r * 1.5, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(170,226,250,0.75)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.ellipse(0, 0, e.r, e.r * 0.5, 0, 0, Math.PI * 2); ctx.stroke();
+    const north = e.edge === 'n';
+    const sign = north ? -1 : 1;
+    const line = PY(e.trigger);         // där zonen faktiskt tar slut
+    const rim = PY(e.y);                // kartans kant
+
+    // Dis som sväljer marken sista biten ut.
+    ctx.save();
+    const g = ctx.createLinearGradient(0, line - sign * 30, 0, rim + sign * 40);
+    g.addColorStop(0, 'rgba(206,226,244,0)');
+    g.addColorStop(0.45, 'rgba(212,231,246,0.38)');
+    g.addColorStop(1, 'rgba(224,238,250,0.92)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(e.x - e.r, line - sign * 40);
+    ctx.lineTo(e.x + e.r, line - sign * 40);
+    ctx.lineTo(e.x + e.r * 1.28, rim + sign * 30);
+    ctx.lineTo(e.x - e.r * 1.28, rim + sign * 30);
+    ctx.closePath(); ctx.fill();
     ctx.restore();
-    worldLabel(ctx, e.label, e.x, PY(e.y) - e.r * 0.5 - 16, '#c8ecfb', 13);
+
+    // Två resta stenar som grind, en på var sida om stigen.
+    for (const sx of [-1, 1]) {
+      const x = e.x + sx * 78;
+      const base = PY(e.trigger + sign * 6);
+      const h = 88 + sx * 6;
+      ctx.save(); ctx.translate(x, base);
+      ctx.fillStyle = 'rgba(4,7,12,0.34)';
+      ctx.beginPath(); ctx.ellipse(0, 2, 19, 8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.rotate(sx * 0.05);
+      const gr = ctx.createLinearGradient(-14, -h, 14, 0);
+      gr.addColorStop(0, '#3d4b60'); gr.addColorStop(0.55, '#293445'); gr.addColorStop(1, '#161e2b');
+      ctx.fillStyle = gr;
+      ctx.beginPath();
+      ctx.moveTo(-13, 0); ctx.lineTo(-9.5, -h); ctx.lineTo(8, -h - 7); ctx.lineTo(13, 0);
+      ctx.closePath(); ctx.fill();
+      // Snö på ovansidan och en sval glöd mot öppningen.
+      ctx.fillStyle = 'rgba(226,239,250,0.72)';
+      ctx.beginPath(); ctx.moveTo(-9.5, -h); ctx.lineTo(8, -h - 7); ctx.lineTo(8, -h + 1); ctx.lineTo(-9.5, -h + 6);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = `rgba(150,214,244,${0.2 + Math.sin(t * 1.5 + sx) * 0.07})`;
+      ctx.fillRect(-sx * 3 - 1.8, -h * 0.74, 3.6, h * 0.52);
+      ctx.restore();
+    }
+
+    // Namnet står på stigen *innanför* grinden. Kameran stannar vid kartkanten,
+    // så allt som ritas utanför tröskeln riskerar att hamna ovanför skärmen.
+    const ly = PY(e.trigger - sign * 78);
+    worldLabel(ctx, e.label, e.x, ly, '#d6ecfb', 15);
+    worldLabel(ctx, north ? '▲' : '▼', e.x, ly + sign * 20, 'rgba(190,224,244,0.72)', 11);
   }
 }
 

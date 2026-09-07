@@ -37,7 +37,7 @@ måste serveras över HTTP — att öppna `index.html` direkt från disk fungera
 | — | Attacken sköter sig själv när en fiende är inom räckhåll |
 | `1`–`6` | Skills |
 | `Q` | Hälsodryck |
-| `E` | Använd: tala, res, vägsten, portal, kista |
+| `E` | Använd: tala, vägsten, portal, kista |
 | `Mellanslag` | Undanrullning (osårbar mitt i rullningen) |
 | `T` | Öppna stadsportal (och tillbaka igen) |
 | `I` / `C` / `K` | Väska · Karaktär · Skills |
@@ -73,6 +73,18 @@ Varje karta har en **stig** som binder ihop ingången med utgången, och en
 lägret eller Offerplatsen. Där står en kista, en helgedom och ett elitpack.
 Stigen är zonens ryggrad: den ger riktning utan att kartan blir en korridor,
 och monstergrupperna sitter *längs* den så att man möter dem på färden.
+
+**Gränserna går inte att trycka på.** Stigen fortsätter ut ur bilden i norr,
+och där den lämnar kartan står två resta stenar med marken bakom sig upplöst i
+yrsnö. Går du dit *av egen kraft* tonar skärmen ner en tredjedels sekund och du
+kliver in i nästa område — ingen portal, ingen `E`, ingen ruta. Samma sak
+söderut, och samma sak när du går ut genom byporten i Frosthem. Kravet på egen
+rörelse är medvetet: en knuff i ryggen mitt i en strid ska inte kunna slänga ut
+dig ur kartan, och man landar alltid en bit innanför tröskeln så att första
+steget inte skickar tillbaka en.
+
+Platsens namn tonar in högt upp på skärmen när du kommer fram, och står sedan
+kvar under minimapen så länge du är där.
 
 **Resor.** Varje zon har en **vägsten** som du låser upp genom att röra vid den;
 därefter kan du hoppa mellan alla upptäckta vägstenar. **Stadsportalen** (`T`)

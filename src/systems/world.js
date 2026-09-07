@@ -28,7 +28,7 @@ import { clamp, smoothNoise, wrapAngle } from '../core/math.js';
  * @property {{x:number,y:number}} entry
  * @property {Obstacle[]} obstacles
  * @property {{x:number,y:number,r:number,s:number,type:string}[]} decor
- * @property {{x:number,y:number,r:number,to:number,label:string,dir:string}[]} exits
+ * @property {{x:number,y:number,r:number,to:number,label:string,edge:'n'|'s',trigger:number}[]} exits
  * @property {{x:number,y:number,r:number,kind:string,used:boolean}[]} shrines
  * @property {{x:number,y:number,n:number,elite:boolean}[]} anchors
  * @property {{x:number,y:number,r:number,id:string,name:string,line:string}[]} npcs
@@ -46,7 +46,7 @@ import { clamp, smoothNoise, wrapAngle } from '../core/math.js';
  */
 
 export const ZONE_DEFS = [
-  { name: 'Frosthem',            theme: 'town',   level: 1,  w: 1500, h: 1150 },
+  { name: 'Frosthem',            theme: 'town',   level: 1,  w: 1500, h: 1500 },
   { name: 'Bleka hedarna',       theme: 'moor',   level: 1,  w: 2600, h: 2000 },
   { name: 'Vargpasset',          theme: 'pass',   level: 5,  w: 2800, h: 2200 },
   { name: 'Den frusna graven',   theme: 'barrow', level: 10, w: 2400, h: 2000 },
@@ -225,10 +225,17 @@ function village(index, seed, d) {
     index, name: d.name, theme: d.theme, level: d.level, seed, w: d.w, h: d.h, isTown: true,
     entry: { x: cx, y: cy + 110 },
     obstacles, decor,
-    exits: [{ x: cx - 20, y: cy - fenceR - 30, r: 52, to: 1, label: 'Bleka hedarna', dir: 'norr' }],
+    // Porten norrut är en tröskel: gå ut genom palissaden så är du i vildmarken.
+    exits: [{ x: cx - 20, y: cy - fenceR - 34, r: 340, to: 1, label: 'Bleka hedarna',
+      edge: /** @type {'n'} */ ('n'), trigger: cy - fenceR - 18 }],
     shrines: [],
     anchors: [],
-    roads: [{ pts: [{ x: cx, y: cy + 40 }, { x: cx - 20, y: cy - fenceR - 30 }], width: 54, main: true }],
+    // Stigen svänger förbi härden i stället för rakt igenom den. Den gick
+    // tidigare tvärs över elden — det såg fel ut, och gav dessutom en vägg
+    // mitt i den naturliga vägen ut ur byn.
+    roads: [{ pts: [{ x: cx + 30, y: cy + 120 }, { x: cx + 92, y: cy + 20 },
+      { x: cx + 112, y: cy - 250 }, { x: cx + 70, y: cy - 420 },
+      { x: cx - 20, y: cy - fenceR - 30 }], width: 54, main: true }],
     poi: null,
     waypoint: { x: cx + 60, y: cy + 120, r: 34 },
     // Portalen får en egen plats på andra sidan härden. Låg den vid vägstenen
@@ -253,7 +260,7 @@ function wilderness(index, seed, d) {
   /** @type {Zone['shrines']} */ const shrines = [];
   /** @type {Zone['chests']} */ const chests = [];
 
-  const entry = { x: d.w * 0.5, y: d.h - 200 };
+  const entry = { x: d.w * 0.5, y: d.h - 392 };
   const exitPt = { x: r.range(d.w * 0.28, d.w * 0.72), y: 160 };
 
   const THEME = {
@@ -270,6 +277,10 @@ function wilderness(index, seed, d) {
   // Huvudstigen binder ihop in- och utgången. Sidostigen leder till zonens
   // avstickare — en plats man väljer att gå till, inte snubblar över.
   const main = makeRoad(entry, exitPt, r, 3, Math.min(d.w, d.h) * 0.16);
+  // Stigen fortsätter ut ur kartan i båda ändar. Det är den som säger var
+  // gränsen går — man ser vart man är på väg långt innan man är framme.
+  main.unshift({ x: entry.x, y: d.h - 26 });
+  main.push({ x: exitPt.x, y: 26 });
   const junction = pointAlong(main, r.range(0.32, 0.6));
   const side = r.chance(0.5) ? 1 : -1;
   const poiPos = {
@@ -346,7 +357,9 @@ function wilderness(index, seed, d) {
   anchors.push({ x: poiPos.x, y: poiPos.y + 10, n: params.pack[1] + 2, elite: true });
 
   // ---- vägsten ------------------------------------------------------------
-  const wpAt = pointAlong(main, 0.06);
+  // Stigen börjar numera i kartkanten, så 6 % längs den hade lagt vägstenen
+  // *utanför* zongränsen. Den ska stå strax innanför där man kommer in.
+  const wpAt = pointAlong(main, 0.2);
   const waypoint = { x: wpAt.x + wpAt.nx * 70, y: wpAt.y + wpAt.ny * 70, r: 34 };
   // Håll marken kring vägstenen fri — den måste alltid gå att kliva fram till.
   for (let i = obstacles.length - 1; i >= 0; i--) {
@@ -387,14 +400,31 @@ function wilderness(index, seed, d) {
       r: 30, kind: r.pick(['dmg', 'armor', 'speed', 'heal', 'xp']), used: false });
   }
 
+  // Utgångarna ligger i kartkanten och har ingen knapp: går man ut ur bilden
+  // där stigen slutar så byter man zon. `trigger` är linjen som räknas som
+  // "ute", `r` hur bred öppningen är åt sidorna.
   /** @type {Zone['exits']} */
   const exits = [
-    { x: entry.x, y: d.h - 95, r: 55, to: index - 1, label: ZONE_DEFS[index - 1].name, dir: 'söder' },
+    { x: entry.x, y: d.h - 26, r: 190, to: index - 1, label: ZONE_DEFS[index - 1].name,
+      edge: 's', trigger: d.h - 260 },
   ];
   const isLast = index >= ZONE_DEFS.length - 1;
   if (!isLast) {
-    exits.push({ x: exitPt.x, y: exitPt.y, r: 55, to: index + 1, label: ZONE_DEFS[index + 1].name, dir: 'norr' });
+    exits.push({ x: exitPt.x, y: 26, r: 190, to: index + 1, label: ZONE_DEFS[index + 1].name,
+      edge: 'n', trigger: 260 });
   }
+
+  // Gränsen ska synas: en öppning i trädlinjen där stigen lämnar kartan.
+  // Utan den här rensningen växer granarna igen grinden och man ser den inte.
+  const gateClear = (/** @type {number} */ x, /** @type {number} */ y) =>
+    exits.some(e => Math.abs(x - e.x) < 170
+      && (e.edge === 'n' ? y < e.trigger + 90 : y > e.trigger - 90));
+  const clean = obstacles.filter(o => {
+    const ox = o.kind === 'circle' ? o.x : o.x + o.w / 2;
+    const oy = o.kind === 'circle' ? o.y : o.y + o.h / 2;
+    return !gateClear(ox, oy);
+  });
+  obstacles.length = 0; obstacles.push(...clean);
 
   /** @type {Zone} */
   const zone = {
@@ -409,6 +439,7 @@ function wilderness(index, seed, d) {
     const bx = exitPt.x, by = 340;
     zone.bossAt = 1;
     zone.bossPos = { x: bx, y: by };
+    main.length -= 1;                       // ingen väg ut norrut i sista zonen
     main[main.length - 1] = { x: bx, y: by + 240 };
     zone.obstacles = obstacles.filter(o => {
       const ox = o.kind === 'circle' ? o.x : o.x + o.w / 2;
@@ -417,9 +448,12 @@ function wilderness(index, seed, d) {
     });
     for (let i = 0; i < 20; i++) {
       const a = (i / 20) * Math.PI * 2;
-      if (Math.abs(a - Math.PI / 2) < 0.75) continue; // bred öppning söderut, dit stigen leder
+      if (Math.abs(a - Math.PI / 2) < 1.05) continue; // bred öppning söderut, dit stigen leder
       zone.obstacles.push({ kind: 'circle', x: bx + Math.cos(a) * 330, y: by + Math.sin(a) * 330, r: 24, type: 'standingstone', s: r.next() });
     }
+    // Ingen stenring får stå i stigen fram till arenan.
+    zone.obstacles = zone.obstacles.filter(o => o.type !== 'standingstone'
+      || distToRoad(o.x, /** @type {any} */ (o).y, main) > 46 + (o.kind === 'circle' ? o.r : 0));
     zone.anchors = zone.anchors.filter(a => Math.hypot(a.x - bx, a.y - by) > 430);
     zone.exits = zone.exits.filter(e => e.to !== index + 1);
   }

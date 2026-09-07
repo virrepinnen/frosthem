@@ -43,6 +43,8 @@ export function updateHud(game) {
   flashOnce('mana-orb', p.manaFlash);
   $('xp-fill').style.width = `${(p.xp / p.xpNext) * 100}%`;
   $('zone-name').textContent = game.zone.name;
+  $('zone-lvl').textContent = game.zone.isTown ? 'fristad' : `monsternivå ${game.zone.level}`;
+  $('veil').style.opacity = String(game.veil ?? 0);
   $('char-level').textContent = `Nivå ${p.level}`;
   $('gold').textContent = String(p.gold);
 
@@ -52,6 +54,21 @@ export function updateHud(game) {
   if (sig !== lastHotbar) { rebuildSkillbar(game); lastHotbar = sig; }
   updateCooldowns(game);
   updateGroundLabels(game);
+}
+
+/**
+ * Platsnamnet som tonar in högt upp på skärmen när man kommer någonstans.
+ * Animationen måste startas om från noll varje gång — därför tas klassen bort
+ * och en reflow tvingas fram innan den sätts tillbaka.
+ * @param {string} name @param {string} sub
+ */
+export function showZoneBanner(name, sub) {
+  const el = $('banner');
+  $('banner-name').textContent = name;
+  $('banner-sub').textContent = sub;
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.classList.add('show');
 }
 
 /** @param {any} game */
@@ -315,7 +332,7 @@ export function levelUpOpen() { return !$('levelup').classList.contains('hidden'
 
 const TUTORIAL = [
   { ico: '🧭', title: 'Följ stigen norrut',
-    body: 'Gå med <b>piltangenterna</b>. Stigen genom varje karta leder till nästa område — och en sidostig leder till något värt att hitta.' },
+    body: 'Gå med <b>piltangenterna</b>. Stigen genom varje karta leder ut ur bilden i norr — <b>gå bara vidare där den slutar</b> så är du i nästa område. En sidostig leder till något värt att hitta.' },
   { ico: '🪓', title: 'Du slåss av dig själv',
     body: 'Kommer en fiende inom räckhåll <b>attackerar du automatiskt</b> och siktar på den närmaste. Du behöver inte klicka.<br><b>Mellanslag</b> rullar undan — du är osårbar mitt i rullningen.' },
   { ico: '💨', title: 'Uthålligheten är din klocka',

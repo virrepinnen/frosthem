@@ -106,6 +106,8 @@ export function createPlayer(name) {
     rollCd: 0,
     /** Faktisk hastighet, mätt ur förflyttningen — täcker gång, rusning och rullning. */
     velX: 0, velY: 0,
+    /** Rörelseinput denna bildruta (-1..1). Zongränsen läser den. */
+    inX: 0, inY: 0,
     /**
      * Mantelns utslag som en dämpad fjäder. Den strävar mot *motsatt* håll än
      * rörelsen, så tyget släpar efter, och svänger tillbaka till vila med ett
