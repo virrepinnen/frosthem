@@ -219,7 +219,7 @@ guld och när du senast spelade — ett klick och du är inne. *Skapa ny karakt�
 kommande). Allt sparas i webbläsarens `localStorage`, automatiskt vid
 nivåhöjning, zonbyte och när du lämnar fliken, eller manuellt med `F5`.
 
-Första karaktären får en kort genomgång i fem steg. Frågetecknet uppe till höger
+Varje ny karaktär får en kort genomgång i fem steg. Frågetecknet uppe till höger
 (eller `F1`) tar upp den igen när som helst. Allt sparas i
 webbläsarens `localStorage` — automatiskt vid nivåhöjning, zonbyte, köp och när
 du lämnar fliken, eller manuellt med `F5`. Startskärmen erbjuder *Fortsätt* när

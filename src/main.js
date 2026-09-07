@@ -10,7 +10,6 @@ import { moveTooltip, hideTooltip } from './ui/tooltip.js';
 import { listSaves, deleteSave, playerFromSave, describeSave, saveGame } from './systems/save.js';
 
 const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (document.getElementById(id));
-const TUTORIAL_KEY = 'frosthem.tutorial.v1';
 
 const canvas = /** @type {HTMLCanvasElement} */ ($('game'));
 const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d', { alpha: false }));
@@ -327,9 +326,12 @@ function begin(player, progress, isNew, charId) {
   setInputEnabled(true);
 
   const resume = () => { if (game) game.paused = false; };
-  if (isNew && !localStorage.getItem(TUTORIAL_KEY)) {
-    // Första karaktären får den korta genomgången; därefter når man den via ?.
-    showTutorial(() => { try { localStorage.setItem(TUTORIAL_KEY, '1'); } catch { /* privat läge */ } resume(); });
+  if (isNew) {
+    // Varje ny karaktär får genomgången. Den låg tidigare bakom en flagga i
+    // localStorage och visades bara för den allra första karaktären — men en
+    // ny karaktär är en ny början, och fem klick är billigare än att sakna
+    // den. Redan spelade karaktärer får ingen ruta alls; `?` och `F1` finns.
+    showTutorial(resume);
   } else {
     // Ingen modal vid start. Att behöva klicka bort en ruta varje gång man
     // sätter sig är ren friktion — det som behöver sägas ryms i en notis.
