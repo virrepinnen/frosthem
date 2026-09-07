@@ -80,6 +80,11 @@ tar dig till Frosthem och tillbaka till exakt samma plats — den bevarar zonen 
 lämnade, inklusive monster och loot på marken, vilket är hela poängen när zoner
 annars genereras om vid varje besök.
 
+Portalen är inte gratis: den laddar i **2,5 sekunder**, varav den sista
+halvsekunden är porten som öppnar sig och gestalten som kliver in. Rör du dig
+bryts den, och **en enda träff bryter den**. Flykt är alltså något man måste
+skaffa sig utrymme för, inte en knapp man trycker när det redan brinner.
+
 **Två resurser, inte en.** Uthållighet och mana är skilda åt, och syns var för
 sig: liv som klot till vänster, mana som klot till höger, och uthållighet som en
 egen gyllene stapel mitt i blickfånget.

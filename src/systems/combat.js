@@ -343,6 +343,13 @@ export function damagePlayer(game, raw, src) {
   total *= 1 - (p.dmgReduction || 0);
   total = Math.max(1, Math.round(total));
 
+  // En träff bryter stadsportalen — det är därför den kostar två sekunders lugn.
+  if (p.cast) {
+    p.cast = null;
+    burst(p.pos.x, p.pos.y - 8, 18, { color: '#7a8ea0', speed: 150, life: 0.5, size: 2.4 });
+    game.alert('Portalen bröts av träffen.');
+  }
+
   p.hp -= total;
   p.hitFlash = 0.2;
   p.invuln = 0.12;

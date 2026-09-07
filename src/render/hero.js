@@ -1,6 +1,7 @@
 // @ts-check
 import { rng } from '../core/rng.js';
 import { PROJ } from './camera.js';
+import { PORTAL_CAST, PORTAL_STEP } from '../entities/player.js';
 
 /** Figuren står på den hoptryckta marken men ritas i oförminskade pixlar. */
 const PY = (/** @type {number} */ y) => y * PROJ;
@@ -450,6 +451,12 @@ export function drawHero(ctx, game) {
   ctx.fillStyle = '#16202e';
   ctx.beginPath(); ctx.ellipse(gx, gy, rolling ? 15 : 12, 5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
+
+  // Under portalens öppningsskede kliver gestalten in och tonar bort.
+  if (p.cast) {
+    const openK = Math.max(0, (p.cast.t - (PORTAL_CAST - PORTAL_STEP)) / PORTAL_STEP);
+    if (openK > 0) ctx.globalAlpha = Math.max(0, 1 - openK * 1.05);
+  }
 
   ctx.save();
   ctx.translate(gx, gy);

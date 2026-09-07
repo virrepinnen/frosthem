@@ -21,6 +21,10 @@ export function slotsFor(s) {
 }
 
 /** Väskans rutnät. Rutorna är fler än förr, men föremålen tar olika mycket plats. */
+/** Hur länge stadsportalen laddar, och hur mycket av det som är öppningen. */
+export const PORTAL_CAST = 2.5;
+export const PORTAL_STEP = 0.5;
+
 export const BAG_COLS = 12;
 export const BAG_ROWS = 6;
 export const HOTBAR_SIZE = 6;
@@ -93,6 +97,12 @@ export function createPlayer(name) {
     swing: null,
     /** @type {{t:number, dir:number, hit:Set<number>}|null} */ dash: null,
     /** @type {{t:number, dur:number, dir:number}|null} */ roll: null,
+    /**
+     * Pågående stadsportal. Laddas i {@link PORTAL_CAST} sekunder; de sista
+     * {@link PORTAL_STEP} öppnar sig porten och gestalten kliver in.
+     * @type {{t:number, x:number, y:number}|null}
+     */
+    cast: null,
     rollCd: 0,
     /** Faktisk hastighet, mätt ur förflyttningen — täcker gång, rusning och rullning. */
     velX: 0, velY: 0,

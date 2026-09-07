@@ -12,6 +12,7 @@ import { RARITY_COLOR } from '../data/items.js';
 import { FOG_CELL } from '../systems/world.js';
 import { drawHero } from './hero.js';
 import { ORB_TIERS } from '../systems/orbs.js';
+import { PORTAL_CAST, PORTAL_STEP } from '../entities/player.js';
 
 /**
  * All världsrendering. Canvas 2D, top-down, med djupsortering på y så att
@@ -104,6 +105,7 @@ export function render(ctx, game, dt) {
   drawChests(ctx, game);
   drawGroundItems(ctx, game);
   drawOrbs(ctx, game);
+  drawCast(ctx, game);
   ctx.save(); ctx.scale(1, PROJ); drawNovas(ctx, game); ctx.restore();
 
   // ---- djupsorterad lista -------------------------------------------------
@@ -706,6 +708,69 @@ function drawGroundItems(ctx, game) {
     ctx.fillText(g.kind === 'gold' ? '🪙' : g.kind === 'potion' ? '🧪' : g.item.base.icon, 0, 0);
     ctx.restore();
   }
+}
+
+/**
+ * Stadsportalens uppladdning: en ring i marken som sluts medan du laddar, och
+ * en port som öppnar sig under den sista halvsekunden. Ringen ligger *i*
+ * planet, porten reser sig ur det.
+ * @param {CanvasRenderingContext2D} ctx @param {any} game
+ */
+function drawCast(ctx, game) {
+  const c = game.player.cast;
+  if (!c) return;
+  const t = performance.now() / 1000;
+  const k = Math.min(1, c.t / PORTAL_CAST);
+  const openK = Math.max(0, (c.t - (PORTAL_CAST - PORTAL_STEP)) / PORTAL_STEP);
+  const cy = PY(c.y);
+
+  // ringen i marken
+  ctx.save();
+  ctx.translate(c.x, cy);
+  ctx.scale(1, PROJ);
+  ctx.strokeStyle = 'rgba(143,216,244,0.28)';
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(0, 0, 46, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = '#a8e4f8';
+  ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.arc(0, 0, 46, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2); ctx.stroke();
+  // runorna innanför snurrar långsamt
+  ctx.globalAlpha = 0.5 + k * 0.4;
+  ctx.strokeStyle = '#cfeeff';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 6; i++) {
+    const a = t * 0.7 + i * (Math.PI / 3);
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * 30, Math.sin(a) * 30);
+    ctx.lineTo(Math.cos(a) * 38, Math.sin(a) * 38);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  if (openK <= 0) return;
+
+  // porten som öppnar sig: smal springa som vidgar sig till en oval
+  ctx.save();
+  ctx.translate(c.x, cy);
+  const h = 46 * openK, w = 19 * Math.pow(openK, 0.6);
+  const g = ctx.createRadialGradient(0, -h * 0.62, 2, 0, -h * 0.62, Math.max(w, h) * 1.6);
+  g.addColorStop(0, 'rgba(190,238,255,0.75)');
+  g.addColorStop(1, 'rgba(143,216,244,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.ellipse(0, -h * 0.62, w * 2.4, h * 1.1, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#dff4ff';
+  ctx.lineWidth = 2.5;
+  for (let i = 0; i < 3; i++) {
+    // Ringarna krymper inåt, men radien får aldrig gå under noll: i början av
+    // öppningen är porten smalare än avståndet mellan ringarna.
+    const rx = w - i * 4.5, ry = h * 0.62 - i * 4;
+    if (rx <= 0.5 || ry <= 0.5) continue;
+    ctx.globalAlpha = 0.35 + i * 0.2;
+    ctx.beginPath();
+    ctx.ellipse(0, -h * 0.62, rx, ry, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 /**

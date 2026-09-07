@@ -35,6 +35,7 @@ import { clamp, smoothNoise, wrapAngle } from '../core/math.js';
  * @property {{pts:{x:number,y:number}[], width:number, main:boolean}[]} roads
  * @property {{x:number,y:number,r:number,kind:string,name:string}|null} poi
  * @property {{x:number,y:number,r:number}|null} waypoint
+ * @property {{x:number,y:number}} [portalPad] Var stadsportalen dyker upp i byn
  * @property {{x:number,y:number,r:number,opened:boolean,tier:number}[]} chests
  * @property {Obstacle[]} [_walls] Cache: hinder som blockerar sikt
  * @property {Uint8Array} [fog] Utforskningsrutnät (1 = sedd)
@@ -230,6 +231,9 @@ function village(index, seed, d) {
     roads: [{ pts: [{ x: cx, y: cy + 40 }, { x: cx - 20, y: cy - fenceR - 30 }], width: 54, main: true }],
     poi: null,
     waypoint: { x: cx + 60, y: cy + 120, r: 34 },
+    // Portalen får en egen plats på andra sidan härden. Låg den vid vägstenen
+    // hamnade de två resesätten ovanpå varandra och [E] blev en gissningslek.
+    portalPad: { x: cx - 175, y: cy + 135 },
     chests: [],
     npcs: [
       { x: cx - 130, y: cy + 60, r: 22, id: 'gerd', name: 'Gerd Askhand',

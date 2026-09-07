@@ -1,5 +1,5 @@
 // @ts-check
-import { createPlayer, HOTBAR_SIZE, bindToHotbar } from './entities/player.js';
+import { createPlayer, HOTBAR_SIZE, bindToHotbar, PORTAL_CAST, PORTAL_STEP } from './entities/player.js';
 import { generateZone, resolveCollision, lineBlocked, revealFog, ZONE_DEFS } from './systems/world.js';
 import { populateZone } from './systems/spawn.js';
 import { updateMonsters, updateProjectiles } from './systems/ai.js';
@@ -20,6 +20,7 @@ import { createPending, hasPending, resetPending } from './systems/allocation.js
 import { COMBAT_REGEN, COMBAT_WINDOW } from './systems/stats.js';
 import { rng } from './core/rng.js';
 import { clamp } from './core/math.js';
+
 
 /**
  * Central speltillstånd + uppdateringsloop.
@@ -165,7 +166,7 @@ function travel(game, to, from, opts = {}) {
   }
   p.pos.x = spawn.x; p.pos.y = spawn.y;
   p.vel.x = p.vel.y = 0;
-  p.swing = null; p.dash = null; p.whirl = null;
+  p.swing = null; p.dash = null; p.whirl = null; p.cast = null;
   resolveCollision(game.zone, p.pos, p.radius);
 
   camera.x = p.pos.x - camera.w / 2;
@@ -213,18 +214,74 @@ function openTownPortal(game) {
     game.alert('Du står redan i Frosthem.');
     return;
   }
+  if (p.cast) return;
+  p.cast = { t: 0, x: p.pos.x, y: p.pos.y };
+  game.alert('Öppnar en portal mot Frosthem…');
+}
+
+/** @param {Game} game @param {string} why */
+function cancelPortalCast(game, why) {
+  const p = game.player;
+  if (!p.cast) return;
+  burst(p.cast.x, p.cast.y - 8, 16, { color: '#7a8ea0', speed: 130, life: 0.5, size: 2.4 });
+  p.cast = null;
+  game.alert(why);
+}
+
+/** Fullbordar portalen och reser. @param {Game} game */
+function finishTownPortal(game) {
+  const p = game.player;
+  const at = p.cast ? { x: p.cast.x, y: p.cast.y } : { x: p.pos.x, y: p.pos.y };
+  p.cast = null;
   game.portal = {
     zoneIndex: game.zone.index,
     zoneName: game.zone.name,
-    fromPos: { x: p.pos.x, y: p.pos.y },
+    fromPos: at,
     townPos: null,
     stash: snapshot(game),
   };
-  burst(p.pos.x, p.pos.y, 50, { color: '#8fd8f4', speed: 260, life: 0.9, size: 3, grav: -50 });
+  burst(at.x, at.y, 50, { color: '#8fd8f4', speed: 260, life: 0.9, size: 3, grav: -50 });
   screenFlash(0.16, '#7fd4f0');
   travel(game, 0, undefined, { keepPortal: true });
-  game.portal.townPos = { x: p.pos.x + 70, y: p.pos.y - 40 };
+  game.portal.townPos = townPortalPad(game);
   game.alert(`Portal öppnad mot ${game.portal.zoneName}. Tryck E vid den för att resa tillbaka.`);
+}
+
+/**
+ * Tickar laddningen. Rörelse bryter medan man laddar, men i öppningsskedet är
+ * man fast — då är klivet redan taget.
+ * @param {Game} game @param {number} dt @param {boolean} moving
+ * @returns {boolean} true om laddningen låser övriga handlingar
+ */
+function updatePortalCast(game, dt, moving) {
+  const p = game.player;
+  if (!p.cast) return false;
+  const stepping = p.cast.t >= PORTAL_CAST - PORTAL_STEP;
+  if (moving && !stepping) { cancelPortalCast(game, 'Du rörde dig — portalen bröts.'); return false; }
+
+  p.cast.t += dt;
+  if (stepping) {
+    // Gestalten glider in i porten under den sista halvsekunden.
+    p.pos.x += (p.cast.x - p.pos.x) * Math.min(1, dt * 9);
+    p.pos.y += (p.cast.y - p.pos.y) * Math.min(1, dt * 9);
+    if (rng.chance(0.6)) {
+      burst(p.cast.x, p.cast.y - 12, 2, { color: '#a8e4f8', speed: 90, life: 0.5, size: 2.4, grav: -60 });
+    }
+    if (p.cast.t >= PORTAL_CAST) { finishTownPortal(game); return true; }
+  } else if (rng.chance(0.5)) {
+    // energin dras inåt mot fötterna medan man laddar
+    const a = rng.range(0, Math.PI * 2), rad = rng.range(42, 72);
+    burst(p.cast.x + Math.cos(a) * rad, p.cast.y + Math.sin(a) * rad, 1,
+      { color: '#8fd8f4', speed: 18, life: 0.6, size: 2.2, grav: -8 });
+  }
+  return true;
+}
+
+/** Byns portalplats, med en säker reserv om zonen saknar den. @param {Game} game */
+function townPortalPad(game) {
+  const pad = game.zone.portalPad;
+  if (pad) return { x: pad.x, y: pad.y };
+  return { x: game.player.pos.x - 90, y: game.player.pos.y + 30 };
 }
 
 /** @param {Game} game */
@@ -369,6 +426,10 @@ function updatePlayer(game, dt) {
   // mot närmaste fiende med fri sikt, annars åt det håll den går.
   updateAiming(game, mx, my);
 
+  // Laddar man portalen står man stilla och kan inget annat göra.
+  const casting = updatePortalCast(game, dt, !!(mx || my));
+  if (casting) { mx = 0; my = 0; }
+
   let speed = p.moveSpeed * (1 - game.playerSlow) * (1 + (p.speedBuff || 0));
   if (p.whirl) speed *= 1.3;
 
@@ -427,7 +488,7 @@ function updatePlayer(game, dt) {
   // ---- attacker ------------------------------------------------------------
   // Auto-attack: står en fiende inom räckhåll slår du av dig själv. Musen
   // behövs inte alls — men den fungerar fortfarande som manuell utlösare.
-  if (!anyPanelOpen() && !p.whirl && !p.dash && !p.roll && p.attackTimer <= 0) {
+  if (!anyPanelOpen() && !casting && !p.whirl && !p.dash && !p.roll && p.attackTimer <= 0) {
     const t = game.aimTarget;
     const inReach = t && !t.dead
       && Math.hypot(t.pos.x - p.pos.x, t.pos.y - p.pos.y) <= 66 + t.radius;
@@ -451,13 +512,16 @@ function updatePlayer(game, dt) {
   for (let i = 0; i < HOTBAR_SIZE; i++) {
     if (keyPressed(String(i + 1))) {
       const id = p.hotbar[i];
-      if (id) game.tryUseSkill(id);
+      if (id && !casting) game.tryUseSkill(id);
     }
   }
-  if (keyPressed('q')) game.tryDrink();
-  if (keyPressed(' ')) dodgeRoll(game);
-  if (keyPressed('t')) openTownPortal(game);
-  if (keyPressed('e')) interact(game);
+  if (keyPressed('q') && !casting) game.tryDrink();
+  if (keyPressed(' ') && !casting) dodgeRoll(game);
+  if (keyPressed('t')) {
+    if (p.cast) cancelPortalCast(game, 'Du avbröt portalen.');
+    else openTownPortal(game);
+  }
+  if (keyPressed('e') && !casting) interact(game);
 
   // ---- platser man går in i ------------------------------------------------
   for (const s of zone.shrines) {
@@ -674,7 +738,7 @@ function interact(game) {
       if (game.zone.isTown) returnThroughPortal(game);
       else {
         travel(game, 0, undefined, { keepPortal: true });
-        if (game.portal) game.portal.townPos = { x: p.pos.x + 70, y: p.pos.y - 40 };
+        if (game.portal) game.portal.townPos = townPortalPad(game);
       }
       break;
     case 'waypoint':
