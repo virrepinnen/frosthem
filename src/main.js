@@ -2,7 +2,7 @@
 import { createGame } from './game.js';
 import { createPlayer } from './entities/player.js';
 import { initInput, endFrameInput, keyPressed, setInputEnabled } from './core/input.js';
-import { camera } from './render/camera.js';
+import { camera, PROJ } from './render/camera.js';
 import { initRenderer, render, renderMinimap } from './render/renderer.js';
 import { updateHud, rebuildSkillbar, initNav, showTutorial, openHelp } from './ui/hud.js';
 import { renderPanels, anyPanelOpen, closeAllPanels } from './ui/panels.js';
@@ -25,7 +25,8 @@ function resize() {
   // läsbara storlek på en liten laptop som på en stor skärm.
   camera.zoom = Math.max(1, Math.min(2.4, innerWidth / 820));
   camera.w = innerWidth / camera.zoom;
-  camera.h = innerHeight / camera.zoom;
+  // Marken är hoptryckt, så samma skärmhöjd rymmer mer värld i djupled.
+  camera.h = innerHeight / camera.zoom / PROJ;
   canvas.width = Math.round(innerWidth * dpr);
   canvas.height = Math.round(innerHeight * dpr);
   ctx.setTransform(dpr * camera.zoom, 0, 0, dpr * camera.zoom, 0, 0);

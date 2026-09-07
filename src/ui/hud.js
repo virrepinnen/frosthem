@@ -1,5 +1,5 @@
 // @ts-check
-import { camera } from '../render/camera.js';
+import { camera, PROJ } from '../render/camera.js';
 import { SKILL_BY_ID } from '../data/skills.js';
 import { HOTBAR_SIZE } from '../entities/player.js';
 import { showTextTooltip, hideTooltip, escape } from './tooltip.js';
@@ -131,7 +131,7 @@ export function updateGroundLabels(game) {
   for (const g of sorted) {
     if (!g._el) continue;
     const sx = (g.x - camera.x) * camera.zoom;
-    let sy = (g.y - camera.y - 24) * camera.zoom;
+    let sy = ((g.y - camera.y) * PROJ - 24) * camera.zoom;
     if (sx < -160 || sy < -60 || sx > innerWidth + 160 || sy > innerHeight + 60) {
       g._el.style.display = 'none';
       continue;

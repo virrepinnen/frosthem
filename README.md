@@ -99,24 +99,37 @@ hela poängen med att dela upp dem.
 Minimapen minns terräng, stigar och det du hittat — men visar bara fiender som
 är nära dig just nu. Byn är känd från början.
 
-**Figuren.** Barbaren är ritad i banor, inte i bild — en riggad gestalt sedd
-uppifrån. Kåpan sitter *framför* axelmassan (det är så "hukad" läser i en
-top-down-vy), manteln sveper bakåt som en droppe med lösa trasremsor längs
-bakkanten, och ett axelskydd är kvar medan det andra slogs bort för länge sedan.
-Manteln drar åt det håll man kommer ifrån, inte rakt bakåt — det är den detaljen
-som får rörelsen att kännas.
+**Perspektiv.** Kameravinkeln är låst och ortografisk, som i Diablo 2: inget
+krymper med avståndet. Markplanet är hoptryckt i höjdled (0,58) så att det lutar
+bort från betraktaren, medan allt som har höjd — figurer, träd, hus, stenblock —
+reser sig ur den hoptryckta marken i *oförminskade* pixlar. Det är den
+skillnaden som gör att en gestalt ser ut att stå upp i stället för att ligga
+platt.
+
+Simuleringen är fortfarande ren 2D: kollisioner, avstånd och AI räknar i
+världsplanet. Bara ritningen och mus-till-värld-omräkningen känner till
+projektionen, vilket gör att spelreglerna inte behövde röras alls.
+
+**Figuren.** Barbaren är ritad i banor, inte i bild — en upprätt gestalt som
+alltid står lodrätt, precis som ett D2-sprite. Riktningen ändrar *bilden*: vilket
+håll gestalten vänder sig och om vi ser ansiktet i huvan eller bara ryggen och
+kåpans spets. Manteln hänger från axlarna med trasig fåll som fladdrar, ett
+axelskydd är kvar medan det andra slogs bort för länge sedan.
 
 Fyra hugg växlar så att två slag i rad aldrig ser lika ut: **svep**, **backhand**,
-ett tyngre **överhugg** som faller rakt ner, och en **stöt** med utfall. Grund-
-attacken alternerar de två första och slår in ett tungt hugg var fjärde slag;
-skills har sina egna (Krossande slag → överhugg, Krosshugg → stöt). Varje hugg
-har uppladdning, kroppsvridning och ett släpljus som ritas ur samma kurva som
-klingan — bandet följer alltså exakt den väg vapnet tog. Det har både mörk kärna
-och ljus framkant, för ett rent vitt svep försvinner mot snön.
+ett tyngre **överhugg** och en **stöt** med utfall. Grundattacken alternerar de
+två första och slår in ett tungt hugg var fjärde slag; skills har sina egna.
+Varje hugg har uppladdning, kroppsvridning och ett släpljus som ritas ur samma
+kurva som klingan — bandet följer alltså exakt den väg vapnet tog. Det har både
+mörk kärna och ljus framkant, för ett rent vitt svep försvinner mot snön.
 
-`sprite-lab.html` ritar figuren i alla lägen och varje hugg bildruta för
-bildruta. Öppna den när du ändrar något — figuren syns annars bara 35 px stor
-mitt i en flock.
+Monstren står upp på samma villkor: vargar på fyra ben från sidan, plundrare med
+båge, vålnader som svävar utan skugga, och bossen med sin iskrona. Att låta dem
+ligga platt medan hjälten stod upp läste som två olika spel.
+
+`sprite-lab.html` ritar figuren i alla åtta riktningar och varje hugg bildruta
+för bildruta. Öppna den när du ändrar något — figuren syns annars bara några
+tiotal pixlar stor mitt i en flock.
 
 **Strid.** Svep med båge och räckvidd, omedelbar träffdetektion (responsivitet
 före windup), knockback, kritiska träffar, blödning, frysning, bedövning och

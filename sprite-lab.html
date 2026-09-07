@@ -20,14 +20,15 @@
 <div id="strips"></div>
 <script type="module">
 import { drawHero, ATTACKS } from './src/render/hero.js';
+import { PROJ } from './src/render/camera.js';
 import { createPlayer } from './src/entities/player.js';
 
-const SCALE = 2.6, W = 170, H = 170;
+const SCALE = 2.2, W = 150, H = 170;
 
 function mkPlayer() {
   const p = createPlayer('Labb');
   p.equipment.weapon = { rarity: 'rare', base: { icon: '🪓' }, mods: {} };
-  p.pos = { x: W / 2 / SCALE, y: H / 2 / SCALE };
+  p.pos = { x: W / 2 / SCALE, y: (H * 0.82 / SCALE) / PROJ };
   return p;
 }
 function cell(label) {

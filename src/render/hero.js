@@ -1,5 +1,9 @@
 // @ts-check
 import { rng } from '../core/rng.js';
+import { PROJ } from './camera.js';
+
+/** Figuren står på den hoptryckta marken men ritas i oförminskade pixlar. */
+const PY = (/** @type {number} */ y) => y * PROJ;
 
 /**
  * Barbaren — riggad figur sedd uppifrån.
@@ -119,181 +123,150 @@ export function pickAttack(p, kind) {
 /* Delar                                                               */
 /* ------------------------------------------------------------------ */
 
-/** Trasornas fästen längs bakkanten — olika längd ger sliten, oregelbunden kant. */
-const TATTERS = [
-  { u: 0.18, len: 7.5, w: 3.2 }, { u: 0.38, len: 11.5, w: 2.6 },
-  { u: 0.56, len: 6, w: 2.2 }, { u: 0.73, len: 12.5, w: 3 },
-  { u: 0.90, len: 8, w: 2.4 },
-];
+/**
+ * Figuren står alltid upprätt, som i Diablo 2 — kameravinkeln är låst och det
+ * är *vilken bild* som ritas som ändras med riktningen, inte figurens rotation.
+ * Lokalt rum: y = 0 vid fötterna, negativt uppåt.
+ */
+const H = {
+  foot: 0, hem: -8, waist: -19, chest: -28, shoulder: -31, neck: -35, crown: -44,
+};
+
+/** Trasornas fästen längs mantelfållen. */
+const TATTERS = [-9, -5.5, -2, 1.5, 5, 8.5];
 
 /**
- * Manteln: en droppe som sveper bakåt, med lösa remsor längs bakkanten.
- * En sågtandad radie läser som spikboll — separata flikar läser som tyg.
+ * Manteln hänger från axlarna och vidgar sig nedåt, med trasig fåll.
+ * Bakifrån täcker den hela kroppen; framifrån delar den sig och visar harnesket.
  * @param {CanvasRenderingContext2D} ctx
- * @param {number} len @param {number} drift @param {number} t @param {number} speed @param {boolean} flash
+ * @param {number} fy Blickriktningens djupled: -1 bort från kameran, +1 mot
+ * @param {number} sway @param {number} t @param {number} speed @param {boolean} flash
  */
-function cloak(ctx, len, drift, t, speed, flash) {
-  const half = 13.5;
-  ctx.save();
-  ctx.rotate(drift * 0.5);
+function cloak(ctx, fy, sway, t, speed, flash) {
+  const back = fy < 0;
+  const wTop = 9.5, wBot = back ? 18 : 15.5;
+  const hem = H.hem + Math.sin(t * 2.2) * 0.6;
 
-  /** @param {number} grow */
-  const body = (grow) => {
-    const L = len + grow, W = half + grow;
+  const shape = (/** @type {number} */ grow) => {
     ctx.beginPath();
-    ctx.moveTo(5, W - 1.5);
-    ctx.quadraticCurveTo(-L * 0.18, W + 2.5, -L * 0.55, W * 0.78);
-    ctx.quadraticCurveTo(-L * 0.92, W * 0.42, -L, 0);
-    ctx.quadraticCurveTo(-L * 0.92, -W * 0.42, -L * 0.55, -W * 0.78);
-    ctx.quadraticCurveTo(-L * 0.18, -(W + 2.5), 5, -(W - 1.5));
-    ctx.quadraticCurveTo(10 + grow, 0, 5, W - 1.5);
+    ctx.moveTo(-(wTop + grow), H.shoulder);
+    ctx.quadraticCurveTo(-(wBot + grow) - sway * 0.5, H.waist, -(wBot + grow) - sway, hem);
+    // trasig fåll: hörnen hoppar upp och ner i olika takt
+    TATTERS.forEach((x, i) => {
+      const dip = (i % 2 ? 5.5 : 1.5) + Math.sin(t * 3.2 + i * 1.3) * (0.8 + speed * 1.6);
+      ctx.lineTo(x + sway * (0.4 + i * 0.05), hem + dip + grow);
+    });
+    ctx.lineTo(wBot + grow + sway * 0.6, hem + grow);
+    ctx.quadraticCurveTo(wBot + grow, H.waist, wTop + grow, H.shoulder);
+    ctx.quadraticCurveTo(0, H.shoulder - 3 - grow, -(wTop + grow), H.shoulder);
     ctx.closePath();
   };
 
-  /** @param {number} grow */
-  const flaps = (grow) => {
-    TATTERS.forEach((f, i) => {
-      const th = Math.PI * 0.42 + f.u * Math.PI * 1.16;
-      const ax = Math.cos(th) * len * 0.86, ay = Math.sin(th) * half * 0.92;
-      const wobble = Math.sin(t * (3.1 + i * 0.43) + i * 1.7) * (0.22 + speed * 0.5);
-      const dir = Math.atan2(ay, ax) + wobble * 0.55;
-      const L = f.len + grow + speed * 4;
-      const w = f.w + grow;
-      ctx.beginPath();
-      ctx.moveTo(ax + Math.cos(dir + 1.57) * w, ay + Math.sin(dir + 1.57) * w);
-      ctx.lineTo(ax + Math.cos(dir) * L, ay + Math.sin(dir) * L);
-      ctx.lineTo(ax + Math.cos(dir - 1.57) * w, ay + Math.sin(dir - 1.57) * w);
-      ctx.closePath();
-      ctx.fill();
-    });
-  };
-
-  ctx.fillStyle = C.silhouette;
-  body(2.2); ctx.fill();
-  flaps(1.3);
-
-  ctx.fillStyle = flash ? '#ffffff' : C.cloakMid;
-  body(0); ctx.fill();
-  ctx.fillStyle = flash ? '#ffffff' : C.cloakDark;
-  flaps(0);
+  ctx.fillStyle = C.silhouette; shape(2); ctx.fill();
+  ctx.fillStyle = flash ? '#ffffff' : (back ? C.cloakMid : C.cloakDark);
+  shape(0); ctx.fill();
 
   if (!flash) {
-    ctx.save();
-    body(0); ctx.clip();
-    ctx.fillStyle = C.cloakDark;
+    ctx.save(); shape(0); ctx.clip();
+    // veck: några lodräta skuggor som ger tyget tyngd
+    ctx.strokeStyle = C.cloakDark; ctx.lineWidth = 2.4;
+    for (const x of [-7, 0, 7]) {
+      ctx.beginPath();
+      ctx.moveTo(x * 0.7, H.shoulder + 2);
+      ctx.quadraticCurveTo(x + sway * 0.4, H.waist, x * 1.25 + sway * 0.7, hem + 4);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = C.cloakLit; ctx.lineWidth = 1.6;
     ctx.beginPath();
-    ctx.ellipse(-len * 0.42, 4.5, len * 0.62, half * 0.7, 0.12, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-    ctx.strokeStyle = C.cloakLit;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(3, -10);
-    ctx.quadraticCurveTo(-len * 0.4, -half - 1, -len * 0.88, -2);
+    ctx.moveTo(-wTop + 1, H.shoulder + 1);
+    ctx.quadraticCurveTo(-wBot - sway * 0.5, H.waist, -wBot - sway + 1, hem);
     ctx.stroke();
+    ctx.restore();
   }
-  ctx.restore();
 }
 
 /**
- * Vapnet, ritat längs +x från handen. Färgen följer sällsyntheten så att ett
- * fynd syns i handen och inte bara i väskan.
+ * Vapnet, ritat längs +x från handen.
  * @param {CanvasRenderingContext2D} ctx @param {any} item @param {number} reach
  */
 function weapon(ctx, item, reach) {
   const rarity = item?.rarity ?? 'normal';
   const blade = rarity === 'unique' ? '#d09a4a' : rarity === 'rare' ? '#e8d15a'
     : rarity === 'magic' ? '#9dc0f5' : '#c3cfdd';
-  const heavy = (item?.base?.icon ?? '') === '🔨';
-  const axe = (item?.base?.icon ?? '') === '🪓';
-  const haftLen = reach * 0.6;
-  const x = 4 + haftLen;
+  const icon = item?.base?.icon ?? '';
+  const heavy = icon === '🔨', axe = icon === '🪓';
+  const haft = reach * 0.7;
+  const x = haft;
 
   ctx.fillStyle = C.haft;
-  ctx.fillRect(4, -1.7, haftLen, 3.4);
+  ctx.fillRect(-3, -1.8, haft + 3, 3.6);
   ctx.fillStyle = C.strap;
-  ctx.fillRect(4, -1.7, 4.5, 3.4);
+  ctx.fillRect(-3, -1.8, 5, 3.6);
 
   ctx.fillStyle = blade;
   ctx.beginPath();
   if (axe) {
-    // yxblad: brett och sitter på ena sidan av skaftet
-    ctx.moveTo(x - 1, -1.8);
-    ctx.quadraticCurveTo(x + reach * 0.16, -9.5, x + reach * 0.3, -3);
-    ctx.quadraticCurveTo(x + reach * 0.22, 1, x - 1, 2.2);
+    ctx.moveTo(x - 1, -2);
+    ctx.quadraticCurveTo(x + reach * 0.15, -10, x + reach * 0.3, -3.5);
+    ctx.quadraticCurveTo(x + reach * 0.22, 1.5, x - 1, 2.6);
   } else if (heavy) {
-    ctx.moveTo(x, -6); ctx.lineTo(x + reach * 0.3, -5);
-    ctx.lineTo(x + reach * 0.3, 5); ctx.lineTo(x, 6);
+    ctx.moveTo(x, -6.5); ctx.lineTo(x + reach * 0.3, -5.5);
+    ctx.lineTo(x + reach * 0.3, 5.5); ctx.lineTo(x, 6.5);
   } else {
-    ctx.moveTo(x, -4.2); ctx.lineTo(x + reach * 0.44, -1.5);
-    ctx.lineTo(x + reach * 0.44, 1.5); ctx.lineTo(x, 4.2);
+    ctx.moveTo(x, -4.4); ctx.lineTo(x + reach * 0.46, -1.6);
+    ctx.lineTo(x + reach * 0.46, 1.6); ctx.lineTo(x, 4.4);
   }
   ctx.closePath(); ctx.fill();
-
   ctx.strokeStyle = 'rgba(255,255,255,0.55)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(x, axe ? -3 : -3.2);
-  ctx.lineTo(x + reach * (axe ? 0.2 : heavy ? 0.26 : 0.4), axe ? -7.5 : -1);
+  ctx.moveTo(x, axe ? -3.5 : -3.2);
+  ctx.lineTo(x + reach * (axe ? 0.18 : heavy ? 0.26 : 0.42), axe ? -8 : -1);
   ctx.stroke();
 }
 
 /**
- * Släpljuset efter eggen.
- *
- * Ritas analytiskt ur samma poskurva som vapnet, så bandet följer exakt den väg
- * klingan tog — inte en cirkelbåge som gissar. Bandet har både en mörk kärna och
- * en ljus framkant: ett rent vitt svep försvinner mot snön, som är nästan lika
- * ljus.
- *
- * @param {CanvasRenderingContext2D} ctx @param {{pose:Pose, trail:string}} variant @param {number} k
+ * Släpljuset efter eggen, ritat ur samma poskurva som vapnet. Både mörk kärna
+ * och ljus framkant — ett rent vitt svep försvinner mot snön.
+ * @param {CanvasRenderingContext2D} ctx @param {{pose:Pose, trail:string}} v
+ * @param {number} k @param {number} mirror
  */
-function trail(ctx, variant, k) {
+function trail(ctx, v, k, mirror) {
   const from = Math.max(0, k - 0.34);
   if (k - from < 0.03) return;
   const steps = 12;
   /** @type {{x:number,y:number}[]} */ const outer = [];
   /** @type {{x:number,y:number}[]} */ const inner = [];
   for (let i = 0; i <= steps; i++) {
-    const q = variant.pose(mix(from, k, i / steps));
-    const len = 4 + q.reach;
-    outer.push({ x: Math.cos(q.ang) * len * 1.04, y: Math.sin(q.ang) * len * 1.04 });
-    inner.push({ x: Math.cos(q.ang) * len * 0.44, y: Math.sin(q.ang) * len * 0.44 });
+    const q = v.pose(mix(from, k, i / steps));
+    const ang = -q.ang * mirror;
+    const len = 6 + q.reach;
+    outer.push({ x: Math.cos(ang) * len * mirror, y: Math.sin(ang) * len });
+    inner.push({ x: Math.cos(ang) * len * 0.42 * mirror, y: Math.sin(ang) * len * 0.42 });
   }
   const fade = 1 - Math.pow(k, 2.4);
-  ctx.save();
-
   const ribbon = () => {
     ctx.beginPath();
     outer.forEach((pt, i) => i ? ctx.lineTo(pt.x, pt.y) : ctx.moveTo(pt.x, pt.y));
     for (let i = steps; i >= 0; i--) ctx.lineTo(inner[i].x, inner[i].y);
     ctx.closePath();
   };
-
-  // mörk kärna först — det är den som gör att svepet syns mot snö
-  ctx.globalAlpha = 0.30 * fade;
+  ctx.save();
+  ctx.globalAlpha = 0.32 * fade;
   ctx.fillStyle = '#16222f';
   ribbon(); ctx.fill();
-
-  // ljust band som tonar bort mot början av svepet
   const g = ctx.createLinearGradient(inner[0].x, inner[0].y, outer[steps].x, outer[steps].y);
   g.addColorStop(0, 'rgba(255,255,255,0)');
-  g.addColorStop(0.55, variant.trail + '77');
-  g.addColorStop(1, variant.trail);
+  g.addColorStop(0.55, v.trail + '77');
+  g.addColorStop(1, v.trail);
   ctx.globalAlpha = 0.72 * fade;
   ctx.fillStyle = g;
   ribbon(); ctx.fill();
-
-  // framkanten: den skarpa linje ögat läser som eggen
   ctx.globalAlpha = 0.9 * fade;
-  ctx.strokeStyle = variant.trail;
-  ctx.lineWidth = 2.2;
-  ctx.lineCap = 'round';
+  ctx.strokeStyle = v.trail; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
   ctx.beginPath();
   const tail = Math.max(0, steps - 4);
-  for (let i = tail; i <= steps; i++) {
-    i === tail ? ctx.moveTo(outer[i].x, outer[i].y) : ctx.lineTo(outer[i].x, outer[i].y);
-  }
+  for (let i = tail; i <= steps; i++) i === tail ? ctx.moveTo(outer[i].x, outer[i].y) : ctx.lineTo(outer[i].x, outer[i].y);
   ctx.stroke();
   ctx.restore();
 }
@@ -307,12 +280,13 @@ export function drawHero(ctx, game) {
   const p = game.player;
   const t = performance.now() / 1000;
   const flash = p.hitFlash > 0;
+  const gx = p.pos.x, gy = PY(p.pos.y);
 
   if (p.dead) {
     ctx.save();
     ctx.globalAlpha = 0.6;
     ctx.fillStyle = '#241a20';
-    ctx.beginPath(); ctx.ellipse(p.pos.x, p.pos.y, 20, 11, 0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(gx, gy, 20, 9, 0.4, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
     return;
   }
@@ -321,123 +295,142 @@ export function drawHero(ctx, game) {
   const rollK = rolling ? 1 - p.roll.t / p.roll.dur : 0;
   const speed = p.moving ? 1 : 0;
 
-  // skuggan krymper när figuren kurar ihop sig i rullningen
-  const shrink = rolling ? 1 - Math.sin(rollK * Math.PI) * 0.3 : 1;
+  // Riktningen: x avgör vilket håll gestalten vänder sig, y om vi ser fram- eller baksidan.
+  const fx = Math.cos(p.facing), fy = Math.sin(p.facing);
+  const mirror = fx < 0 ? -1 : 1;
+  const back = fy < -0.25;
+
+  // skugga på den hoptryckta marken
   ctx.save();
-  ctx.globalAlpha = 0.34;
+  ctx.globalAlpha = 0.36;
   ctx.fillStyle = '#16202e';
-  ctx.beginPath();
-  ctx.ellipse(p.pos.x + 2, p.pos.y + 7, 15 * shrink, 6.5 * shrink, 0, 0, Math.PI * 2);
-  ctx.fill();
+  const sSq = rolling ? 1.25 : 1;
+  ctx.beginPath(); ctx.ellipse(gx, gy, 13 * sSq, 5.5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 
   ctx.save();
-  ctx.translate(p.pos.x, p.pos.y);
+  ctx.translate(gx, gy);
 
   if (rolling) {
-    ctx.rotate(p.roll.dir + rollK * Math.PI * 2);
-    const tuck = 1 - Math.sin(rollK * Math.PI) * 0.34;
+    // Rullningen: gestalten kurar ihop sig till ett klot och rullar i färdriktningen.
+    const tuck = 1 - Math.sin(rollK * Math.PI) * 0.22;
+    ctx.translate(0, -13 * tuck);
+    ctx.rotate(rollK * Math.PI * 2 * (Math.cos(p.roll.dir) < 0 ? -1 : 1));
     ctx.scale(tuck, tuck);
-  } else {
-    ctx.rotate(p.facing);
+    ctx.fillStyle = C.silhouette;
+    ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = flash ? '#ffffff' : C.cloakMid;
+    ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = C.cloakDark;
+    ctx.beginPath(); ctx.arc(4, -3, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = C.hood;
+    ctx.beginPath(); ctx.arc(-4, 4, 5.5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    return;
   }
 
-  // Manteln drar åt det håll man kommer ifrån, inte rakt bakåt. Skillnaden
-  // mellan gångriktning och blickriktning är det som får rörelsen att kännas.
-  let drift = 0;
-  if (p.moving && !rolling) {
-    let d = (p.moveAngle ?? p.facing) - p.facing;
-    while (d > Math.PI) d -= Math.PI * 2;
-    while (d < -Math.PI) d += Math.PI * 2;
-    drift = d;
-  }
+  ctx.scale(mirror, 1);
 
   const step = Math.sin(p.walkPhase * 8);
-  const breath = Math.sin(t * 1.9) * 0.5;
-  const bob = p.moving ? step * 1.2 : breath;
+  const breath = Math.sin(t * 1.9) * 0.6;
+  const bob = p.moving ? Math.abs(step) * 1.8 : breath;
+  const sway = p.moving ? 4 + step * 2.5 : Math.sin(t * 1.4) * 1.2;
 
   const variant = p.swing?.variant ? ATTACKS[p.swing.variant] : null;
   const k = p.swing ? Math.min(1, p.swing.t / p.swing.dur) : 0;
   const pose = variant ? variant.pose(k) : REST;
 
-  if (variant) trail(ctx, variant, k);
-
-  ctx.translate(pose.lunge * 0.4, 0);
-  ctx.rotate(pose.twist * 0.35);
-
-  const cloakLen = rolling ? 15 : 24 + speed * 10 + Math.abs(pose.lunge) * 0.5;
-  cloak(ctx, cloakLen, drift, t, speed, flash);
+  ctx.translate(pose.lunge * 0.5, -bob);
+  ctx.rotate(pose.twist * 0.12);
 
   // --- ben ---------------------------------------------------------------
-  ctx.fillStyle = flash ? '#ffffff' : C.boot;
-  const gait = p.moving ? step * 4.5 : 0;
-  ctx.beginPath(); ctx.ellipse(-1 + gait, 7, 4.2, 3, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(-1 - gait, -7, 4.2, 3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = flash ? '#ffffff' : C.boot;
+  ctx.lineWidth = 6; ctx.lineCap = 'round';
+  const stride = p.moving ? step * 5 : 0;
+  ctx.beginPath(); ctx.moveTo(-2, H.waist + 4); ctx.lineTo(-2 + stride, H.foot - 1); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(3, H.waist + 4); ctx.lineTo(3 - stride, H.foot - 1); ctx.stroke();
 
-  // --- bål: bara axelpartiet syns, resten ligger under manteln -----------
+  // --- bakre mantelhalva när vi ser framsidan ----------------------------
+  if (!back) cloak(ctx, fy, sway, t, speed, flash);
+
+  // --- bål ----------------------------------------------------------------
   ctx.fillStyle = flash ? '#ffffff' : C.leather;
-  ctx.beginPath(); ctx.ellipse(-1, bob * 0.3, 8, 8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(-9, H.shoulder);
+  ctx.quadraticCurveTo(-10, H.waist, -6.5, H.waist + 2);
+  ctx.lineTo(6.5, H.waist + 2);
+  ctx.quadraticCurveTo(10, H.waist, 9, H.shoulder);
+  ctx.quadraticCurveTo(0, H.shoulder - 3, -9, H.shoulder);
+  ctx.closePath(); ctx.fill();
   if (!flash) {
+    ctx.strokeStyle = C.strap; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-7, H.chest + 6); ctx.lineTo(7, H.chest - 3); ctx.stroke();
     ctx.fillStyle = C.leatherLit;
-    ctx.beginPath(); ctx.ellipse(0, bob * 0.3 - 1.5, 5, 4.2, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = C.strap; ctx.lineWidth = 1.6;
-    ctx.beginPath(); ctx.moveTo(-3, -6.5); ctx.lineTo(6, 4); ctx.stroke();
-  }
-
-  // --- ett axelskydd kvar, det andra bortslaget för länge sedan ----------
-  ctx.fillStyle = flash ? '#ffffff' : C.pauldron;
-  ctx.beginPath(); ctx.ellipse(1, -8.5, 5.6, 4.4, -0.32, 0, Math.PI * 2); ctx.fill();
-  if (!flash) {
-    ctx.fillStyle = C.pauldronLit;
-    ctx.beginPath(); ctx.ellipse(1.8, -9.6, 3.6, 2.2, -0.32, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(3, H.chest, 4.5, 5, 0.1, 0, Math.PI * 2); ctx.fill();
   }
 
   // --- fri arm ------------------------------------------------------------
   ctx.strokeStyle = flash ? '#ffffff' : C.leather;
-  ctx.lineWidth = 4.2; ctx.lineCap = 'round';
+  ctx.lineWidth = 4.6;
   ctx.beginPath();
-  ctx.moveTo(1, -7.5);
-  ctx.quadraticCurveTo(6 - pose.twist * 4, -10.5, 9 + pose.lunge * 0.2, -6.5);
+  ctx.moveTo(-7, H.shoulder + 2);
+  ctx.quadraticCurveTo(-11, H.chest + 6, -9 + (p.moving ? step * 2.5 : 0), H.waist + 1);
   ctx.stroke();
 
-  // --- vapenarm och vapen -------------------------------------------------
+  // --- vapenarm: svänger i skärmplanet, som ett D2-svep ------------------
   ctx.save();
-  ctx.rotate(pose.ang);
+  ctx.translate(7, H.shoulder + 2);
+  if (variant) trail(ctx, variant, k, 1);
+  ctx.rotate(-pose.ang);
   ctx.strokeStyle = flash ? '#ffffff' : C.leather;
-  ctx.lineWidth = 4.6;
-  ctx.beginPath(); ctx.moveTo(0, 4); ctx.lineTo(5, 0.5); ctx.stroke();
+  ctx.lineWidth = 4.8;
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(7, 0); ctx.stroke();
+  ctx.translate(7, 0);
   if (p.equipment.weapon) weapon(ctx, p.equipment.weapon, pose.reach);
   ctx.restore();
 
-  // --- kåpan: spetsig och skjuten framför axlarna ------------------------
-  // Spetsen är figurens tydligaste riktningsmärke på håll, och att den sitter
-  // framför kroppen är det som läser som hukad i en vy uppifrån.
-  ctx.save();
-  ctx.translate((p.moving ? step * 0.5 : breath * 0.4) + pose.lunge * 0.25, 0);
-  /** @param {number} grow */
-  const cowl = (grow) => {
-    ctx.beginPath();
-    ctx.moveTo(17 + grow, 0);
-    ctx.quadraticCurveTo(12, 8.6 + grow, 2.5, 8 + grow);
-    ctx.quadraticCurveTo(-4 - grow, 0, 2.5, -(8 + grow));
-    ctx.quadraticCurveTo(12, -(8.6 + grow), 17 + grow, 0);
-    ctx.closePath();
-  };
-  ctx.fillStyle = C.silhouette; cowl(1.8); ctx.fill();
-  ctx.fillStyle = flash ? '#ffffff' : C.hood; cowl(0); ctx.fill();
+  // --- axelskydd: ett kvar, ett bortslaget för länge sedan ---------------
+  ctx.fillStyle = flash ? '#ffffff' : C.pauldron;
+  ctx.beginPath(); ctx.ellipse(8, H.shoulder + 1, 5.4, 4.2, -0.35, 0, Math.PI * 2); ctx.fill();
   if (!flash) {
-    ctx.save(); cowl(0); ctx.clip();
-    ctx.fillStyle = C.hoodLit;
-    ctx.beginPath(); ctx.ellipse(6, -3.4, 9.5, 4.4, -0.08, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-    ctx.fillStyle = C.hoodInner;
-    ctx.beginPath(); ctx.ellipse(11, 0.4, 3.8, 4.4, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.globalAlpha = 0.45;
-    ctx.fillStyle = C.face;
-    ctx.beginPath(); ctx.ellipse(12, 0.7, 2, 2.6, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.globalAlpha = 1;
+    ctx.fillStyle = C.pauldronLit;
+    ctx.beginPath(); ctx.ellipse(8.6, H.shoulder - 0.4, 3.4, 2.2, -0.35, 0, Math.PI * 2); ctx.fill();
   }
-  ctx.restore();
+
+  // --- huvudet: hukat framåt, kåpan drar ner över pannan -----------------
+  // Huvudet sitter något framför axellinjen — det är så framåtlutningen läser
+  // i en upprätt gestalt. Huvan täcker pannan och lämnar bara en mörk springa.
+  const hx = 2.2, hy = H.neck - 3.6;
+  // kragen som huvan vilar i
+  ctx.fillStyle = flash ? '#ffffff' : C.cloakDark;
+  ctx.beginPath(); ctx.ellipse(0, H.shoulder + 1.5, 8, 3.6, 0, 0, Math.PI * 2); ctx.fill();
+
+  ctx.fillStyle = C.silhouette;
+  ctx.beginPath(); ctx.ellipse(hx, hy, 7.4, 7, -0.18, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = flash ? '#ffffff' : C.hood;
+  ctx.beginPath(); ctx.ellipse(hx, hy, 6.3, 6, -0.18, 0, Math.PI * 2); ctx.fill();
+  if (!flash) {
+    ctx.fillStyle = C.hoodLit;
+    ctx.beginPath(); ctx.ellipse(hx - 0.8, hy - 2.4, 4.8, 3.1, -0.22, 0, Math.PI * 2); ctx.fill();
+    if (!back) {
+      ctx.fillStyle = C.hoodInner;
+      ctx.beginPath(); ctx.ellipse(hx + 1.8, hy + 1.6, 3.7, 3.9, -0.12, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.45 + fy * 0.3;
+      ctx.fillStyle = C.face;
+      ctx.beginPath(); ctx.ellipse(hx + 2.4, hy + 2.2, 2.2, 2.6, -0.12, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    // huvans spets faller bakåt över ryggen
+    ctx.fillStyle = C.hood;
+    ctx.beginPath();
+    ctx.moveTo(hx - 4.6, hy - 2.6);
+    ctx.quadraticCurveTo(hx - 11 - sway * 0.35, hy + 1, hx - 7.5, hy + 7.5);
+    ctx.quadraticCurveTo(hx - 5, hy + 2.5, hx - 3, hy + 1.5);
+    ctx.closePath(); ctx.fill();
+  }
+
+  // --- främre mantelhalva när vi ser ryggen ------------------------------
+  if (back) cloak(ctx, fy, sway, t, speed, flash);
 
   ctx.restore();
 }

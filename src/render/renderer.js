@@ -1,5 +1,10 @@
 // @ts-check
-import { camera } from './camera.js';
+import { camera, PROJ } from './camera.js';
+
+/** Världens y → skärmens y inom kameratransformen. Marken är hoptryckt. */
+const PY = (/** @type {number} */ y) => y * PROJ;
+/** Mörk siluett bakom gestalter, så de håller mot snön. */
+const C_SIL = 'rgba(7,11,18,0.95)';
 import { fx } from './fx.js';
 import { rng } from '../core/rng.js';
 import { hashNoise, clamp } from '../core/math.js';
@@ -78,20 +83,26 @@ export function render(ctx, game, dt) {
   ctx.save();
   const sh = fx.shake;
   const ox = sh ? rng.range(-sh, sh) : 0, oy = sh ? rng.range(-sh, sh) : 0;
-  ctx.translate(-Math.round(camera.x) + ox, -Math.round(camera.y) + oy);
+  ctx.translate(-Math.round(camera.x) + ox, -Math.round(camera.y * PROJ) + oy);
 
+  // Marken: allt som ligger *i* planet ritas hoptryckt i höjdled.
+  ctx.save();
+  ctx.scale(1, PROJ);
   drawGround(ctx, zone);
   drawRoads(ctx, zone);
   drawDecor(ctx, zone);
   drawDecals(ctx);
   drawTelegraphs(ctx, game);
+  ctx.restore();
+
+  // Härifrån står allt upp ur marken, i oförminskade pixlar.
   drawShrines(ctx, game);
   drawExits(ctx, game);
   drawWaypoint(ctx, game);
   drawPortal(ctx, game);
   drawChests(ctx, game);
   drawGroundItems(ctx, game);
-  drawNovas(ctx, game);
+  ctx.save(); ctx.scale(1, PROJ); drawNovas(ctx, game); ctx.restore();
 
   // ---- djupsorterad lista -------------------------------------------------
   /** @type {{y:number, f:()=>void}[]} */
@@ -124,14 +135,16 @@ export function render(ctx, game, dt) {
 
   ctx.restore();
 
-  drawSnowfall(ctx, W, H, dt);
-  drawVignette(ctx, W, H, zone);
+  // Skärmytan i den här transformen: höjden är hoptryckt, till skillnad från camera.h.
+  const SH = H * PROJ;
+  drawSnowfall(ctx, W, SH, dt);
+  drawVignette(ctx, W, SH, zone);
 
   if (fx.flash > 0.002) {
     ctx.save();
     ctx.globalAlpha = Math.min(0.6, fx.flash);
     ctx.fillStyle = fx.flashColor;
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(0, 0, W, H * PROJ);
     ctx.restore();
   }
 }
@@ -236,7 +249,7 @@ function drawWaypoint(ctx, game) {
   const known = game.waypoints.has(game.zone.index);
   const t = performance.now() / 1000;
   ctx.save();
-  ctx.translate(w.x, w.y);
+  ctx.translate(w.x, PY(w.y));
   // ring i marken
   ctx.strokeStyle = known ? 'rgba(143,216,244,0.55)' : 'rgba(150,165,185,0.30)';
   ctx.lineWidth = 2;
@@ -265,7 +278,7 @@ function drawWaypoint(ctx, game) {
   ctx.stroke();
 
   ctx.restore();
-  worldLabel(ctx, known ? 'Vägsten' : 'Vägsten (orörd)', w.x, w.y - 92,
+  worldLabel(ctx, known ? 'Vägsten' : 'Vägsten (orörd)', w.x, PY(w.y) - 92,
     known ? '#c8ecfb' : '#93a6c0', 13);
 }
 
@@ -278,7 +291,7 @@ function drawPortal(ctx, game) {
   if (!here) return;
   const t = performance.now() / 1000;
   ctx.save();
-  ctx.translate(here.x, here.y);
+  ctx.translate(here.x, PY(here.y));
   const g = ctx.createRadialGradient(0, -34, 4, 0, -34, 90);
   g.addColorStop(0, 'rgba(143,216,244,0.42)');
   g.addColorStop(1, 'rgba(143,216,244,0)');
@@ -294,7 +307,7 @@ function drawPortal(ctx, game) {
   }
   ctx.globalAlpha = 1;
   ctx.restore();
-  worldLabel(ctx, game.zone.isTown ? portal.zoneName : 'Frosthem', here.x, here.y - 88, '#c8ecfb', 13);
+  worldLabel(ctx, game.zone.isTown ? portal.zoneName : 'Frosthem', here.x, PY(here.y) - 88, '#c8ecfb', 13);
 }
 
 /** @param {CanvasRenderingContext2D} ctx @param {any} game */
@@ -302,7 +315,7 @@ function drawChests(ctx, game) {
   const t = performance.now() / 1000;
   for (const c of game.zone.chests ?? []) {
     ctx.save();
-    ctx.translate(c.x, c.y);
+    ctx.translate(c.x, PY(c.y));
     shadow(ctx, 3, 8, 26, 10);
     if (!c.opened) {
       const g = ctx.createRadialGradient(0, -12, 3, 0, -12, 70);
@@ -318,7 +331,7 @@ function drawChests(ctx, game) {
     ctx.fillStyle = c.opened ? '#5a4a30' : '#d8b26a';
     ctx.fillRect(-4, -26, 8, 14);
     ctx.restore();
-    worldLabel(ctx, c.opened ? 'Tömd kista' : 'Kista', c.x, c.y - 44,
+    worldLabel(ctx, c.opened ? 'Tömd kista' : 'Kista', c.x, PY(c.y) - 44,
       c.opened ? '#8b98ab' : '#f0cf94', 13);
   }
 }
@@ -425,7 +438,7 @@ function drawInteractPrompt(ctx, game) {
   const it = game.interact;
   if (!it || game.player.dead) return;
   const t = performance.now() / 1000;
-  const y = it.y + Math.sin(t * 1.6) * 3.5;
+  const y = PY(it.y) + Math.sin(t * 1.6) * 3.5;
   const px = 14 / camera.zoom;
 
   ctx.save();
@@ -458,9 +471,9 @@ function shadow(ctx, x, y, rx, ry, a = 0.32) {
 /** @param {CanvasRenderingContext2D} ctx @param {any} o */
 function drawPine(ctx, o) {
   const h = 46 + o.s * 34;
-  shadow(ctx, o.x + 7, o.y + 4, o.r * 1.15, o.r * 0.5);
+  shadow(ctx, o.x + 7, PY(o.y) + 4, o.r * 1.15, o.r * 0.5);
   ctx.save();
-  ctx.translate(o.x, o.y);
+  ctx.translate(o.x, PY(o.y));
   ctx.fillStyle = '#3b2d24';
   ctx.fillRect(-2.5, -8, 5, 10);
   for (let i = 0; i < 3; i++) {
@@ -479,9 +492,9 @@ function drawPine(ctx, o) {
 
 /** @param {CanvasRenderingContext2D} ctx @param {any} o */
 function drawRock(ctx, o) {
-  shadow(ctx, o.x + 5, o.y + 3, o.r * 1.1, o.r * 0.45);
+  shadow(ctx, o.x + 5, PY(o.y) + 3, o.r * 1.1, o.r * 0.45);
   ctx.save();
-  ctx.translate(o.x, o.y);
+  ctx.translate(o.x, PY(o.y));
   ctx.beginPath();
   const n = 7;
   for (let i = 0; i <= n; i++) {
@@ -501,8 +514,8 @@ function drawRock(ctx, o) {
 /** @param {CanvasRenderingContext2D} ctx @param {any} o */
 function drawStandingStone(ctx, o) {
   const h = o.r * 3.1;
-  shadow(ctx, o.x + 8, o.y + 3, o.r * 1.2, o.r * 0.42);
-  ctx.save(); ctx.translate(o.x, o.y);
+  shadow(ctx, o.x + 8, PY(o.y) + 3, o.r * 1.2, o.r * 0.42);
+  ctx.save(); ctx.translate(o.x, PY(o.y));
   const lean = (o.s - 0.5) * 0.3;
   ctx.rotate(lean);
   ctx.fillStyle = '#39445a';
@@ -521,9 +534,9 @@ function drawStandingStone(ctx, o) {
 /** @param {CanvasRenderingContext2D} ctx @param {any} o */
 function drawQuarryBlock(ctx, o) {
   const h = o.r * 1.5;
-  shadow(ctx, o.x + 7, o.y + 4, o.r * 1.1, o.r * 0.45);
+  shadow(ctx, o.x + 7, PY(o.y) + 4, o.r * 1.1, o.r * 0.45);
   ctx.save();
-  ctx.translate(o.x, o.y);
+  ctx.translate(o.x, PY(o.y));
   ctx.fillStyle = '#59657a';
   ctx.fillRect(-o.r, -h, o.r * 2, h + 4);
   ctx.fillStyle = '#6e7b91';
@@ -539,8 +552,8 @@ function drawQuarryBlock(ctx, o) {
 
 /** @param {CanvasRenderingContext2D} ctx @param {any} o */
 function drawPost(ctx, o) {
-  shadow(ctx, o.x + 4, o.y + 2, o.r * 0.9, o.r * 0.4);
-  ctx.save(); ctx.translate(o.x, o.y);
+  shadow(ctx, o.x + 4, PY(o.y) + 2, o.r * 0.9, o.r * 0.4);
+  ctx.save(); ctx.translate(o.x, PY(o.y));
   ctx.fillStyle = '#4a3a2c';
   ctx.beginPath(); ctx.moveTo(-o.r * 0.45, 0); ctx.lineTo(-o.r * 0.3, -34); ctx.lineTo(0, -44); ctx.lineTo(o.r * 0.3, -34); ctx.lineTo(o.r * 0.45, 0); ctx.closePath(); ctx.fill();
   ctx.fillStyle = 'rgba(226,236,246,0.7)';
@@ -551,7 +564,7 @@ function drawPost(ctx, o) {
 /** @param {CanvasRenderingContext2D} ctx @param {any} o */
 function drawHearth(ctx, o) {
   const t = performance.now() / 1000;
-  ctx.save(); ctx.translate(o.x, o.y);
+  ctx.save(); ctx.translate(o.x, PY(o.y));
   ctx.fillStyle = '#3a3f4a';
   ctx.beginPath(); ctx.ellipse(0, 0, o.r, o.r * 0.55, 0, 0, Math.PI * 2); ctx.fill();
   for (let i = 0; i < 5; i++) {
@@ -574,6 +587,8 @@ function drawHearth(ctx, o) {
 function drawBuilding(ctx, o) {
   if (o.type === 'ruin') { drawRuin(ctx, o); return; }
   const roofH = 34;
+  // Foten hamnar på den hoptryckta marken; fasaden behåller sin höjd i pixlar.
+  o = { ...o, y: PY(o.y + o.h) - o.h };
   ctx.save();
   ctx.globalAlpha = 0.34; ctx.fillStyle = '#1a2434';
   ctx.fillRect(o.x + 10, o.y + 8, o.w, o.h);
@@ -602,6 +617,7 @@ function drawBuilding(ctx, o) {
 
 /** @param {CanvasRenderingContext2D} ctx @param {any} o */
 function drawRuin(ctx, o) {
+  o = { ...o, y: PY(o.y + o.h) - o.h };
   ctx.save();
   ctx.globalAlpha = 0.32; ctx.fillStyle = '#1a2434';
   ctx.fillRect(o.x + 8, o.y + 6, o.w, o.h);
@@ -620,8 +636,8 @@ function drawRuin(ctx, o) {
 /** @param {CanvasRenderingContext2D} ctx @param {any} n @param {any} game */
 function drawNpc(ctx, n, game) {
   const t = performance.now() / 1000;
-  shadow(ctx, n.x, n.y + 2, 13, 6);
-  ctx.save(); ctx.translate(n.x, n.y + Math.sin(t * 1.6 + n.x) * 1.2);
+  shadow(ctx, n.x, PY(n.y) + 2, 13, 6);
+  ctx.save(); ctx.translate(n.x, PY(n.y) + Math.sin(t * 1.6 + n.x) * 1.2);
   ctx.fillStyle = '#5b4a3a';
   ctx.beginPath(); ctx.moveTo(-11, 4); ctx.quadraticCurveTo(0, -28, 11, 4); ctx.closePath(); ctx.fill();
   ctx.fillStyle = '#d8c2a0';
@@ -631,14 +647,14 @@ function drawNpc(ctx, n, game) {
   ctx.restore();
 
   const near = Math.hypot(game.player.pos.x - n.x, game.player.pos.y - n.y) < 115;
-  worldLabel(ctx, n.name, n.x, n.y - 44, near ? '#e8c88a' : '#c2d2e6', 13);
+  worldLabel(ctx, n.name, n.x, PY(n.y) - 44, near ? '#e8c88a' : '#c2d2e6', 13);
 }
 
 /** @param {CanvasRenderingContext2D} ctx @param {any} game */
 function drawShrines(ctx, game) {
   const t = performance.now() / 1000;
   for (const s of game.zone.shrines) {
-    ctx.save(); ctx.translate(s.x, s.y);
+    ctx.save(); ctx.translate(s.x, PY(s.y));
     const alive = !s.used;
     shadow(ctx, 2, 4, 18, 8);
     ctx.fillStyle = alive ? '#4e5f78' : '#39424f';
@@ -661,7 +677,7 @@ function drawShrines(ctx, game) {
 function drawExits(ctx, game) {
   const t = performance.now() / 1000;
   for (const e of game.zone.exits) {
-    ctx.save(); ctx.translate(e.x, e.y);
+    ctx.save(); ctx.translate(e.x, PY(e.y));
     const pulse = 0.4 + Math.sin(t * 1.8) * 0.18;
     const g = ctx.createRadialGradient(0, 0, 4, 0, 0, e.r * 1.5);
     g.addColorStop(0, `rgba(140,214,244,${pulse})`); g.addColorStop(1, 'rgba(140,214,244,0)');
@@ -669,7 +685,7 @@ function drawExits(ctx, game) {
     ctx.strokeStyle = 'rgba(170,226,250,0.75)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(0, 0, e.r, e.r * 0.5, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.restore();
-    worldLabel(ctx, e.label, e.x, e.y - e.r * 0.5 - 16, '#c8ecfb', 13);
+    worldLabel(ctx, e.label, e.x, PY(e.y) - e.r * 0.5 - 16, '#c8ecfb', 13);
   }
 }
 
@@ -678,7 +694,7 @@ function drawGroundItems(ctx, game) {
   const t = performance.now() / 1000;
   for (const g of game.ground) {
     const bob = Math.sin(t * 3 + g.x) * 2;
-    ctx.save(); ctx.translate(g.x, g.y + bob);
+    ctx.save(); ctx.translate(g.x, PY(g.y) + bob);
     const col = g.kind === 'gold' ? '#d8b26a' : g.kind === 'potion' ? '#e05a72' : RARITY_COLOR[g.item.rarity];
     const rr = g.kind === 'item' && (g.item.rarity === 'unique' || g.item.rarity === 'rare') ? 44 : 26;
     const grad = ctx.createRadialGradient(0, 0, 1, 0, 0, rr);
@@ -714,7 +730,7 @@ function drawAimTarget(ctx, game) {
   const t = performance.now() / 1000;
   const r = m.radius + 9 + Math.sin(t * 4) * 1.5;
   ctx.save();
-  ctx.translate(m.pos.x, m.pos.y);
+  ctx.translate(m.pos.x, PY(m.pos.y));
   ctx.strokeStyle = 'rgba(232,240,250,0.62)';
   ctx.lineWidth = 1.6;
   for (let i = 0; i < 4; i++) {
@@ -730,7 +746,7 @@ function drawAimTarget(ctx, game) {
 function drawProjectiles(ctx, game) {
   for (const p of game.projectiles) {
     ctx.save();
-    ctx.translate(p.x, p.y);
+    ctx.translate(p.x, PY(p.y));
     ctx.rotate(Math.atan2(p.vy, p.vx));
     ctx.fillStyle = '#d8c8a0';
     ctx.fillRect(-11, -1.5, 22, 3);
@@ -742,123 +758,196 @@ function drawProjectiles(ctx, game) {
 
 /* ---------------- entiteter ---------------- */
 
-/** @param {CanvasRenderingContext2D} ctx @param {any} m @param {any} game */
+/**
+ * Monstren ritas upprätt ur den hoptryckta marken, precis som hjälten.
+ * Kameravinkeln är låst, så riktningen ändrar *bilden* — vilken väg gestalten
+ * vänder sig och om vi ser fram- eller baksidan — inte figurens rotation.
+ * Att låta dem ligga platt medan hjälten står upp läste som två olika spel.
+ * @param {CanvasRenderingContext2D} ctx @param {any} m @param {any} game
+ */
 function drawMonster(ctx, m, game) {
   const t = performance.now() / 1000;
+  const gx = m.pos.x, gy = PY(m.pos.y);
+
   if (m.dead) {
     ctx.save();
     ctx.globalAlpha = clamp(m.corpseT / 14, 0, 1) * 0.5;
     ctx.fillStyle = '#2b1c22';
-    ctx.beginPath(); ctx.ellipse(m.pos.x, m.pos.y, m.radius * 1.3, m.radius * 0.6, m.facing, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(gx, gy, m.radius * 1.4, m.radius * 0.55, m.facing * 0.3, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
     return;
-  }
-
-  const wob = Math.sin((m.walk ?? 0) * 6) * 2;
-  if (m.shape !== 'wraith') shadow(ctx, m.pos.x, m.pos.y + m.radius * 0.35, m.radius * 1.05, m.radius * 0.42);
-
-  ctx.save();
-  ctx.translate(m.pos.x, m.pos.y);
-
-  // aura för elit / frost
-  if (m.elite) {
-    const g = ctx.createRadialGradient(0, 0, m.radius * 0.4, 0, 0, m.radius * 2.6);
-    g.addColorStop(0, m.elite.color + '55'); g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, m.radius * 2.6, 0, Math.PI * 2); ctx.fill();
-  }
-  if (m.windup > 0) {
-    ctx.strokeStyle = 'rgba(255,120,120,0.8)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(0, 0, m.radius + 7, m.facing - 0.6, m.facing + 0.6); ctx.stroke();
   }
 
   const flash = m.hitFlash > 0;
   const frozen = m.freezeT > 0;
   const body = flash ? '#ffffff' : frozen ? '#a8dcf0' : m.def.color;
   const dark = flash ? '#ffd0d0' : frozen ? '#6ab0cc' : m.def.color2;
+  const R = m.radius;
+  const fx = Math.cos(m.facing), fy = Math.sin(m.facing);
+  const mirror = fx < 0 ? -1 : 1;
+  const walk = Math.sin((m.walk ?? 0) * 6);
+  const idle = Math.sin(t * 2 + m.id) * 0.8;
 
-  ctx.rotate(m.facing);
-
-  // Mörk siluett bakom kroppen: utan den försvinner fienderna i snön.
+  // skugga på marken (vålnader svävar och kastar knappt någon)
   if (m.shape !== 'wraith') {
-    ctx.fillStyle = 'rgba(9,14,22,0.92)';
-    if (m.shape === 'wolf') {
-      ctx.beginPath(); ctx.ellipse(0, 0, m.radius * 1.58, m.radius * 0.98, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(m.radius * 1.05, 0, m.radius * 0.68, m.radius * 0.58, 0, 0, Math.PI * 2); ctx.fill();
-    } else {
-      ctx.beginPath(); ctx.arc(0, 0, m.radius * (m.shape === 'boss' ? 1.22 : 1.02), 0, Math.PI * 2); ctx.fill();
-    }
+    ctx.save();
+    ctx.globalAlpha = 0.34;
+    ctx.fillStyle = '#16202e';
+    ctx.beginPath(); ctx.ellipse(gx, gy, R * 1.15, R * 0.42, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
   }
+
+  ctx.save();
+  ctx.translate(gx, gy);
+
+  // elitens aura ligger kvar på marken
+  if (m.elite) {
+    ctx.save();
+    ctx.scale(1, PROJ);
+    const g = ctx.createRadialGradient(0, 0, R * 0.4, 0, 0, R * 2.8);
+    g.addColorStop(0, m.elite.color + '55'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R * 2.8, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.scale(mirror, 1);
+
   if (m.shape === 'wolf') {
-    ctx.fillStyle = dark;
-    for (let i = 0; i < 4; i++) {
-      const lx = i < 2 ? m.radius * 0.5 : -m.radius * 0.5;
-      const ly = (i % 2 ? 1 : -1) * m.radius * 0.5;
-      ctx.fillRect(lx - 2, ly - 2 + Math.sin((m.walk ?? 0) * 8 + i * 1.7) * 2.5, 4, 5);
+    // fyrfotad, sedd från sidan: kropp, ben som växlar, nos framåt, svans bakåt
+    const h = R * 1.5;
+    ctx.strokeStyle = dark; ctx.lineWidth = R * 0.28; ctx.lineCap = 'round';
+    for (const [lx, ph] of [[-R * 0.55, 0], [-R * 0.3, 1], [R * 0.45, 1], [R * 0.7, 0]]) {
+      const sw = walk * R * 0.3 * (ph ? -1 : 1);
+      ctx.beginPath(); ctx.moveTo(lx, -h * 0.55); ctx.lineTo(lx + sw, 0); ctx.stroke();
     }
+    ctx.fillStyle = C_SIL;
+    ctx.beginPath(); ctx.ellipse(0, -h * 0.72, R * 1.35, R * 0.72, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = body;
-    ctx.beginPath(); ctx.ellipse(0, 0, m.radius * 1.35, m.radius * 0.78, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, -h * 0.72, R * 1.22, R * 0.6, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = dark;
-    ctx.beginPath(); ctx.ellipse(m.radius * 1.05, 0, m.radius * 0.5, m.radius * 0.4, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(-m.radius * 1.3, 0); ctx.lineTo(-m.radius * 2.1, -4); ctx.lineTo(-m.radius * 1.9, 4); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#ffb03a';
-    ctx.beginPath(); ctx.arc(m.radius * 1.2, -3.5, 1.7, 0, 6.3); ctx.arc(m.radius * 1.2, 3.5, 1.7, 0, 6.3); ctx.fill();
-  } else if (m.shape === 'wraith') {
-    ctx.globalAlpha = 0.85;
-    const g = ctx.createRadialGradient(0, 0, 2, 0, 0, m.radius * 1.8);
-    g.addColorStop(0, body); g.addColorStop(1, 'rgba(60,130,170,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, m.radius * 1.8, 0, Math.PI * 2); ctx.fill();
-    ctx.globalAlpha = 1; ctx.fillStyle = dark;
+    // svans
     ctx.beginPath();
-    ctx.moveTo(m.radius * 0.7, 0);
-    ctx.quadraticCurveTo(0, -m.radius, -m.radius, -m.radius * 0.5 + wob);
-    ctx.quadraticCurveTo(-m.radius * 0.4, 0, -m.radius, m.radius * 0.5 - wob);
-    ctx.quadraticCurveTo(0, m.radius, m.radius * 0.7, 0);
-    ctx.fill();
-    ctx.fillStyle = '#dff4ff';
-    ctx.beginPath(); ctx.arc(m.radius * 0.35, -3, 2, 0, 6.3); ctx.arc(m.radius * 0.35, 3, 2, 0, 6.3); ctx.fill();
-  } else if (m.shape === 'boss') {
-    ctx.fillStyle = dark;
-    ctx.beginPath(); ctx.ellipse(0, 0, m.radius * 1.05, m.radius * 0.9, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.moveTo(-R * 1.1, -h * 0.8);
+    ctx.quadraticCurveTo(-R * 2, -h * 1.1 + idle, -R * 1.9, -h * 0.55);
+    ctx.quadraticCurveTo(-R * 1.5, -h * 0.75, -R * 1.05, -h * 0.62);
+    ctx.closePath(); ctx.fill();
+    // huvud och nos
     ctx.fillStyle = body;
-    ctx.beginPath(); ctx.ellipse(m.radius * 0.15, 0, m.radius * 0.75, m.radius * 0.68, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(R * 1.15, -h * 0.92, R * 0.55, R * 0.48, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.ellipse(R * 1.6, -h * 0.82, R * 0.32, R * 0.22, 0, 0, Math.PI * 2); ctx.fill();
+    // öron
+    ctx.beginPath();
+    ctx.moveTo(R * 0.95, -h * 1.2); ctx.lineTo(R * 1.15, -h * 1.5); ctx.lineTo(R * 1.3, -h * 1.14);
+    ctx.closePath(); ctx.fill();
+    if (!flash) {
+      ctx.fillStyle = '#ffb03a';
+      ctx.beginPath(); ctx.arc(R * 1.35, -h * 0.95, R * 0.13, 0, 6.3); ctx.fill();
+    }
+
+  } else if (m.shape === 'wraith') {
+    // svävar: tunn spets nedåt som tonar bort, ingen skugga
+    const h = R * 2.4;
+    const float = Math.sin(t * 1.6 + m.id) * 2;
+    ctx.translate(0, float);
+    const g = ctx.createRadialGradient(0, -h * 0.6, 2, 0, -h * 0.6, R * 2);
+    g.addColorStop(0, body); g.addColorStop(1, 'rgba(60,130,170,0)');
+    ctx.globalAlpha = 0.55; ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(0, -h * 0.6, R * 2, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = dark;
+    ctx.beginPath();
+    ctx.moveTo(0, -2);
+    ctx.quadraticCurveTo(-R * 0.9, -h * 0.5, -R * 0.75, -h * 0.85);
+    ctx.quadraticCurveTo(0, -h * 1.25, R * 0.75, -h * 0.85);
+    ctx.quadraticCurveTo(R * 0.9, -h * 0.5, 0, -2);
+    ctx.closePath(); ctx.fill();
+    if (!flash) {
+      ctx.fillStyle = '#dff4ff';
+      ctx.beginPath(); ctx.arc(-R * 0.22, -h * 0.88, R * 0.14, 0, 6.3);
+      ctx.arc(R * 0.26, -h * 0.88, R * 0.14, 0, 6.3); ctx.fill();
+    }
+
+  } else if (m.shape === 'boss') {
+    // bred gestalt med iskrona
+    const h = R * 2.1;
+    ctx.strokeStyle = dark; ctx.lineWidth = R * 0.3;
+    ctx.beginPath(); ctx.moveTo(-R * 0.4, -h * 0.42); ctx.lineTo(-R * 0.5 + walk * R * 0.2, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(R * 0.4, -h * 0.42); ctx.lineTo(R * 0.5 - walk * R * 0.2, 0); ctx.stroke();
+    ctx.fillStyle = C_SIL;
+    ctx.beginPath(); ctx.ellipse(0, -h * 0.62, R * 0.95, R * 0.85, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.ellipse(0, -h * 0.62, R * 0.85, R * 0.76, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = body;
+    ctx.beginPath(); ctx.ellipse(R * 0.12, -h * 0.66, R * 0.6, R * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+    // huvud
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.ellipse(R * 0.1, -h * 1.12, R * 0.42, R * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+    // iskrona
     ctx.fillStyle = '#dff4ff';
-    for (let i = 0; i < 7; i++) {
-      const a = -1.5 + i * 0.5;
+    for (let i = 0; i < 5; i++) {
+      const a = -2.5 + i * 0.62;
       ctx.beginPath();
-      ctx.moveTo(Math.cos(a) * m.radius * 0.8, Math.sin(a) * m.radius * 0.8);
-      ctx.lineTo(Math.cos(a) * m.radius * 1.6, Math.sin(a) * m.radius * 1.55);
-      ctx.lineTo(Math.cos(a + 0.16) * m.radius * 0.85, Math.sin(a + 0.16) * m.radius * 0.85);
+      ctx.moveTo(Math.cos(a) * R * 0.4, -h * 1.12 + Math.sin(a) * R * 0.34);
+      ctx.lineTo(Math.cos(a) * R * 0.95, -h * 1.12 + Math.sin(a) * R * 0.95 - R * 0.3);
+      ctx.lineTo(Math.cos(a + 0.3) * R * 0.42, -h * 1.12 + Math.sin(a + 0.3) * R * 0.36);
       ctx.closePath(); ctx.fill();
     }
-    ctx.fillStyle = '#8ce8ff';
-    ctx.beginPath(); ctx.arc(m.radius * 0.55, -7, 3.4, 0, 6.3); ctx.arc(m.radius * 0.55, 7, 3.4, 0, 6.3); ctx.fill();
+    if (!flash) {
+      ctx.fillStyle = '#8ce8ff';
+      ctx.beginPath(); ctx.arc(R * 0.02, -h * 1.1, R * 0.1, 0, 6.3);
+      ctx.arc(R * 0.3, -h * 1.1, R * 0.1, 0, 6.3); ctx.fill();
+    }
+
   } else {
-    ctx.fillStyle = dark;
-    ctx.fillRect(-m.radius * 0.2, -m.radius * 0.75 + Math.sin((m.walk ?? 0) * 7) * 2, m.radius * 0.5, m.radius * 0.7);
-    ctx.fillRect(-m.radius * 0.2, m.radius * 0.15 - Math.sin((m.walk ?? 0) * 7) * 2, m.radius * 0.5, m.radius * 0.7);
+    // upprätt gestalt: ben, bål, huvud — och båge åt skyttarna
+    const h = R * 2.4;
+    ctx.strokeStyle = dark; ctx.lineWidth = R * 0.3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-R * 0.3, -h * 0.42); ctx.lineTo(-R * 0.35 + walk * R * 0.35, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(R * 0.3, -h * 0.42); ctx.lineTo(R * 0.35 - walk * R * 0.35, 0); ctx.stroke();
+    ctx.fillStyle = C_SIL;
+    ctx.beginPath(); ctx.ellipse(0, -h * 0.6, R * 0.72, R * 0.62, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = body;
-    ctx.beginPath(); ctx.ellipse(0, 0, m.radius * 0.82, m.radius * 0.7, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = dark;
-    ctx.beginPath(); ctx.arc(m.radius * 0.5, 0, m.radius * 0.42, 0, Math.PI * 2); ctx.fill();
-    if (m.ai === 'ranged') { ctx.fillStyle = '#8a7050'; ctx.fillRect(m.radius * 0.3, -1.5, m.radius * 1.5, 3); }
+    ctx.beginPath(); ctx.ellipse(0, -h * 0.6, R * 0.62, R * 0.54, 0, 0, Math.PI * 2); ctx.fill();
+    // arm
+    ctx.strokeStyle = dark; ctx.lineWidth = R * 0.24;
+    ctx.beginPath();
+    ctx.moveTo(R * 0.3, -h * 0.72);
+    ctx.lineTo(R * 0.85, -h * (m.ai === 'ranged' ? 0.72 : 0.5) + idle);
+    ctx.stroke();
+    if (m.ai === 'ranged') {
+      ctx.strokeStyle = '#8a7050'; ctx.lineWidth = R * 0.14;
+      ctx.beginPath(); ctx.arc(R * 1.0, -h * 0.72, R * 0.5, -1.1, 1.1); ctx.stroke();
+    }
+    // huvud, något framåtlutat
+    ctx.fillStyle = C_SIL;
+    ctx.beginPath(); ctx.ellipse(R * 0.14, -h * 1.02, R * 0.42, R * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = body;
+    ctx.beginPath(); ctx.ellipse(R * 0.14, -h * 1.02, R * 0.35, R * 0.33, 0, 0, Math.PI * 2); ctx.fill();
+    if (!flash && fy > -0.4) {
+      ctx.fillStyle = '#11161f';
+      ctx.beginPath(); ctx.ellipse(R * 0.28, -h * 1.0, R * 0.16, R * 0.14, 0, 0, Math.PI * 2); ctx.fill();
+    }
   }
   ctx.restore();
 
-  // status-ikoner / hälsobar
+  // --- hälsobar och statusmärken -----------------------------------------
+  const topY = gy - m.radius * (m.shape === 'boss' ? 2.6 : m.shape === 'wolf' ? 1.9 : 2.7) - 6;
   const showBar = m.elite || m.isChampion || m.isBoss || m.hp < m.maxHp;
   if (showBar) {
-    const w = m.isBoss ? 90 : m.radius * 2.4;
-    const y = m.pos.y - m.radius - (m.isBoss ? 26 : 14);
+    const w = m.isBoss ? 90 : m.radius * 2.6;
     ctx.save();
     ctx.fillStyle = 'rgba(6,10,17,0.8)';
-    ctx.fillRect(m.pos.x - w / 2 - 1, y - 1, w + 2, 5);
+    ctx.fillRect(gx - w / 2 - 1, topY - 1, w + 2, 5);
     ctx.fillStyle = m.isBoss ? '#c8354a' : m.elite ? m.elite.color : '#a8202a';
-    ctx.fillRect(m.pos.x - w / 2, y, w * clamp(m.hp / m.maxHp, 0, 1), 3);
+    ctx.fillRect(gx - w / 2, topY, w * clamp(m.hp / m.maxHp, 0, 1), 3);
     ctx.restore();
   }
   if (m.freezeT > 0 || m.stunT > 0) {
     ctx.save(); ctx.textAlign = 'center'; ctx.font = '12px system-ui';
-    ctx.fillText(m.freezeT > 0 ? '❄️' : '💫', m.pos.x, m.pos.y - m.radius - 20);
+    ctx.fillText(m.freezeT > 0 ? '❄️' : '💫', gx, topY - 8);
     ctx.restore();
   }
 }
@@ -873,9 +962,10 @@ function drawPlayer(ctx, game) {
   // Rimfrostaura under figuren
   if ((p.skills.rimeaura ?? 0) > 0) {
     ctx.save();
-    const g = ctx.createRadialGradient(p.pos.x, p.pos.y, 30, p.pos.x, p.pos.y, 150);
+    const gy = PY(p.pos.y);
+    const g = ctx.createRadialGradient(p.pos.x, gy, 30, p.pos.x, gy, 150);
     g.addColorStop(0, 'rgba(127,212,240,0.10)'); g.addColorStop(1, 'rgba(127,212,240,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.pos.x, p.pos.y, 150, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(p.pos.x, gy, 150, 150 * PROJ, 0, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
 
@@ -884,7 +974,7 @@ function drawPlayer(ctx, game) {
   // Virvelvindens ringar ligger ovanpå figuren
   if (p.whirl) {
     ctx.save();
-    ctx.translate(p.pos.x, p.pos.y);
+    ctx.translate(p.pos.x, PY(p.pos.y));
     ctx.globalAlpha = 0.55;
     ctx.strokeStyle = '#e8f0fa'; ctx.lineWidth = 3;
     for (let i = 0; i < 3; i++) {
@@ -900,7 +990,7 @@ function drawPlayer(ctx, game) {
   ctx.globalAlpha = 0.26;
   ctx.strokeStyle = '#cfe4f2'; ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.arc(p.pos.x, p.pos.y, 28, p.facing - 0.22, p.facing + 0.22);
+  ctx.ellipse(p.pos.x, PY(p.pos.y), 28, 28 * PROJ, 0, p.facing - 0.22, p.facing + 0.22);
   ctx.stroke();
   ctx.restore();
 }
@@ -914,11 +1004,11 @@ function drawParticles(ctx) {
     ctx.globalAlpha = a;
     ctx.fillStyle = p.color;
     if (p.shape === 'shard') {
-      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.vx * 0.01);
+      ctx.save(); ctx.translate(p.x, PY(p.y)); ctx.rotate(p.vx * 0.01);
       ctx.fillRect(-p.r, -p.r * 0.35, p.r * 2, p.r * 0.7);
       ctx.restore();
     } else {
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.r * a, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(p.x, PY(p.y), p.r * a, 0, Math.PI * 2); ctx.fill();
     }
   }
   ctx.globalAlpha = 1;
@@ -932,9 +1022,9 @@ function drawFloatTexts(ctx) {
     ctx.globalAlpha = clamp(t.life / 0.95, 0, 1);
     ctx.font = `700 ${t.size}px system-ui, sans-serif`;
     ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(4,7,12,0.85)';
-    ctx.strokeText(t.text, t.x, t.y);
+    ctx.strokeText(t.text, t.x, PY(t.y));
     ctx.fillStyle = t.color;
-    ctx.fillText(t.text, t.x, t.y);
+    ctx.fillText(t.text, t.x, PY(t.y));
   }
   ctx.restore();
 }
