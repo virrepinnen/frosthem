@@ -112,6 +112,25 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
   background:linear-gradient(180deg,var(--panel),#080d15);border:1px solid var(--border);
   border-radius:6px;padding:14px;pointer-events:auto;box-shadow:0 18px 50px rgba(0,0,0,.75)}
 .panel.left{left:22px} .panel.right{right:22px} .panel.wide{width:min(392px,46vw)}
+
+/* The full-height sheet: the bag and the doll get half the screen and all of
+   the height. The world pauses behind it, so nothing is lost by looking. */
+.panel.sheet{top:0;bottom:0;right:0;width:min(50vw,760px);max-height:100vh;
+  border-radius:0;border-top:none;border-right:none;border-bottom:none;
+  padding:20px 24px 24px;display:flex;flex-direction:column;gap:2px;
+  background:linear-gradient(180deg,rgba(15,22,34,.99),rgba(6,10,17,.99));
+  box-shadow:-24px 0 70px rgba(0,0,0,.7)}
+@media (max-width:900px){ .panel.sheet{width:min(78vw,520px)} }
+.panel.sheet h2{font-size:14px}
+.panel.sheet #equip-doll{max-width:400px;width:100%;margin:4px auto 12px;gap:8px}
+.panel.sheet .eq{min-height:48px;font-size:9px}
+.panel.sheet .eq .ic{width:26px;height:26px}
+.panel.sheet .eq .nm{font-size:10px}
+/* The bag takes whatever height is left and keeps its cells square. Sizing it
+   from the height rather than the width is what stops the last row falling off
+   the bottom on a short window. */
+.panel.sheet .bag-wrap{flex:1 1 auto;min-height:0;display:grid;place-items:center;margin-top:4px}
+.panel.sheet #bag{width:100%;height:auto;max-height:100%;aspect-ratio:12 / 6}
 .panel h2{margin:0 0 12px;font-size:13px;letter-spacing:.2em;text-transform:uppercase;
   color:var(--gold);font-weight:600;border-bottom:1px solid var(--border);padding-bottom:8px}
 .panel .close{position:absolute;top:10px;right:12px;color:var(--muted);cursor:pointer;font-size:16px;line-height:1}
@@ -146,16 +165,16 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
 .eq[data-slot="ring2"]  {grid-column:3;grid-row:5}
 
 /* Bag: a tetris grid. Background cells in one layer, items in another, so a
-   two-handed sword can span six cells without moving anything. */
-#bag{position:relative;width:100%;aspect-ratio:10 / 6}
-.bag-grid{position:absolute;inset:0;display:grid;gap:3px;
-  grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(6,1fr)}
+   two-handed sword can span six cells without moving anything.
+   The track counts are set from JS, out of BAG_COLS/BAG_ROWS — see panels.js. */
+#bag{position:relative;width:100%;aspect-ratio:12 / 6}
+.bag-grid{position:absolute;inset:0;display:grid;gap:3px}
 .bag-grid.backdrop > div{border:1px solid #1c2635;border-radius:3px;background:#090e17}
 .bag-grid.items{pointer-events:none}
 .bag-item{pointer-events:auto;display:grid;place-items:center;border-radius:3px;cursor:pointer;
   background:#131c2b;border:1px solid #2a3a52;transition:.12s}
 .bag-item:hover{border-color:var(--gold);background:#1b2637;z-index:2}
-.bi-ico{width:21px;height:21px;color:#cfdcec;display:block}
+.bi-ico{width:min(70%,30px);aspect-ratio:1;color:#cfdcec;display:block}
 .bi-ico svg{width:100%;height:100%;display:block}
 .bag-item.rn{box-shadow:inset 0 0 0 1px rgba(207,220,236,.22)}
 .bag-item.rm{box-shadow:inset 0 0 0 1px rgba(111,159,251,.55);border-color:#2f4a7a}
@@ -192,8 +211,8 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
 .node.avail{border-color:#4a638a;background:#101927}
 .node.ready{border-color:var(--gold);box-shadow:0 0 8px rgba(216,178,106,.2)}
 .node.locked{opacity:.34;cursor:default;border-style:dashed}
-.node .ico{width:28px;height:28px;display:grid;place-items:center;border:1px solid var(--border);
-  border-radius:4px;background:#080d15;font-size:15px;flex:none}
+.node .ico{width:28px;height:28px;padding:5px;display:grid;place-items:center;
+  border:1px solid var(--border);border-radius:4px;background:#080d15;color:#cfdcec;flex:none}
 /* Tree nodes stand vertically: the icon carries recognition, the text fits even
    in a narrow column, and the grid reads as a tree rather than a list. */
 .node.sk{flex-direction:column;align-items:center;text-align:center;gap:4px;padding:9px 5px 7px}

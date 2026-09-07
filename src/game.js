@@ -230,6 +230,10 @@ function updateTransit(game, dt) {
 function travelToWaypoint(game, index) {
   if (!game.waypoints.has(index)) { game.alert('You have not found that waystone yet.'); return; }
   if (game.zone.index === index) { game.alert('You are already here.'); return; }
+  // Close the list on the way out: an open panel freezes the world, and
+  // arriving somewhere new into a frozen screen reads as a hang.
+  panels.waypoint = false;
+  game.dirtyUI = true;
   game.portal = null;
   travel(game, index);
   const wp = game.zone.waypoint;
@@ -338,12 +342,11 @@ function returnThroughPortal(game) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Uppdatering                                                         */
+/* Update                                                              */
 /* ------------------------------------------------------------------ */
 
 /** @param {Game} game @param {number} dt */
 function update(game, dt) {
-  game.time += dt;
   const p = game.player;
 
   game.aim = toWorld(input.mouse.x, input.mouse.y);
@@ -356,7 +359,12 @@ function update(game, dt) {
 
   if (game.transit) { updateTransit(game, dt); updateFx(dt); updateCamera(game, dt); return; }
   if (game.veil > 0) game.veil = Math.max(0, game.veil - dt / FADE_IN);
-  if (game.paused) { updateFx(dt); return; }
+  // An open panel stops the world. The bag now covers half the screen, so
+  // fighting behind it was never really an option — freezing makes that honest,
+  // and it means reading a tooltip is never punished by something biting you.
+  if (game.paused || anyPanelOpen()) { updateFx(dt); return; }
+
+  game.time += dt;
 
   game.playerSlow = 0;
   revealFog(game.zone, p.pos.x, p.pos.y);

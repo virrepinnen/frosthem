@@ -63,6 +63,8 @@ function stackPanels(root) {
     const list = /** @type {HTMLElement[]} */ ([...root.querySelectorAll('.panel.' + side)]);
     let offset = 22;
     for (const el of list) {
+      // The full-height sheet is anchored to the edge and never stacked.
+      if (el.classList.contains('sheet')) continue;
       const w = el.getBoundingClientRect().width || (el.classList.contains('wide') ? 392 : 330);
       // Two panels may sit side by side as long as they do not eat more than
       // 62% of the width — the rest is needed for the panel on the other side.
@@ -89,8 +91,12 @@ function shell(title, side, onClose, wide) {
 /** @param {any} game */
 function inventoryPanel(game) {
   const p = game.player;
+  // The bag takes the full height and half the width. It is the panel you spend
+  // the most time reading, and squinting at 30-pixel cells in a corner was the
+  // worst of both worlds — too small to read, too big to ignore.
   const d = shell('Equipment &amp; bag', 'right',
     () => { panels.inventory = false; panels.vendor = false; game.dirtyUI = true; }, true);
+  d.classList.add('sheet');
 
   const doll = document.createElement('div');
   doll.id = 'equip-doll';
@@ -124,17 +130,29 @@ function inventoryPanel(game) {
   d.appendChild(head);
 
   // The grid is drawn in two layers: empty cells underneath, items on top with
-  // an explicit grid-area. That lets a sword span several cells without
-  // knuffa runt bakgrunden.
+  // an explicit grid-area. That lets a sword span several cells without pushing
+  // the backdrop around.
+  //
+  // The track counts come from BAG_COLS/BAG_ROWS rather than from the
+  // stylesheet. They were hard-coded there once, and when the bag grew from ten
+  // columns to twelve the two quietly disagreed — items landed in implicit
+  // tracks and the backdrop grew rows nobody asked for.
   const bag = document.createElement('div');
   bag.id = 'bag';
+  bag.style.aspectRatio = `${BAG_COLS} / ${BAG_ROWS}`;
+  const tracks = (/** @type {HTMLElement} */ el) => {
+    el.style.gridTemplateColumns = `repeat(${BAG_COLS}, 1fr)`;
+    el.style.gridTemplateRows = `repeat(${BAG_ROWS}, 1fr)`;
+  };
   const backdrop = document.createElement('div');
   backdrop.className = 'bag-grid backdrop';
+  tracks(backdrop);
   for (let i = 0; i < BAG_COLS * BAG_ROWS; i++) backdrop.appendChild(document.createElement('div'));
   bag.appendChild(backdrop);
 
   const layer = document.createElement('div');
   layer.className = 'bag-grid items';
+  tracks(layer);
   for (const slotted of packBag(p.inventory).placed) {
     const item = slotted.item;
     const c = document.createElement('div');
@@ -152,7 +170,10 @@ function inventoryPanel(game) {
     layer.appendChild(c);
   }
   bag.appendChild(layer);
-  d.appendChild(bag);
+  const wrap = document.createElement('div');
+  wrap.className = 'bag-wrap';
+  wrap.appendChild(bag);
+  d.appendChild(wrap);
   return d;
 }
 
@@ -331,7 +352,7 @@ function vendorPanel(game) {
     const b = document.createElement('div');
     b.className = 'node';
     b.style.marginBottom = '6px';
-    b.innerHTML = `<div class="ico">${icon}</div><div class="t"><b>${title}</b><i>${sub}</i></div><div class="rk">${price}g</div>`;
+    b.innerHTML = `<div class="ico">${glyph(icon)}</div><div class="t"><b>${title}</b><i>${sub}</i></div><div class="rk">${price}g</div>`;
     b.onclick = () => {
       if (p.gold < price) { game.alert('Not enough gold.'); return; }
       p.gold -= price; act(); game.dirtyUI = true; game.autosave?.();

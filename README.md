@@ -183,8 +183,14 @@ draws its hit area on the ground while it charges.
 Brutal, Frostbound, Armoured, Bloodthirsty, Warded* — combined freely. That gives
 unpredictable difficulty spikes without anyone designing them by hand.
 
-**The bag.** The grid is 12 × 6, and items take space according to their own
-shape rather than their equipment slot: a long sword is 1 × 3 and a great sword
+**The bag.** It opens as a sheet down the full height of the screen and half its
+width, and **the world stops** while it is open — as it does for any panel.
+Fighting behind a window that covers half the screen was never a real option, so
+freezing makes that honest, and reading a tooltip is never punished by something
+biting you.
+
+The grid is 12 × 6, and items take space according to their own shape rather than
+their equipment slot: a long sword is 1 × 3 and a great sword
 1 × 4, while a battle axe is 2 × 3 and a war hammer 2 × 4. Swap a weapon for one
 you already carry and the old one lands in the gap the new one left, so the bag
 is not reshuffled on every swap.
