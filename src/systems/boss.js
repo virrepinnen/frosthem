@@ -51,6 +51,12 @@ export function updateBoss(game, m, dt) {
 
   for (const k in B.moveCd) B.moveCd[k] = Math.max(0, B.moveCd[k] - dt);
 
+  // Sovande: står kvar i arenan och gör ingenting förrän han blir slagen.
+  if (m.dormant) {
+    m.facing = Math.atan2(dy, dx);   // följer dig med blicken
+    return { mx: 0, my: 0, handled: true };
+  }
+
   // Frusen eller bedövad: allt pausar, även pågående telegraf.
   if (m.freezeT > 0 || m.stunT > 0) return { mx: 0, my: 0, handled: true };
 

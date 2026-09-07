@@ -62,6 +62,26 @@ export function hitMonster(game, m, d) {
   if (d.light) total += d.light * (1 - clamp(m.res.light || 0, -100, 95) / 100);
 
   total = Math.max(1, Math.round(total));
+
+  // Första träffen väcker det som sover. Slår man jarlen reser sig hela
+  // arenan med honom.
+  if (m.dormant) {
+    m.dormant = false;
+    m.state = 'chase';
+    if (m.isBoss) {
+      m.bossState = null;               // börjar om med full uppladdning
+      for (const o of game.monsters) {
+        if (o === m || o.dead) continue;
+        if (Math.hypot(o.pos.x - m.pos.x, o.pos.y - m.pos.y) < 460) { o.dormant = false; o.state = 'chase'; }
+      }
+      game.alert(`${m.name} reser sig.`);
+      burst(m.pos.x, m.pos.y, 70, { color: '#a8e4f8', speed: 300, life: 1.1, size: 3.4, grav: -40 });
+      screenFlash(0.3, '#7fd4f0');
+      shake(14);
+      game.novas.push({ x: m.pos.x, y: m.pos.y, t: 0, dur: 0.7, r: 300, color: '#a8e4f8' });
+    }
+  }
+
   m.hp -= total;
   m.hitFlash = 0.14;
   game.lastTarget = m;

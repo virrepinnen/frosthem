@@ -1,4 +1,4 @@
-# Frosthem — Vandraren
+# Frosthem — Barbaren
 
 En spelbar ARPG-prototyp i Diablo 2:s anda, i ett vinterlandskap. Du skapar en
 karaktär, börjar i byn Frosthem med en rostig yxa och ingenting annat, följer
@@ -150,7 +150,12 @@ livsdräneri. Flockarna är många och små — en hop snövargar är ett dussin
 individer, inte fyra klumpar. Fienderna har fem arketyper med olika AI: laddare, närstrid,
 distans och tunga varelser. De är avsiktligt aggressiva — det driver tempot.
 
-**Bossen.** Jarl Hravn kör en egen AI med fyra **telegraferade** attacker:
+**Bossen.** Jarl Hravn **sover när du kommer in i arenan** — han står bland
+sina vakter utan livstapel, vänder bara huvudet mot dig och slår inte tillbaka.
+Du får leta reda på honom och börja slaget själv. Första träffen väcker honom och
+allt inom 460 pixlar på en gång, med skärmblixt, skak och en nova ut från kroppen.
+Autoattacken ignorerar sovande mål, så du kan gå fram och titta utan att råka
+starta striden. Därefter kör han en egen AI med fyra **telegraferade** attacker:
 *Frostsvep* (båge framåt), *Iskross* (markerad cirkel där du står — gå därifrån),
 *Rimlans* (markerad linje, sedan en rusning) och *Kallar vålnader* vid 66 % och
 33 % liv. Varje attack ritar sin träffyta på marken medan den laddar.
@@ -198,7 +203,7 @@ notis i hörnet i stället för en modal att klicka bort.
 
 **Flera karaktärer.** Huvudmenyn listar dina karaktärer med nivå, antal fällda,
 guld och när du senast spelade — ett klick och du är inne. *Skapa ny karaktär*
-öppnar klasslistan (Vandraren är byggd; Jägaren och Frostkallaren står som
+öppnar klasslistan (Barbaren är byggd; Jägaren och Frostkallaren står som
 kommande). Allt sparas i webbläsarens `localStorage`, automatiskt vid
 nivåhöjning, zonbyte och när du lämnar fliken, eller manuellt med `F5`.
 
@@ -212,6 +217,12 @@ plats som inte genereras om.
 **Övrigt.** Helgedomar med tidsbegränsade buffar, skattkistor, minimap som visar
 stigar och vägstenar, jämförande tooltips, utrustningsdocka i kroppsform som i
 D2, partiklar, blodavtryck, skärmskak och drivande snö.
+
+**Snön i huvudmenyn.** 380 flingor, var och en med eget djup, egen storlek och
+egen fallhastighet. Små flingor fångas hårdare av vinden än stora, varje flinga
+har sin egen svängning och en långsam pulsering av farten (±38 %), och byiga
+vindar kommer ur tre sinusvågor med olika period. De minsta ritas som prickar,
+de största som roterande sexarmade stjärnor med en mjuk gloria.
 
 ## Arkitektur
 

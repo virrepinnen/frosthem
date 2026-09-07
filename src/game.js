@@ -490,7 +490,9 @@ function updatePlayer(game, dt) {
   // behövs inte alls — men den fungerar fortfarande som manuell utlösare.
   if (!anyPanelOpen() && !casting && !p.whirl && !p.dash && !p.roll && p.attackTimer <= 0) {
     const t = game.aimTarget;
-    const inReach = t && !t.dead
+    // Auto-attacken rör aldrig något som sover: att gå fram till jarlen ska
+    // inte starta striden åt dig. Vill du väcka honom får du klicka.
+    const inReach = t && !t.dead && !t.dormant
       && Math.hypot(t.pos.x - p.pos.x, t.pos.y - p.pos.y) <= 66 + t.radius;
     const wants = input.mouse.down || (game.settings.autoAttack && inReach);
     if (wants) {

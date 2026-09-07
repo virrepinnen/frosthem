@@ -79,6 +79,9 @@ export function updateMonsters(game, dt) {
       continue;
     }
 
+    // Sovande: står kvar och väntar. Väcks först av en träff.
+    if (m.dormant) { resolveCollision(zone, m.pos, m.radius); continue; }
+
     // ---- aggro ----------------------------------------------------------
     if (m.state === 'idle') {
       if (dist < AGGRO && !p.dead) m.state = 'chase';

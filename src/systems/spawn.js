@@ -46,10 +46,14 @@ export function populateZone(zone) {
 
   if (zone.bossAt && zone.bossPos) {
     out.push(createMonster(BOSS, zone.level + 4, zone.bossPos.x, zone.bossPos.y, { boss: true }));
+    // Livvakterna sover med sin jarl, så arenan är tyst tills man tar första
+    // steget. Att hitta honom ska vara ett ögonblick, inte ett bakhåll.
     for (let i = 0; i < 5; i++) {
       const ang = (i / 5) * Math.PI * 2;
-      out.push(createMonster(MONSTERS[3], zone.level + 2,
-        zone.bossPos.x + Math.cos(ang) * 150, zone.bossPos.y + Math.sin(ang) * 150, { champion: true }));
+      const guard = createMonster(MONSTERS[3], zone.level + 2,
+        zone.bossPos.x + Math.cos(ang) * 150, zone.bossPos.y + Math.sin(ang) * 150, { champion: true });
+      guard.dormant = true;
+      out.push(guard);
     }
   }
   return out;

@@ -45,6 +45,12 @@ export function createMonster(def, level, x, y, opts = {}) {
     /** @type {null|{mods:import('../data/monsters.js').EliteMod[], color:string}} */ elite: null,
     isChampion: !!opts.champion,
     isBoss: !!opts.boss,
+    /**
+     * Bossen står stilla i sin arena tills den träffas. Man ska hitta honom
+     * och ta första steget själv — inte bli anfallen av något man inte hunnit
+     * se. Väcks i hitMonster.
+     */
+    dormant: !!opts.boss,
   };
 
   if (opts.boss) {

@@ -1033,7 +1033,7 @@ function drawMonster(ctx, m, game) {
 
   // --- hälsobar och statusmärken -----------------------------------------
   const topY = gy - m.radius * (m.shape === 'boss' ? 2.6 : m.shape === 'wolf' ? 1.9 : 2.7) - 6;
-  const showBar = m.elite || m.isChampion || m.isBoss || m.hp < m.maxHp;
+  const showBar = !m.dormant && (m.elite || m.isChampion || m.isBoss || m.hp < m.maxHp);
   if (showBar) {
     const w = m.isBoss ? 90 : m.radius * 2.6;
     ctx.save();
