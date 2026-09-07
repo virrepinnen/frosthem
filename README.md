@@ -99,6 +99,25 @@ hela poängen med att dela upp dem.
 Minimapen minns terräng, stigar och det du hittat — men visar bara fiender som
 är nära dig just nu. Byn är känd från början.
 
+**Figuren.** Barbaren är ritad i banor, inte i bild — en riggad gestalt sedd
+uppifrån. Kåpan sitter *framför* axelmassan (det är så "hukad" läser i en
+top-down-vy), manteln sveper bakåt som en droppe med lösa trasremsor längs
+bakkanten, och ett axelskydd är kvar medan det andra slogs bort för länge sedan.
+Manteln drar åt det håll man kommer ifrån, inte rakt bakåt — det är den detaljen
+som får rörelsen att kännas.
+
+Fyra hugg växlar så att två slag i rad aldrig ser lika ut: **svep**, **backhand**,
+ett tyngre **överhugg** som faller rakt ner, och en **stöt** med utfall. Grund-
+attacken alternerar de två första och slår in ett tungt hugg var fjärde slag;
+skills har sina egna (Krossande slag → överhugg, Krosshugg → stöt). Varje hugg
+har uppladdning, kroppsvridning och ett släpljus som ritas ur samma kurva som
+klingan — bandet följer alltså exakt den väg vapnet tog. Det har både mörk kärna
+och ljus framkant, för ett rent vitt svep försvinner mot snön.
+
+`sprite-lab.html` ritar figuren i alla lägen och varje hugg bildruta för
+bildruta. Öppna den när du ändrar något — figuren syns annars bara 35 px stor
+mitt i en flock.
+
 **Strid.** Svep med båge och räckvidd, omedelbar träffdetektion (responsivitet
 före windup), knockback, kritiska träffar, blödning, frysning, bedövning och
 livsdräneri. Flockarna är många och små — en hop snövargar är ett dussin
