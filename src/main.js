@@ -1,11 +1,11 @@
 // @ts-check
 import { createGame } from './game.js';
 import { createPlayer } from './entities/player.js';
-import { initInput, endFrameInput, keyPressed } from './core/input.js';
+import { initInput, endFrameInput, keyPressed, setInputEnabled } from './core/input.js';
 import { camera } from './render/camera.js';
 import { initRenderer, render, renderMinimap } from './render/renderer.js';
 import { updateHud, rebuildSkillbar, initNav, showTutorial, openHelp } from './ui/hud.js';
-import { renderPanels, anyPanelOpen } from './ui/panels.js';
+import { renderPanels, anyPanelOpen, closeAllPanels } from './ui/panels.js';
 import { moveTooltip, hideTooltip } from './ui/tooltip.js';
 import { listSaves, deleteSave, playerFromSave, describeSave, saveGame } from './systems/save.js';
 
@@ -35,6 +35,7 @@ function resize() {
 addEventListener('resize', resize);
 resize();
 initInput(canvas);
+setInputEnabled(false); // menyn äger tangentbordet tills ett spel startar
 
 addEventListener('mousemove', (e) => moveTooltip(e.clientX, e.clientY));
 canvas.addEventListener('mouseenter', hideTooltip);
@@ -236,8 +237,14 @@ function begin(player, progress, isNew, charId) {
   initNav(game);
   game.paused = true;
 
-  // Skydd: ingen ruta från ett tidigare läge får överleva in i ett nytt spel.
+  // Ren skiffer. Ingen ruta, ingen panel och ingen tangent från menyn får
+  // följa med in i spelet — det var så bokstäverna i karaktärsnamnet kunde
+  // öppna väskan i samma stund som spelet startade.
   for (const id of ['overlay', 'pause', 'levelup', 'tutorial']) $(id).classList.add('hidden');
+  closeAllPanels(game);
+  game.dropPending();
+  /** @type {HTMLElement} */ (document.activeElement)?.blur?.();
+  setInputEnabled(true);
 
   const resume = () => { if (game) game.paused = false; };
   if (isNew && !localStorage.getItem(TUTORIAL_KEY)) {
