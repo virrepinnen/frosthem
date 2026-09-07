@@ -162,6 +162,7 @@ export function pickup(game, g) {
     // mid-fight still pays out on the piles already lying there.
     const amount = Math.round(g.amount * (p.goldMult ?? 1));
     p.gold += amount;
+    if (game.run) game.run.gold += amount;
     floatText(p.pos.x, p.pos.y - 26, `+${amount} gold`, '#d8b26a', 15);
     burst(p.pos.x, p.pos.y - 6, 9, { color: '#e8c884', speed: 110, life: 0.5, size: 2, grav: 240 });
     game.dirtyUI = true;

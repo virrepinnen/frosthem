@@ -112,6 +112,7 @@ export function killMonster(game, m) {
   m.dead = true;
   m.corpseT = 14;
   game.player.kills++;
+  if (game.run) game.run.kills++;
   // A felled target grants breathing room. That keeps pack-clearing sustainable
   // while punishing missed swings — exactly the trade-off stamina should create.
   game.player.stamina = Math.min(game.player.maxStamina, game.player.stamina + KILL_STAMINA);

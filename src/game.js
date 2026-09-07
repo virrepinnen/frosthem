@@ -15,6 +15,7 @@ import { updateFx, clearFx, burst, floatText, screenFlash, shake } from './rende
 import { pushAlert, showOverlay, showLevelUp, hideLevelUp, levelUpOpen,
          showPauseMenu, hidePauseMenu, pauseMenuOpen, showZoneBanner } from './ui/hud.js';
 import { panels, togglePanel, closeAllPanels, anyPanelOpen } from './ui/panels.js';
+import { startRun, endRun, markDepth, newRunStats } from './systems/run.js';
 import { hideTooltip } from './ui/tooltip.js';
 import { saveGame } from './systems/save.js';
 import { COMBAT_REGEN, COMBAT_WINDOW } from './systems/stats.js';
@@ -41,6 +42,11 @@ export function createGame(existing, progress) {
     dirtyUI: true,
     playerSlow: 0,
     bossDefeated: progress?.bossDefeated ?? false,
+    /** How many runs this character has finished, and the deepest map reached. */
+    runs: progress?.runs ?? 0,
+    bestDepth: progress?.bestDepth ?? 0,
+    runNo: 0,
+    /** @type {ReturnType<typeof newRunStats>} */ run: newRunStats(),
     /** @type {string|undefined} The save slot's id; set on the first save. */
     charId: progress?.charId,
     victoryT: 3,
@@ -99,6 +105,14 @@ export function createGame(existing, progress) {
       }));
     },
     save() { const ok = saveGame(game); if (ok) game.alert('Saved.'); return ok; },
+    /** Starts a fresh run with the same character. Gear and gold stay. */
+    beginRun() {
+      startRun(game);
+      game.bossDefeated = false;
+      travel(game, 0);
+      game.alert(`${game.player.name} sets out again.`);
+      saveGame(game);
+    },
     /** @param {string} id Moves a skill to the next hotbar slot. */
     bindNext(id) { bindToHotbar(game.player, id, true); game.dirtyUI = true; },
     /** Kept for the panels' close handlers; there is nothing pending any more. */
@@ -153,6 +167,7 @@ function travel(game, to, from, opts = {}) {
   }
   game.groundVersion++;
   game.victoryT = 3;
+  markDepth(game, idx);
   clearFx();
 
   // An open portal only survives travel between its own two endpoints.
@@ -391,13 +406,47 @@ function update(game, dt) {
     if (!boss && game.victoryT <= 0) {
       game.bossDefeated = true;
       game.paused = true;
+      const summary = endRun(game, 'victory');
       saveGame(game);
-      showOverlay('Hravn has fallen',
-        `The barrow is silent. ${p.name} stands at level <b>${p.level}</b> with ${p.kills} enemies felled.<br><br>` +
-        'The wilderness fills itself again — zones are regenerated every time you enter them.',
-        'Continue', () => { game.paused = false; });
+      showOverlay('Hravn has fallen', runSummary(game, summary),
+        'Set out again',
+        () => {
+          startRun(game);
+          game.bossDefeated = false;
+          game.paused = false;
+          travel(game, 0);
+          saveGame(game);
+        });
     }
   }
+}
+
+/**
+ * The run summary. Deliberately reads as a receipt rather than a scolding: the
+ * top line is what you are bringing home, because that is the part that makes
+ * the next attempt start further along than this one did.
+ * @param {Game} game @param {ReturnType<typeof endRun>} s
+ */
+function runSummary(game, s) {
+  const p = game.player;
+  const carried = p.inventory.length + Object.values(p.equipment).filter(Boolean).length;
+  const head = s.cause === 'victory'
+    ? 'The cold in the barrow lets go. Whatever was keeping him has nothing left to keep.'
+    : 'The cold took you. Gerd drags you back to the hearth — with everything you were carrying.';
+  // The place you reached gets its own line: it is the headline of the run, and
+  // a long name like "Den frusna graven" wrapped to three lines when it had to
+  // share a row with the numbers.
+  return `<p>${head}</p>` +
+    `<div class="sum-depth"><i>as far as you got</i><b>${s.depthName}</b></div>` +
+    '<div class="sum">' +
+    `<div><b>${s.level}</b><i>level reached</i></div>` +
+    `<div><b>${s.kills}</b><i>felled</i></div>` +
+    `<div><b>${s.gold}</b><i>gold carried home</i></div>` +
+    '</div>' +
+    `<p class="sum-note">You keep <b>${p.gold} gold</b>, <b>${carried} items</b> and every skill rank ` +
+    'you have bought. The level and the blessings start over.' +
+    (s.record ? '<br><b>Deepest yet.</b>' : ` Deepest so far: <b>${s.bestName}</b>.`) +
+    '</p>';
 }
 
 /** @param {Game} game */
@@ -429,17 +478,18 @@ function updatePlayer(game, dt) {
     p.deathT -= dt;
     if (p.deathT <= 0 && !game.paused) {
       game.paused = true;
+      p.deaths++;
+      const summary = endRun(game, 'death');
       saveGame(game);
-      showOverlay('You fell in the snow',
-        'The cold took you. Gerd drags you back into Frosthem — you keep everything you carry.<br><br>' +
-        '<i>The death penalty is deliberately soft in the prototype; it is easy to sharpen once the balance settles.</i>',
-        'Wake in Frosthem',
+      showOverlay('You fell in the snow', runSummary(game, summary),
+        'Set out again',
         () => {
-          p.dead = false;
-          p.hp = p.maxHp; p.stamina = p.maxStamina; p.mana = p.maxMana;
-          p.swing = null; p.dash = null; p.whirl = null;
+          p.swing = null; p.dash = null; p.whirl = null; p.cast = null;
+          game.portal = null;
+          startRun(game);
           game.paused = false;
-          travel(game, 0, undefined, { keepPortal: true });
+          travel(game, 0);
+          saveGame(game);
         });
     }
     return;

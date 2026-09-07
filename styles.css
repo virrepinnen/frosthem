@@ -249,7 +249,7 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
 
 /* overlay */
 #overlay{position:fixed;inset:0;z-index:80;background:rgba(3,5,9,.86);display:grid;place-items:center}
-#overlay-box{text-align:center;max-width:440px;padding:32px}
+#overlay-box{text-align:center;max-width:560px;padding:32px}
 #overlay-box h1{font-size:30px;margin:0 0 10px;letter-spacing:.06em;color:var(--ink)}
 #overlay-box p{color:var(--muted);font-size:14px;line-height:1.6;margin:0 0 22px}
 #overlay-btn{background:none;border:1px solid var(--gold);color:var(--gold);font-family:var(--font);
@@ -474,3 +474,20 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
 .node.sk.buyable:hover{border-color:var(--gold);background:#18222f}
 .pot-count{display:inline-flex;align-items:center;gap:6px}
 .pot-count svg{width:15px;height:15px;color:#e05a72}
+
+/* ---------- run summary ---------- */
+/* A receipt, not a scolding: four numbers in a row, and one line underneath
+   about what comes home with you. */
+.sum-depth{margin:22px 0 10px;padding:14px 12px;border:1px solid rgba(216,178,106,.4);
+  border-radius:6px;background:rgba(216,178,106,.07)}
+.sum-depth i{display:block;font-style:normal;font-size:10px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--muted)}
+.sum-depth b{display:block;margin-top:5px;font-size:21px;letter-spacing:.05em;color:var(--gold);font-weight:500}
+.sum{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 0 18px}
+.sum > div{padding:12px 6px;border:1px solid var(--border);border-radius:6px;background:#0c121c}
+.sum b{display:block;font-family:var(--mono);font-size:20px;line-height:1.1;color:var(--gold)}
+.sum i{display:block;margin-top:5px;font-style:normal;font-size:10px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--muted)}
+#overlay-box .sum-note{font-size:12.5px;line-height:1.65;color:#93a6c0;margin-bottom:22px}
+#overlay-box .sum-note b{color:var(--ink)}
+@media (max-width:560px){ .sum{grid-template-columns:repeat(3,1fr)} .sum b{font-size:17px} }
