@@ -3,7 +3,7 @@ import { recalc, canEquip } from './stats.js';
 import { itemValue } from './loot.js';
 import { slotsFor, BAG_COLS, BAG_ROWS } from '../entities/player.js';
 import { itemSize } from '../data/items.js';
-import { floatText } from '../render/fx.js';
+import { floatText, burst } from '../render/fx.js';
 
 /** @typedef {import('../systems/loot.js').Item} Item */
 /** @typedef {import('../entities/player.js').Player} Player */
@@ -158,8 +158,12 @@ export function pickupNearby(game, radius = 110) {
 export function pickup(game, g) {
   const p = game.player;
   if (g.kind === 'gold') {
-    p.gold += g.amount;
-    floatText(p.pos.x, p.pos.y - 26, `+${g.amount} gold`, '#d8b26a', 13);
+    // Covetous applies on collection rather than on drop, so a blessing taken
+    // mid-fight still pays out on the piles already lying there.
+    const amount = Math.round(g.amount * (p.goldMult ?? 1));
+    p.gold += amount;
+    floatText(p.pos.x, p.pos.y - 26, `+${amount} gold`, '#d8b26a', 15);
+    burst(p.pos.x, p.pos.y - 6, 9, { color: '#e8c884', speed: 110, life: 0.5, size: 2, grav: 240 });
     game.dirtyUI = true;
     return true;
   }

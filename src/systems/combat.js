@@ -3,6 +3,7 @@ import { rng } from '../core/rng.js';
 import { angleDiff, clamp } from '../core/math.js';
 import { armorReduction, skillPower, rank, KILL_STAMINA } from './stats.js';
 import { rollItem } from './loot.js';
+import { RARITY_COLOR } from '../data/items.js';
 import { burst, floatText, decal, shake, screenFlash } from '../render/fx.js';
 import { lineBlocked } from './world.js';
 import { pickAttack } from '../render/hero.js';
@@ -121,7 +122,9 @@ export function killMonster(game, m) {
   if (m.isBoss) { shake(18); screenFlash(0.4, '#7fd4f0'); }
   else if (m.elite) shake(6);
 
-  const xpGain = m.xp * (1 + (game.player.xpBuff || 0));
+  // The buff is applied when the orbs are swept up, not when they drop —
+  // otherwise it would count twice.
+  const xpGain = m.xp;
   spawnXpOrbs(game, m.pos.x, m.pos.y, xpGain);
 
   dropLoot(game, m);
@@ -138,33 +141,55 @@ function dropLoot(game, m) {
   const ilvl = Math.max(1, m.level + (m.isBoss ? 4 : m.elite ? 2 : m.isChampion ? 1 : 0));
   const mf = p.magicFind;
 
-  // The drop rate is deliberately low. With automatic pickup every item would
-  // otherwise be noise in the bag — the rarity is the whole point.
+  // The drop rate is deliberately low, and lower than it was. With automatic
+  // pickup every item is otherwise noise in the bag — the rarity is the point,
+  // and a drop that happens once a pack should stop you where you stand.
   let itemRolls = 0, boost = 1;
-  if (m.isBoss) { itemRolls = 4; boost = 4; }
-  else if (m.elite) { itemRolls = rng.chance(0.5) ? 2 : 1; boost = 2.8; }
-  else if (m.isChampion) { itemRolls = rng.chance(0.35) ? 1 : 0; boost = 2; }
-  else if (rng.chance(0.045)) itemRolls = 1;
+  if (m.isBoss) { itemRolls = 3; boost = 4.5; }
+  else if (m.elite) { itemRolls = rng.chance(0.35) ? 2 : 1; boost = 3.2; }
+  else if (m.isChampion) { itemRolls = rng.chance(0.2) ? 1 : 0; boost = 2.4; }
+  else if (rng.chance(0.02)) itemRolls = 1;
 
   for (let i = 0; i < itemRolls; i++) {
-    const forced = m.isBoss && i === 0 ? /** @type {const} */ ('rare') : undefined;
+    const forced = m.isBoss ? /** @type {const} */ ('rare') : undefined;
     const item = rollItem(ilvl, { mf, boost, forceRarity: forced });
     if (!item) continue;
-    // White junk mostly falls away entirely rather than littering the ground.
-    if (item.rarity === 'normal' && !m.isBoss && rng.chance(0.85)) continue;
+    // Plain white junk never reaches the ground outside chests. If a drop is
+    // this rare it had better be worth looking at.
+    if (item.rarity === 'normal' && !m.isBoss) continue;
     spawnGround(game, m.pos.x, m.pos.y, { kind: 'item', item });
+    announceDrop(game, item, m.pos.x, m.pos.y);
   }
 
-  // Fewer but heavier piles: the ground got cluttered with gold after every pack.
-  const goldChance = m.isBoss ? 1 : m.elite ? 1 : m.isChampion ? 0.5 : 0.2;
+  // Fewer but heavier piles. Gold now buys skill ranks at the hearth, so each
+  // pile is a step towards something rather than a number ticking up.
+  const goldChance = m.isBoss ? 1 : m.elite ? 1 : m.isChampion ? 0.4 : 0.1;
   if (rng.chance(goldChance)) {
     const base = 4 + m.level * 3.2;
-    const amount = Math.round(base * rng.range(0.6, 1.8) * (m.isBoss ? 14 : m.elite ? 5 : m.isChampion ? 2.4 : 3.2));
+    const amount = Math.round(base * rng.range(0.7, 1.7) * (m.isBoss ? 16 : m.elite ? 6 : m.isChampion ? 3.2 : 4));
     spawnGround(game, m.pos.x, m.pos.y, { kind: 'gold', amount });
   }
   if (rng.chance(m.isBoss ? 1 : m.elite ? 0.5 : 0.07)) {
     spawnGround(game, m.pos.x, m.pos.y, { kind: 'potion', amount: m.isBoss ? 5 : 1 });
   }
+}
+
+/**
+ * The moment a drop lands. A rare or unique should register before you have
+ * read the label — a burst in its own colour, and for the best of them a flash
+ * and a line in the notices, so you look up rather than walk past.
+ * @param {any} game @param {any} item @param {number} x @param {number} y
+ */
+export function announceDrop(game, item, x, y) {
+  const col = RARITY_COLOR[item.rarity];
+  const big = item.rarity === 'rare' || item.rarity === 'unique';
+  burst(x, y, big ? 34 : 14, {
+    color: col, speed: big ? 190 : 110, life: big ? 1.1 : 0.6,
+    size: big ? 3 : 2.2, grav: -60,
+  });
+  if (!big) return;
+  screenFlash(item.rarity === 'unique' ? 0.24 : 0.14, col);
+  game.alert(`${item.rarity === 'unique' ? 'Unique' : 'Rare'}: ${item.name}`);
 }
 
 /** @param {any} game @param {number} x @param {number} y @param {any} payload */
@@ -195,27 +220,37 @@ export function performSwing(game, o) {
   const dir = o.dir ?? p.facing;
   let hits = 0;
 
+  // Wide Arc stretches both how far and how wide a swing reaches. The arc is
+  // capped so a full circle stays a full circle rather than wrapping past it.
+  const reach = o.reach * (p.reachMult ?? 1);
+  const arc = Math.min(Math.PI * 2, o.arc * (p.reachMult ?? 1));
+  // Double Strike rolls once per swing, not per target: a swing lands twice or
+  // it does not, which reads clearly and keeps the numbers honest.
+  const twice = (p.doubleStrike ?? 0) > 0 && rng.chance(p.doubleStrike);
+
   for (const m of game.monsters) {
     if (m.dead) continue;
     const dx = m.pos.x - p.pos.x, dy = m.pos.y - p.pos.y;
     const d = Math.hypot(dx, dy);
-    if (d > o.reach + m.radius) continue;
-    if (o.arc < Math.PI * 1.99 && angleDiff(Math.atan2(dy, dx), dir) > o.arc / 2) continue;
+    if (d > reach + m.radius) continue;
+    if (arc < Math.PI * 1.99 && angleDiff(Math.atan2(dy, dx), dir) > arc / 2) continue;
     // No damage through rock walls — you could clear the whole quarry from outside.
     if (lineBlocked(game.zone, p.pos.x, p.pos.y, m.pos.x, m.pos.y)) continue;
 
-    const roll = rng.range(p.dmgMin, p.dmgMax) * o.mult * (1 + p.dmgBuff + (p.shrineDmg || 0));
-    const crit = rng.chance(p.critChance / 100);
-    const phys = crit ? roll * (p.critMult / 100) : roll;
     const elemScale = 0.5 + 0.5 * o.mult;
-
-    hitMonster(game, m, {
-      phys,
-      cold: (p.coldDmg + (o.cold ?? 0)) * elemScale,
-      fire: p.fireDmg * elemScale,
-      light: p.lightDmg * elemScale,
-      crit, ignoreArmor: o.ignoreArmor,
-    });
+    for (let strike = 0; strike < (twice ? 2 : 1); strike++) {
+      if (m.dead) break;
+      const roll = rng.range(p.dmgMin, p.dmgMax) * o.mult * (1 + p.dmgBuff + (p.shrineDmg || 0));
+      const crit = rng.chance(p.critChance / 100);
+      const phys = crit ? roll * (p.critMult / 100) : roll;
+      hitMonster(game, m, {
+        phys,
+        cold: (p.coldDmg + (o.cold ?? 0)) * elemScale,
+        fire: p.fireDmg * elemScale,
+        light: p.lightDmg * elemScale,
+        crit, ignoreArmor: o.ignoreArmor,
+      });
+    }
 
     if (o.bleed) applyBleed(m, o.bleed.dps, o.bleed.dur);
     if (o.stun) applyStun(m, o.stun);
@@ -235,7 +270,7 @@ export function performSwing(game, o) {
   const stretch = variant === 'overhead' ? 1.5 : variant === 'thrust' ? 1.2 : 1;
   p.swing = {
     t: 0, dur: Math.max(0.16, 0.3 / p.attackSpeed) * stretch,
-    dir, arc: o.arc, reach: o.reach, kind: o.kind, variant,
+    dir, arc, reach, kind: o.kind, variant,
   };
   if (hits) shake(o.kind === 'basic' ? 1.6 : 3.4);
   return hits;

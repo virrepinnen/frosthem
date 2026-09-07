@@ -5,6 +5,7 @@ import { initInput, endFrameInput, keyPressed, setInputEnabled } from './core/in
 import { camera, PROJ } from './render/camera.js';
 import { initRenderer, render, renderMinimap } from './render/renderer.js';
 import { updateHud, rebuildSkillbar, initNav, showTutorial, openHelp } from './ui/hud.js';
+import { glyph } from './ui/glyphs.js';
 import { renderPanels, anyPanelOpen, closeAllPanels } from './ui/panels.js';
 import { moveTooltip, hideTooltip } from './ui/tooltip.js';
 import { listSaves, deleteSave, playerFromSave, describeSave, saveGame } from './systems/save.js';
@@ -57,12 +58,12 @@ let starting = false;
 
 /** Classes. Only the Barbarian exists — the others are shown to say where this is going. */
 const CLASSES = [
-  { id: 'barbarian', icon: '🪓', name: 'Barbarian', tag: 'Melee · Steel · Frost · Endurance',
+  { id: 'barbarian', icon: 'axe', name: 'Barbarian', tag: 'Melee · Steel · Frost · Endurance',
     desc: 'Takes the hit up close. Starts with nothing and becomes whatever you equip.',
     ready: true },
-  { id: 'hunter', icon: '🏹', name: 'Hunter', tag: 'Ranged · coming later',
+  { id: 'hunter', icon: 'bow', name: 'Hunter', tag: 'Ranged · coming later',
     desc: 'Keeps her distance and lives on never being surrounded.', ready: false },
-  { id: 'frostcaller', icon: '❄️', name: 'Frostcaller', tag: 'Magic · coming later',
+  { id: 'frostcaller', icon: 'wintergrasp', name: 'Frostcaller', tag: 'Magic · coming later',
     desc: 'Turns the winter against those who live in it.', ready: false },
 ];
 
@@ -139,7 +140,7 @@ function renderClassList() {
   for (const c of CLASSES) {
     const card = document.createElement('div');
     card.className = 'class-card' + (c.ready ? ' on' : ' locked');
-    card.innerHTML = `<div class="cc-ico">${c.icon}</div><div class="cc-t">` +
+    card.innerHTML = `<div class="cc-ico">${glyph(c.icon, 1.3)}</div><div class="cc-t">` +
       `<b>${c.name}</b><i>${c.tag}</i><span>${c.desc}</span></div>`;
     host.appendChild(card);
   }

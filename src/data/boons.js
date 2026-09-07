@@ -1,0 +1,129 @@
+// @ts-check
+/**
+ * Boons — the cards you pick when you level up.
+ *
+ * The model is Halls of Torment's traits, and the reason is the same: a level-up
+ * should be *one click*, not a window you have to administrate. So every boon is
+ * a flat, legible number, and the interesting decision is which direction you
+ * lean, not how you split four points four ways.
+ *
+ * Ranks open with level, which keeps early choices simple and lets late choices
+ * be worth waiting for. `at[i]` is the level required for rank i+1.
+ *
+ * @typedef {Object} BoonDef
+ * @property {string} id
+ * @property {string} name
+ * @property {string} icon    Glyph name from ui/glyphs.js
+ * @property {'offence'|'defence'|'utility'} group
+ * @property {number[]} at    Level required for each rank, one entry per rank
+ * @property {number} [weight] Draw weight (default 10)
+ * @property {(r:number)=>string} line  What one more rank gives, in words
+ * @property {Record<string,number>} per Stat gained per rank; folded in by recalc
+ */
+
+/**
+ * Rank thresholds shared by the ordinary boons. They are pitched against the
+ * levels a run actually reaches — around 16 for a normal pass, 19 for a full
+ * clear — so the fifth rank is something the last stretch can just about buy,
+ * not a number in a table nobody ever sees.
+ */
+const BASIC = [1, 4, 8, 13, 19];
+/** The rarer boons only enter the pool once the build has shape. */
+const HIGH = [10, 16, 24];
+
+/** @type {BoonDef[]} */
+export const BOONS = [
+  // ---- offence -------------------------------------------------------------
+  {
+    id: 'edge', name: 'Whetted', icon: 'edge', group: 'offence', at: BASIC,
+    per: { dmgPct: 8 },
+    line: (r) => `+8% weapon damage (rank ${r} → +${r * 8}%)`,
+  },
+  {
+    id: 'swift', name: 'Swift Arm', icon: 'swift', group: 'offence', at: BASIC,
+    per: { attackSpeed: 7 },
+    line: (r) => `+7% attack speed (rank ${r} → +${r * 7}%)`,
+  },
+  {
+    id: 'keen', name: 'Keen Edge', icon: 'crit', group: 'offence', at: BASIC,
+    per: { critChance: 2, critMult: 8 },
+    line: (r) => `+2% critical hit, +8% critical damage (rank ${r})`,
+  },
+  {
+    id: 'heavyhand', name: 'Heavy Hand', icon: 'weight', group: 'offence', at: BASIC,
+    per: { dmgFlat: 2 },
+    line: (r) => `+2 damage on every hit (rank ${r} → +${r * 2})`,
+  },
+
+  // ---- defence -------------------------------------------------------------
+  {
+    id: 'hardy', name: 'Hardy', icon: 'vit', group: 'defence', at: BASIC,
+    per: { life: 18 },
+    line: (r) => `+18 maximum life (rank ${r} → +${r * 18})`,
+  },
+  {
+    id: 'tempered', name: 'Tempered', icon: 'shield', group: 'defence', at: BASIC,
+    per: { armor: 6 },
+    line: (r) => `+6 armour (rank ${r} → +${r * 6})`,
+  },
+  {
+    id: 'knitting', name: 'Knitting Flesh', icon: 'regen', group: 'defence', at: BASIC,
+    per: { lifeRegen: 0.6 },
+    line: (r) => `+0.6 life per second (rank ${r} → +${(r * 0.6).toFixed(1)}/s)`,
+  },
+  {
+    id: 'coldblooded', name: 'Coldblooded', icon: 'resist', group: 'defence', at: BASIC,
+    per: { resAll: 6 },
+    line: (r) => `+6% to all resistances (rank ${r} → +${r * 6}%)`,
+  },
+
+  // ---- utility -------------------------------------------------------------
+  {
+    id: 'lightfoot', name: 'Light Footed', icon: 'boot', group: 'utility', at: BASIC,
+    per: { moveSpeed: 7 },
+    line: (r) => `+7% movement speed (rank ${r} → +${r * 7}%)`,
+  },
+  {
+    id: 'breath', name: 'Second Breath', icon: 'secondwind', group: 'utility', at: BASIC,
+    per: { stamina: 12, staminaRegen: 1.5 },
+    line: (r) => `+12 stamina, +1.5 stamina per second (rank ${r})`,
+  },
+  {
+    id: 'ravenous', name: 'Ravenous', icon: 'leech', group: 'utility', at: BASIC,
+    per: { lifeSteal: 0.5 },
+    line: (r) => `+0.5% life steal (rank ${r} → +${(r * 0.5).toFixed(1)}%)`,
+  },
+  {
+    id: 'widearc', name: 'Wide Arc', icon: 'arc', group: 'utility', at: BASIC,
+    per: { reachPct: 8 },
+    line: (r) => `+8% reach and arc on your swings (rank ${r} → +${r * 8}%)`,
+  },
+  {
+    id: 'studious', name: 'Studious', icon: 'scroll', group: 'utility', at: BASIC, weight: 7,
+    per: { xpPct: 12 },
+    line: (r) => `+12% experience (rank ${r} → +${r * 12}%)`,
+  },
+  {
+    id: 'covetous', name: 'Covetous', icon: 'coinstar', group: 'utility', at: BASIC, weight: 7,
+    per: { goldPct: 15, magicFind: 10 },
+    line: (r) => `+15% gold, +10% magic find (rank ${r})`,
+  },
+
+  // ---- rarer, and only once the build has shape ----------------------------
+  {
+    id: 'twinstrike', name: 'Double Strike', icon: 'twin', group: 'offence', at: HIGH, weight: 5,
+    per: { doubleStrike: 8 },
+    line: (r) => `${r * 8}% chance for a swing to land twice`,
+  },
+  {
+    id: 'frostborn', name: 'Frostborn', icon: 'wintergrasp', group: 'offence', at: HIGH, weight: 5,
+    per: { coldDmg: 9, freezeChance: 4 },
+    line: (r) => `+9 cold damage, +4% chance to freeze (rank ${r})`,
+  },
+];
+
+/** @type {Map<string, BoonDef>} */
+export const BOON_BY_ID = new Map(BOONS.map(b => [b.id, b]));
+
+/** Roman numerals for the rank badge; boons never go past five ranks. */
+export const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];

@@ -3,7 +3,8 @@ import { createPlayer, HOTBAR_SIZE, bindToHotbar, PORTAL_CAST, PORTAL_STEP } fro
 import { generateZone, resolveCollision, lineBlocked, revealFog, ZONE_DEFS } from './systems/world.js';
 import { populateZone } from './systems/spawn.js';
 import { updateMonsters, updateProjectiles } from './systems/ai.js';
-import { performSwing, useSkill, drinkPotion, hitMonster, applyFreeze, spawnGround } from './systems/combat.js';
+import { performSwing, useSkill, drinkPotion, hitMonster, applyFreeze, spawnGround,
+  announceDrop } from './systems/combat.js';
 import { pickup, canAdd } from './systems/inventory.js';
 import { updateOrbs } from './systems/orbs.js';
 import { rollItem } from './systems/loot.js';
@@ -16,7 +17,6 @@ import { pushAlert, showOverlay, showLevelUp, hideLevelUp, levelUpOpen,
 import { panels, togglePanel, closeAllPanels, anyPanelOpen } from './ui/panels.js';
 import { hideTooltip } from './ui/tooltip.js';
 import { saveGame } from './systems/save.js';
-import { createPending, hasPending, resetPending } from './systems/allocation.js';
 import { COMBAT_REGEN, COMBAT_WINDOW } from './systems/stats.js';
 import { rng } from './core/rng.js';
 import { clamp } from './core/math.js';
@@ -59,11 +59,10 @@ export function createGame(existing, progress) {
     time: 0,
     paused: false,
     saveT: 0,
-    levelUpPending: 0,
     settings: { autoAim: true, autoAttack: true },
-    /** Pending point allocation — confirmed or undone by the player. */
-    pending: createPending(),
     /** @type {'steel'|'frost'|'endurance'} */ skillTab: 'steel',
+    /** True while the skill panel is open *as the shop*, at the hearth. */
+    atHearth: false,
 
     /** @param {string} t */
     alert(t) { pushAlert(t); },
@@ -79,7 +78,7 @@ export function createGame(existing, progress) {
       floatText(p.pos.x, p.pos.y - 62, `LEVEL ${p.level}`, '#ffd88a', 26);
       screenFlash(0.34, '#d8b26a');
       shake(7);
-      game.levelUpPending = (game.levelUpPending || 0) + levels;
+      void levels;   // the count lives on the player, as boonPicks
     },
     /** @param {string} id */
     tryUseSkill(id) { if (useSkill(game, id)) game.dirtyUI = true; },
@@ -102,8 +101,8 @@ export function createGame(existing, progress) {
     save() { const ok = saveGame(game); if (ok) game.alert('Saved.'); return ok; },
     /** @param {string} id Moves a skill to the next hotbar slot. */
     bindNext(id) { bindToHotbar(game.player, id, true); game.dirtyUI = true; },
-    /** Discards pending points — used when closing without confirming. */
-    dropPending() { if (hasPending(game.pending)) { resetPending(game.pending); game.dirtyUI = true; } },
+    /** Kept for the panels' close handlers; there is nothing pending any more. */
+    dropPending() {},
     togglePause() {
       if (pauseMenuOpen()) { hidePauseMenu(); game.paused = false; }
       else { game.paused = true; showPauseMenu(game); }
@@ -370,12 +369,12 @@ function update(game, dt) {
   updateFx(dt);
   updateCamera(game, dt);
 
-  if (game.levelUpPending > 0 && !game.paused) {
-    const levels = game.levelUpPending;
-    game.levelUpPending = 0;
+  // A card is owed whenever a level was gained. The window deals a fresh hand
+  // per pick, so several levels at once still resolve in a click each.
+  if (game.player.boonPicks > 0 && !game.paused && !levelUpOpen()) {
     game.paused = true;
     saveGame(game);
-    showLevelUp(game, levels);
+    showLevelUp(game, game.player.boonPicks);
   }
 
   if (!game.bossDefeated && game.zone.bossAt) {
@@ -402,7 +401,12 @@ function handleUiKeys(game) {
   if (keyPressed('escape')) {
     // Esc first clears whatever lies on top, and only pauses once the screen is
     // clean.
-    if (levelUpOpen()) { game.dropPending(); hideLevelUp(); closeAllPanels(game); game.paused = false; }
+    // Esc on the card window skips the pick, exactly like the Skip button.
+    // Merely hiding it would not do: the loop would deal a new hand next frame.
+    if (levelUpOpen()) {
+      game.player.boonPicks = 0;
+      hideLevelUp(); closeAllPanels(game); game.paused = false;
+    }
     else if (anyPanelOpen()) { game.dropPending(); closeAllPanels(game); }
     else game.togglePause();
   }
@@ -578,8 +582,16 @@ function updatePlayer(game, dt) {
     if (Math.hypot(p.pos.x - s.x, p.pos.y - s.y) > s.r + p.radius) continue;
     activateShrine(game, s);
   }
-  // Walk away from Gerd and the trade closes itself — you should not have to
-  // dismiss a panel you already left.
+  // Walk away from the hearth and the shop closes itself, the same way the
+  // trade does. A panel you have already left should not need dismissing.
+  if (game.atHearth) {
+    const h = zone.obstacles.find(o => o.type === 'hearth');
+    if (!h || Math.hypot(p.pos.x - /** @type {any} */ (h).x, p.pos.y - /** @type {any} */ (h).y) > 170) {
+      game.atHearth = false;
+      panels.skills = false;
+      game.dirtyUI = true;
+    }
+  }
   if (panels.vendor) {
     const gerd = zone.npcs.find(n => n.id === 'gerd');
     if (!gerd || Math.hypot(p.pos.x - gerd.x, p.pos.y - gerd.y) > 190) {
@@ -756,6 +768,14 @@ export function findInteract(game) {
         label: 'Travel' };
     }
   }
+  // The hearth is where the skill trees are bought. Putting the shop on the
+  // fire rather than on a menu keeps the village a place you go to.
+  const hearth = game.zone.isTown
+    ? game.zone.obstacles.find(o => o.type === 'hearth') : null;
+  if (hearth && near(/** @type {any} */ (hearth), 104)) {
+    return { kind: 'hearth', obj: hearth, x: /** @type {any} */ (hearth).x,
+      y: /** @type {any} */ (hearth).y - 96, label: 'Train' };
+  }
   const wp = game.zone.waypoint;
   if (wp && near(wp, wp.r + 46)) {
     return { kind: 'waypoint', obj: wp, x: wp.x, y: wp.y - 108, label: 'Use' };
@@ -768,7 +788,7 @@ export function findInteract(game) {
   for (const n of game.zone.npcs) {
     if (near(n, 115)) {
       return { kind: 'npc', obj: n, x: n.x, y: n.y - 64,
-        label: n.id === 'gerd' ? 'Handla' : 'Tala' };
+        label: n.id === 'gerd' ? 'Trade' : 'Talk' };
     }
   }
   return null;
@@ -793,6 +813,11 @@ function interact(game) {
       game.dirtyUI = true;
       break;
     case 'chest': openChest(game, hit.obj); break;
+    case 'hearth':
+      game.atHearth = true;
+      panels.skills = true;
+      game.dirtyUI = true;
+      break;
     case 'npc':
       if (hit.obj.id === 'gerd') { panels.vendor = true; panels.inventory = true; game.dirtyUI = true; }
       else game.alert(`${hit.obj.name}: ${hit.obj.line}`);
@@ -805,12 +830,16 @@ function openChest(game, c) {
   const p = game.player;
   c.opened = true;
   const ilvl = game.zone.level + 3;
+  // Chests are the one place white items still appear: a chest that spills
+  // three things reads as a find even when one of them is plain.
   const n = 3 + Math.floor(rng.range(0, 2.99));
   for (let i = 0; i < n; i++) {
-    const item = rollItem(ilvl, { mf: p.magicFind, boost: 2.2 });
-    if (item) spawnGround(game, c.x, c.y + 20, { kind: 'item', item });
+    const item = rollItem(ilvl, { mf: p.magicFind, boost: 2.6 });
+    if (!item) continue;
+    spawnGround(game, c.x, c.y + 20, { kind: 'item', item });
+    announceDrop(game, item, c.x, c.y + 20);
   }
-  spawnGround(game, c.x, c.y + 20, { kind: 'gold', amount: Math.round(40 + game.zone.level * 26 * rng.range(0.8, 1.6)) });
+  spawnGround(game, c.x, c.y + 20, { kind: 'gold', amount: Math.round(70 + game.zone.level * 34 * rng.range(0.8, 1.6)) });
   burst(c.x, c.y - 10, 40, { color: '#d8b26a', speed: 200, life: 0.9, size: 3, grav: -30 });
   game.alert('The chest was not empty.');
   shake(4);

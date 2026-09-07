@@ -2,8 +2,10 @@
 import { EQUIP_SLOTS, SLOT_LABEL, BAG_COLS, BAG_ROWS, HOTBAR_SIZE } from '../entities/player.js';
 import { RARITY_COLOR } from '../data/items.js';
 import { recalc, RES_CAP } from '../systems/stats.js';
-import { attributeCards, skillTreeEl, confirmBar, pointsBadge, statPointsLeft, skillPointsLeft }
-  from './alloc-ui.js';
+import { skillTreeEl } from './skill-ui.js';
+import { heldBoons } from '../systems/boons.js';
+import { ROMAN } from '../data/boons.js';
+import { glyph, KIND_GLYPH } from './glyphs.js';
 import { equip, unequip, dropItem, sellItem, packBag, bagUsage } from '../systems/inventory.js';
 import { itemValue } from '../systems/loot.js';
 import { showItemTooltip, showTextTooltip, hideTooltip, escape } from './tooltip.js';
@@ -98,7 +100,7 @@ function inventoryPanel(game) {
     c.className = 'eq' + (item ? ' filled' : '');
     c.dataset.slot = slot;
     c.innerHTML = item
-      ? `<div class="ic">${item.base.icon}</div><div class="nm" style="color:${RARITY_COLOR[item.rarity]}">${escape(shorten(item.name))}</div>`
+      ? `<div class="ic">${glyph(KIND_GLYPH[item.base.kind] ?? 'ring')}</div><div class="nm" style="color:${RARITY_COLOR[item.rarity]}">${escape(shorten(item.name))}</div>`
       : SLOT_LABEL[slot];
     if (item) {
       c.onmouseenter = () => showItemTooltip(item, p, null, 'Click to take off');
@@ -111,7 +113,7 @@ function inventoryPanel(game) {
 
   const info = document.createElement('div');
   info.className = 'row';
-  info.innerHTML = `<span>Potions</span><span>🧪 ${p.potions}</span>`;
+  info.innerHTML = `<span>Potions</span><span class="pot-count">${glyph('potion')} ${p.potions}</span>`;
   d.appendChild(info);
 
   const usage = bagUsage(p.inventory);
@@ -139,7 +141,7 @@ function inventoryPanel(game) {
     c.className = 'bag-item ' + rarityClass[item.rarity];
     c.style.gridColumn = `${slotted.x + 1} / span ${slotted.w}`;
     c.style.gridRow = `${slotted.y + 1} / span ${slotted.h}`;
-    c.innerHTML = `<span class="bi-ico">${item.base.icon}</span>`;
+    c.innerHTML = `<span class="bi-ico">${glyph(KIND_GLYPH[item.base.kind] ?? 'ring')}</span>`;
     const eqSlot = item.base.slot === 'ring' ? (p.equipment.ring1 ? 'ring2' : 'ring1') : item.base.slot;
     const cur = /** @type {Item|null} */ (p.equipment[eqSlot] ?? null);
     c.onmouseenter = () => showItemTooltip(item, p, cur,
@@ -164,7 +166,7 @@ function shorten(s) { return s.length > 20 ? s.slice(0, 18) + '…' : s; }
 /** @param {any} game */
 function characterPanel(game) {
   const p = game.player;
-  const d = shell(escape(p.name || 'Barbaren'), 'left', () => { panels.character = false; game.dirtyUI = true; });
+  const d = shell(escape(p.name || 'Barbarian'), 'left', () => { panels.character = false; game.dirtyUI = true; });
 
   /** @param {string} label @param {string} value @param {string} [tip] */
   const row = (label, value, tip) => {
@@ -184,11 +186,28 @@ function characterPanel(game) {
   d.appendChild(row('Enemies felled', String(p.kills)));
   d.appendChild(row('Deaths', String(p.deaths)));
 
-  d.appendChild(g('Attributes'));
-  d.appendChild(pointsBadge(statPointsLeft(p, game.pending), 'attribute points to spend', '✦'));
-  d.appendChild(attributeCards(game, () => { game.dirtyUI = true; }));
-  const cbar = confirmBar(game, 'stats', () => { game.dirtyUI = true; });
-  if (cbar) d.appendChild(cbar);
+  // Blessings replaced the attribute block. They are the record of the choices
+  // made on level-up, so this is where you read back what the character became.
+  const boons = heldBoons(p);
+  d.appendChild(g('Blessings'));
+  if (!boons.length) {
+    const none = document.createElement('div');
+    none.className = 'tt-req';
+    none.textContent = 'None yet — the first arrives with your next level.';
+    d.appendChild(none);
+  } else {
+    const list = document.createElement('div');
+    list.className = 'boon-list';
+    for (const { def, rank } of boons) {
+      const it = document.createElement('div');
+      it.className = 'boon-held ' + def.group;
+      it.innerHTML = `<div class="bh-ico">${glyph(def.icon, 1.4)}</div>` +
+        `<div class="bh-t"><b>${escape(def.name)}</b><i>${escape(def.line(rank))}</i></div>` +
+        `<div class="bh-rk">${ROMAN[rank] ?? rank}</div>`;
+      list.appendChild(it);
+    }
+    d.appendChild(list);
+  }
 
   d.appendChild(g('Combat'));
   d.appendChild(row('Damage', `${p.dmgMin}–${p.dmgMax}`));
@@ -217,19 +236,23 @@ function characterPanel(game) {
     '<div class="tt-name">Stamina</div><div class="tt-core">Every swing and every skill costs. ' +
     'In combat you recover at only 40% — break contact for the full rate.</div>' +
     '<div class="tt-req">Every enemy felled gives 8 back.</div>'));
-  d.appendChild(row('Kostnad per svep', (p.attackCost ?? 8).toFixed(1)));
+  d.appendChild(row('Cost per swing', (p.attackCost ?? 8).toFixed(1)));
   d.appendChild(row('Regeneration', `${p.staminaRegen.toFixed(1)}/s · ${(p.staminaRegen * 0.4).toFixed(1)}/s in combat`));
 
   d.appendChild(g('Mana'));
   d.appendChild(row('Max mana', String(p.maxMana),
     '<div class="tt-name">Mana</div><div class="tt-core">Only Frost skills draw mana. ' +
     'It refills at a steady rate and does not care whether you are fighting.</div>' +
-    '<div class="tt-req">Intelligence is the only attribute that raises it.</div>'));
+    '<div class="tt-req">Gear and blessings are what raise it.</div>'));
   d.appendChild(row('Regeneration', `${p.manaRegen.toFixed(1)}/s`));
 
   d.appendChild(g('Other'));
   d.appendChild(row('Movement speed', `${Math.round(p.moveSpeed)}`));
   d.appendChild(row('Magic find', `+${p.magicFind}%`));
+  if (p.reachMult > 1) d.appendChild(row('Reach', `+${Math.round((p.reachMult - 1) * 100)}%`));
+  if (p.doubleStrike > 0) d.appendChild(row('Double strike', `${Math.round(p.doubleStrike * 100)}%`));
+  if (p.xpMult > 1) d.appendChild(row('Experience', `+${Math.round((p.xpMult - 1) * 100)}%`));
+  if (p.goldMult > 1) d.appendChild(row('Gold found', `+${Math.round((p.goldMult - 1) * 100)}%`));
   return d;
 }
 
@@ -237,15 +260,26 @@ function characterPanel(game) {
 /* Skill trees                                                         */
 /* ------------------------------------------------------------------ */
 
-/** @param {any} game */
+/**
+ * Out in the wilderness this is a read-only overview. At the hearth it is the
+ * shop — same tree, but every node grows a price tag.
+ * @param {any} game
+ */
 function skillsPanel(game) {
   const p = game.player;
-  const d = shell('Skills', 'left', () => { game.dropPending(); panels.skills = false; game.dirtyUI = true; });
+  const shop = !!game.atHearth;
+  const d = shell(shop ? 'The Hearth' : 'Skills', 'left',
+    () => { panels.skills = false; game.atHearth = false; game.dirtyUI = true; });
   const redraw = () => { game.dirtyUI = true; };
-  d.appendChild(pointsBadge(skillPointsLeft(p, game.pending), 'skill points to spend', '🌟'));
-  d.appendChild(skillTreeEl(game, redraw));
-  const bar = confirmBar(game, 'skills', redraw);
-  if (bar) d.appendChild(bar);
+
+  const head = document.createElement('div');
+  head.className = 'shop-head';
+  head.innerHTML = shop
+    ? `<span>Buy ranks with gold.</span><span class="shop-gold">${p.gold}g</span>`
+    : '<span>What you have learned. Ranks are bought at the hearth in Frosthem.</span>';
+  d.appendChild(head);
+
+  d.appendChild(skillTreeEl(game, { shop }, redraw));
   return d;
 }
 
@@ -266,9 +300,9 @@ function waypointPanel(game) {
   for (const z of game.waypointList()) {
     const row = document.createElement('div');
     row.className = 'node' + (z.known ? '' : ' locked');
-    row.innerHTML = `<div class="ico">${z.index === 0 ? '🔥' : '🗿'}</div>` +
+    row.innerHTML = `<div class="ico">${glyph(z.index === 0 ? 'hearth' : 'waystone')}</div>` +
       `<div class="t"><b>${escape(z.name)}</b><i>${z.known ? (z.index === 0 ? 'The village' : `Monster level ${z.level}`) : 'Not discovered'}</i></div>` +
-      `<div class="rk">${z.here ? 'here' : z.known ? '→' : '🔒'}</div>`;
+      `<div class="rk">${z.here ? 'here' : z.known ? '→' : glyph('lock')}</div>`;
     row.style.marginBottom = '6px';
     if (z.known && !z.here) row.onclick = () => { game.travelToWaypoint(z.index); closeAllPanels(game); };
     d.appendChild(row);
@@ -304,14 +338,14 @@ function vendorPanel(game) {
     };
     d.appendChild(b);
   };
-  offer('🧪', 'Health potion', 'Restores 45% of your life', potionPrice, () => p.potions++);
-  offer('🧪', 'Five health potions', 'Fill the belt before the wild', potionPrice * 5, () => { p.potions += 5; });
+  offer('potion', 'Health potion', 'Restores 45% of your life', potionPrice, () => p.potions++);
+  offer('potion', 'Five health potions', 'Fill the belt before the wild', potionPrice * 5, () => { p.potions += 5; });
 
   const junk = p.inventory.filter((/** @type {Item} */ i) => i.rarity === 'normal');
   const junkGold = junk.reduce((/** @type {number} */ a, /** @type {Item} */ i) => a + itemValue(i), 0);
   const sellAll = document.createElement('div');
   sellAll.className = 'node';
-  sellAll.innerHTML = `<div class="ico">🪙</div><div class="t"><b>Sell all common</b><i>${junk.length} items</i></div><div class="rk">+${junkGold}g</div>`;
+  sellAll.innerHTML = `<div class="ico">${glyph('gold')}</div><div class="t"><b>Sell all common</b><i>${junk.length} items</i></div><div class="rk">+${junkGold}g</div>`;
   sellAll.onclick = () => { for (const i of junk.slice()) sellItem(game, i); game.autosave?.(); };
   d.appendChild(sellAll);
 

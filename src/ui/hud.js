@@ -1,20 +1,20 @@
 // @ts-check
 import { camera, PROJ } from '../render/camera.js';
-import { SKILL_BY_ID } from '../data/skills.js';
+import { SKILL_BY_ID, SKILLS } from '../data/skills.js';
+import { canBuy } from '../systems/skillshop.js';
 import { HOTBAR_SIZE } from '../entities/player.js';
 import { showTextTooltip, hideTooltip, escape } from './tooltip.js';
 import { panels, togglePanel, closeAllPanels } from './panels.js';
-import { attributeCards, skillTreeEl, confirmBar, pointsBadge, statPointsLeft, skillPointsLeft,
-  pendingStats, pendingSkills } from './alloc-ui.js';
-import { commitPending } from '../systems/allocation.js';
-
+import { drawBoons, takeBoon, boonRank } from '../systems/boons.js';
+import { ROMAN } from '../data/boons.js';
+import { glyph } from './glyphs.js';
 import { saveGame } from '../systems/save.js';
 
 const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (document.getElementById(id));
 
 /**
- * Restarts a flash only when it is actually new — otherwise it would
- * animationen aldrig hinna spela klart mellan bildrutorna.
+ * Restarts a flash only when it is actually new — otherwise the animation
+ * would never finish playing between frames.
  * @param {string} id @param {number|undefined} flash
  */
 function flashOnce(id, flash) {
@@ -82,13 +82,13 @@ export function rebuildSkillbar(game) {
     const s = document.createElement('div');
     s.className = 'slot' + (def ? '' : ' locked');
     s.dataset.skill = id ?? '';
-    s.innerHTML = `<span class="key">${i + 1}</span><span class="ico">${def ? def.icon : '·'}</span><span class="cd hidden"></span>`;
+    s.innerHTML = `<span class="key">${i + 1}</span><span class="ico">${def ? glyph(def.icon) : '·'}</span><span class="cd hidden"></span>`;
     if (def) s.onclick = () => game.tryUseSkill(id);
     bar.appendChild(s);
   }
   const pot = document.createElement('div');
   pot.className = 'slot';
-  pot.innerHTML = `<span class="key">Q</span><span class="ico">🧪</span>`;
+  pot.innerHTML = `<span class="key">Q</span><span class="ico">${glyph('potion')}</span>`;
   pot.id = 'potion-slot';
   pot.onclick = () => game.tryDrink();
   bar.appendChild(pot);
@@ -116,7 +116,7 @@ function updateCooldowns(game) {
   const pot = document.getElementById('potion-slot');
   if (pot) pot.classList.toggle('active', p.potions > 0);
   const ico = pot?.querySelector('.ico');
-  if (ico) ico.textContent = p.potions > 0 ? `🧪` : '·';
+  if (ico) ico.innerHTML = p.potions > 0 ? glyph('potion') : '·';
   if (pot) pot.setAttribute('title', `${p.potions} drycker`);
 }
 
@@ -190,14 +190,20 @@ export function overlayOpen() { return !$('overlay').classList.contains('hidden'
 
 
 /* ------------------------------------------------------------------ */
-/* Navigeringsikoner                                                   */
+/* Navigation icons                                                    */
 /* ------------------------------------------------------------------ */
+
+const NAV_GLYPH = /** @type {Record<string,string>} */ ({
+  inventory: 'bag', character: 'character', skills: 'tree',
+});
 
 /** @param {any} game */
 export function initNav(game) {
   for (const el of /** @type {HTMLElement[]} */ ([...document.querySelectorAll('.navbtn')])) {
     const name = el.dataset.name ?? '';
     const key = el.dataset.key ?? '';
+    const g = NAV_GLYPH[el.dataset.panel ?? ''];
+    if (g) el.innerHTML = glyph(g);
     el.onmouseenter = () => showTextTooltip(
       `<div class="tt-name">${escape(name)}</div><div class="tt-req">Shortcut: <b>${escape(key)}</b></div>`);
     el.onmouseleave = hideTooltip;
@@ -216,7 +222,11 @@ function updateNav(game) {
   for (const el of /** @type {HTMLElement[]} */ ([...document.querySelectorAll('.navbtn')])) {
     const key = el.dataset.panel;
     if (key) el.classList.toggle('on', !!(/** @type {any} */ (panels)[key]));
-    const pending = key === 'character' ? p.statPoints > 0 : key === 'skills' ? p.skillPoints > 0 : false;
+    // A gold dot means there is something to do in that panel. Skills only
+    // count as pending in the village, where they can actually be bought.
+    const pending = key === 'skills'
+      ? game.zone.isTown && SKILLS.some(sk => canBuy(p, sk).ok)
+      : false;
     el.classList.toggle('pending', pending);
   }
 }
@@ -266,59 +276,85 @@ export function showPauseMenu(game) {
 /* ------------------------------------------------------------------ */
 
 /**
- * The level-up window. Wide enough to hold both the attribute cards and the
- * *whole* skill tree, so nothing hides behind a button. Points go into a pending
- * pile that can be taken back — only "Confirm" writes them to the character.
+ * The level-up: three cards, one click, back into the fight.
+ *
+ * This replaced a two-column window with attribute points, a skill tree and two
+ * confirm rows. The old one stopped the game dead in the middle of a pack and
+ * asked for administration; the cards ask a single question — which direction
+ * do you lean — and get out of the way. There is no undo, because a choice that
+ * costs one click does not need one.
+ *
+ * Several levels at once simply deal a new hand after each pick.
  * @param {any} game @param {number} levels
  */
 export function showLevelUp(game, levels) {
   const p = game.player;
   const box = $('levelup');
-  $('lvl-badge').textContent = `Level ${p.level}`;
-  $('lvl-sub').innerHTML = levels > 1
-    ? `${levels} levels at once`
-    : 'You feel steadier on your feet.';
 
   const render = () => {
+    $('lvl-badge').textContent = `Level ${p.level}`;
+    const left = p.boonPicks;
+    $('lvl-sub').textContent = left > 1
+      ? `Choose a blessing — ${left} to pick`
+      : 'Choose a blessing';
+
     const host = $('lvl-stats');
     host.innerHTML = '';
+    const row = document.createElement('div');
+    row.className = 'boon-row';
 
-    // Each column has its own undo/confirm row. Attributes and skills are
-    // separate decisions and are confirmed separately.
-    const left = document.createElement('div');
-    left.className = 'lvl-col';
-    left.appendChild(pointsBadge(statPointsLeft(p, game.pending), 'attribute points', '✦'));
-    left.appendChild(attributeCards(game, render));
-    const lbar = confirmBar(game, 'stats', render);
-    if (lbar) left.appendChild(lbar);
+    const hand = drawBoons(p);
+    if (!hand.length) {
+      // Everything available is maxed. Rather than deal a blank hand, bank the
+      // pick: a later level opens higher ranks and it becomes spendable again.
+      row.innerHTML = '<div class="boon-none">Nothing new opens at this level — ' +
+        'the blessing waits for the next one.</div>';
+      host.appendChild(row);
+      finish('Continue', false);
+      return;
+    }
 
-    const right = document.createElement('div');
-    right.className = 'lvl-col';
-    right.appendChild(pointsBadge(skillPointsLeft(p, game.pending), 'skill points', '🌟'));
-    right.appendChild(skillTreeEl(game, render));
-    const rbar = confirmBar(game, 'skills', render);
-    if (rbar) right.appendChild(rbar);
+    for (const b of hand) {
+      const next = boonRank(p, b.id) + 1;
+      const card = document.createElement('div');
+      card.className = 'boon-card ' + b.group;
+      card.innerHTML =
+        `<div class="bc-ico">${glyph(b.icon, 1.4)}</div>` +
+        `<div class="bc-name">${escape(b.name)}</div>` +
+        `<div class="bc-rank">${ROMAN[next] ?? next}</div>` +
+        `<div class="bc-line">${escape(b.line(next))}</div>`;
+      card.onclick = () => {
+        takeBoon(p, b.id);
+        p.boonPicks = Math.max(0, p.boonPicks - 1);
+        game.dirtyUI = true;
+        if (p.boonPicks > 0) render();
+        else close();
+      };
+      row.appendChild(card);
+    }
+    host.appendChild(row);
+    finish(p.boonPicks > 1 ? 'Skip all' : 'Skip', true);
+  };
 
-    host.appendChild(left);
-    host.appendChild(right);
-
-    // The big button confirms everything pending and closes. Throwing away a
-    // finished allocation instead would be a nasty surprise — the columns' own
-    // rows are still there for anyone who wants to confirm one at a time.
+  /** @param {string} label @param {boolean} skips */
+  const finish = (label, skips) => {
     const actions = $('lvl-actions');
     actions.innerHTML = '';
-    const waiting = pendingStats(game.pending) + pendingSkills(game.pending);
     const done = document.createElement('button');
-    done.className = 'primary';
-    done.textContent = waiting ? `Confirm ${waiting} and continue` : 'Continue';
-    done.onclick = () => {
-      commitPending(game, game.pending);
-      hideLevelUp();
-      closeAllPanels(game);
-      game.paused = false;
-    };
+    done.className = skips ? '' : 'primary';
+    done.textContent = label;
+    done.onclick = () => { if (skips) p.boonPicks = 0; close(); };
     actions.appendChild(done);
   };
+
+  const close = () => {
+    hideLevelUp();
+    closeAllPanels(game);
+    game.paused = false;
+    saveGame(game);
+  };
+
+  void levels;
   render();
   box.classList.remove('hidden');
 }
@@ -331,15 +367,17 @@ export function levelUpOpen() { return !$('levelup').classList.contains('hidden'
 /* ------------------------------------------------------------------ */
 
 const TUTORIAL = [
-  { ico: '🧭', title: 'Follow the path north',
+  { ico: 'compass', title: 'Follow the path north',
     body: 'Walk with the <b>arrow keys</b>. The path through every map leads out of the picture to the north — <b>just keep going where it ends</b> and you are in the next area. A side path leads to something worth finding.' },
-  { ico: '🪓', title: 'You fight on your own',
+  { ico: 'axe', title: 'You fight on your own',
     body: 'When an enemy comes within reach <b>you attack automatically</b>, aiming at the nearest one. You never have to click.<br><b>Space</b> rolls aside — you are invulnerable in the middle of the roll.' },
-  { ico: '💨', title: 'Stamina is your clock',
+  { ico: 'wind', title: 'Stamina is your clock',
     body: 'Every swing costs stamina, and <b>in combat you recover only slowly</b>. Run out and you cannot strike.<br>Every enemy felled gives a gulp back — so the one who lands blows is rewarded, not the one swinging at air.' },
-  { ico: '🧪', title: 'Stay alive',
+  { ico: 'potion', title: 'Stay alive',
     body: '<b>Q</b> drinks a health potion. Skills sit on <b>1–6</b>.<br>Loot is picked up automatically as you walk over it — but it drops rarely, so what falls is worth a look.' },
-  { ico: '🗿', title: 'Find your way home',
+  { ico: 'spark', title: 'One card per level',
+    body: 'Every level offers <b>three blessings</b>. Click one and you are back in the fight — no points to split, nothing to confirm.<br>Skills are separate: you buy their ranks with <b>gold</b>, at the hearth in Frosthem.' },
+  { ico: 'waystone', title: 'Find your way home',
     body: 'Touch the <b>waystone</b> in every area — then you can travel back there.<br><b>T</b> opens a portal to the village and back to the same spot.<br><br>Press <b>?</b> in the top right to read this again.' },
 ];
 
@@ -363,7 +401,7 @@ export function showTutorial(onDone) {
   const draw = () => {
     const s = TUTORIAL[i];
     $('tut-step').textContent = `${i + 1} / ${TUTORIAL.length}`;
-    $('tut-ico').textContent = s.ico;
+    $('tut-ico').innerHTML = glyph(s.ico, 1.3);
     $('tut-title').textContent = s.title;
     $('tut-body').innerHTML = s.body;
     next.textContent = i === TUTORIAL.length - 1 ? 'Out into the cold' : 'Next';

@@ -1,6 +1,7 @@
 // @ts-check
 import { clamp } from '../core/math.js';
 import { SKILL_BY_ID } from '../data/skills.js';
+import { boonMods } from './boons.js';
 
 /** @typedef {import('./loot.js').Item} Item */
 /** @typedef {import('../entities/player.js').Player} Player */
@@ -18,9 +19,17 @@ export const KILL_STAMINA = 8;
  *  Ice Blood can raise it, one of the few ways to get noticeably tougher late. */
 export const RES_CAP = 75;
 
-/** XP required to go from `level` to the next one. @param {number} level */
+/**
+ * XP required to go from `level` to the next one.
+ *
+ * Slower than it was, and measured rather than guessed. The flat floor means
+ * the first levels take two or three packs instead of arriving mid-fight; the
+ * exponent keeps that pace roughly constant as packs get richer. Clearing all
+ * three zones once lands you around level 19, a normal run around 16.
+ * @param {number} level
+ */
 export function xpToNext(level) {
-  return Math.floor(46 * Math.pow(level, 1.62) + 24 * level);
+  return Math.floor(140 + 22 * Math.pow(level, 1.72));
 }
 
 /**
@@ -42,13 +51,23 @@ export function gearMods(p) {
 export const rank = (p, id) => p.skills[id] || 0;
 
 /**
- * Computes every derived value. Re-run whenever equipment, level or skills
- * change — never in the hot loop.
+ * Computes every derived value. Re-run whenever equipment, level, skills or
+ * boons change — never in the hot loop.
+ *
+ * There are no attribute points any more. What they used to carry is split in
+ * two: a flat scaling with level (so every level is worth something on its own)
+ * and the boons you pick on level-up (so the direction is a choice). Gear mods
+ * and boon mods have the same shape, so they merge before anything is derived.
  * @param {Player} p
  */
 export function recalc(p) {
   const g = gearMods(p);
+  const b = boonMods(p);
+  /** @param {string} k */
+  const m = (k) => (g[k] || 0) + (b[k] || 0);
+
   const w = /** @type {Item|null} */ (p.equipment.weapon);
+  const L = p.level;
   const rSecond = rank(p, 'secondwind');
   const rTough = rank(p, 'toughskin');
   const rRime = rank(p, 'rimeaura');
@@ -57,22 +76,19 @@ export function recalc(p) {
   const rIceblood = rank(p, 'iceblood');
   const rUnbreak = rank(p, 'unbreakable');
 
-  const str = p.stats.str + (g.str || 0);
-  const dex = p.stats.dex + (g.dex || 0);
-  const vit = p.stats.vit + (g.vit || 0);
-  const will = p.stats.will + (g.will || 0);
-  p.eff = { str, dex, vit, will };
-
-  p.maxHp = Math.round(45 + vit * 4 + p.level * 5 + (g.life || 0) + rSecond * 9);
-  p.lifeRegen = 0.35 + (g.lifeRegen || 0) + rSecond * 0.5;
+  // The constants are picked so a level-1 character is exactly as strong as it
+  // was with the old starting attributes (20/18/22/12) — removing the points
+  // should change how you build, not how hard the first pack hits.
+  p.maxHp = Math.round(128 + L * 10 + m('life') + rSecond * 9);
+  p.lifeRegen = 0.35 + m('lifeRegen') + rSecond * 0.5;
 
   // Two separate resources, like D2's vitality/energy:
-  //   Stamina = the body. Vitality carries it; swings and rolls drain it.
+  //   Stamina = the body. Swings and rolls drain it.
   //   Mana = the will. Only magic draws on it, so a melee build barely cares.
-  p.maxStamina = Math.round(40 + vit * 2 + (g.stamina || 0) + rSecond * 6);
-  p.staminaRegen = 8 + vit * 0.18;
-  p.maxMana = Math.round(25 + will * 4 + (g.mana || 0));
-  p.manaRegen = 3 + will * 0.3;
+  p.maxStamina = Math.round(82 + L * 1.5 + m('stamina') + rSecond * 6);
+  p.staminaRegen = 11 + L * 0.15 + m('staminaRegen');
+  p.maxMana = Math.round(70 + L * 3 + m('mana'));
+  p.manaRegen = 6 + L * 0.2;
 
   // Every basic attack costs stamina. Heavy weapons swing slower but take more
   // per swing, so a big weapon is never free.
@@ -85,35 +101,42 @@ export function recalc(p) {
     const it = /** @type {Item|null} */ (p.equipment[slot]);
     if (it?.base.armor) baseArmor += it.base.armor;
   }
-  p.armor = Math.round(baseArmor * (1 + ((g.armorPct || 0) + rTough * 13) / 100)
-    + (g.armor || 0) + dex * 0.4 + rUnbreak * 8);
+  p.armor = Math.round(baseArmor * (1 + (m('armorPct') + rTough * 13) / 100)
+    + m('armor') + 6 + L * 0.6 + rUnbreak * 8);
 
   const wMin = w?.base.dmgMin ?? 1;
   const wMax = w?.base.dmgMax ?? 3;
-  const dmgMult = 1 + ((g.dmgPct || 0) + str * 1.0 + rBlood * 2) / 100;
-  p.dmgMin = Math.max(1, Math.round(wMin * dmgMult + (g.dmgFlat || 0)));
-  p.dmgMax = Math.max(p.dmgMin + 1, Math.round(wMax * dmgMult + (g.dmgFlat || 0)));
-  p.attackSpeed = (w?.base.speed ?? 1.15) * (1 + ((g.attackSpeed || 0) + dex * 0.15) / 100);
+  const dmgMult = 1 + (m('dmgPct') + 16 + L * 3.2 + rBlood * 2) / 100;
+  p.dmgMin = Math.max(1, Math.round(wMin * dmgMult + m('dmgFlat')));
+  p.dmgMax = Math.max(p.dmgMin + 1, Math.round(wMax * dmgMult + m('dmgFlat')));
+  p.attackSpeed = wSpeed * (1 + (m('attackSpeed') + 2 + L * 0.25) / 100);
 
-  p.critChance = 5 + dex * 0.12 + (g.critChance || 0);
-  p.critMult = 150 + (g.critMult || 0);
-  p.coldDmg = (g.coldDmg || 0) + (rBite > 0 ? 2 + rBite * 2.2 : 0);
-  p.fireDmg = g.fireDmg || 0;
-  p.lightDmg = g.lightDmg || 0;
-  p.freezeChance = (g.freezeChance || 0) + rBite * 2;
-  p.lifeSteal = ((g.lifeSteal || 0) + rBlood * 0.7) / 100;
+  p.critChance = 7 + L * 0.25 + m('critChance');
+  p.critMult = 150 + m('critMult');
+  p.coldDmg = m('coldDmg') + (rBite > 0 ? 2 + rBite * 2.2 : 0);
+  p.fireDmg = m('fireDmg');
+  p.lightDmg = m('lightDmg');
+  p.freezeChance = m('freezeChance') + rBite * 2;
+  p.lifeSteal = (m('lifeSteal') + rBlood * 0.7) / 100;
   // Unbreakable: flat reduction on top of armour, and stun immunity at rank 5.
   p.dmgReduction = Math.min(0.25, rUnbreak * 0.025);
   p.stunImmune = rUnbreak >= 5;
-  p.magicFind = g.magicFind || 0;
-  p.moveSpeed = 168 * (1 + (g.moveSpeed || 0) / 100);
+  p.magicFind = m('magicFind');
+  p.moveSpeed = 168 * (1 + m('moveSpeed') / 100);
 
-  const all = (g.resAll || 0) + rTough * 2;
+  // Boon-only stats. They have no gear equivalent, but go through the same map
+  // so a future affix could grant them without touching anything here.
+  p.reachMult = 1 + m('reachPct') / 100;
+  p.xpMult = 1 + m('xpPct') / 100;
+  p.goldMult = 1 + m('goldPct') / 100;
+  p.doubleStrike = m('doubleStrike') / 100;
+
+  const all = m('resAll') + rTough * 2;
   p.resCap = RES_CAP + rIceblood;
   p.res = {
-    cold:  clamp((g.resCold || 0) + all + rRime * 4 + rIceblood * 4, -100, p.resCap),
-    fire:  clamp((g.resFire || 0) + all, -100, p.resCap),
-    light: clamp((g.resLight || 0) + all, -100, p.resCap),
+    cold:  clamp(m('resCold') + all + rRime * 4 + rIceblood * 4, -100, p.resCap),
+    fire:  clamp(m('resFire') + all, -100, p.resCap),
+    light: clamp(m('resLight') + all, -100, p.resCap),
   };
 
   p.hp = Math.min(p.hp, p.maxHp);
@@ -122,18 +145,14 @@ export function recalc(p) {
 }
 
 /**
- * Can the player carry the item? Strength/dexterity requirements are D2's way
- * of making attribute points meaningful.
- * @param {Player} p @param {Item} item
+ * Can the player carry the item? Always — the strength and dexterity
+ * requirements went away with the attribute points. Kept as a function so the
+ * call sites still read as the question they are asking, and so any future
+ * restriction has one place to live.
+ * @param {Player} _p @param {Item} _item
  */
-export function canEquip(p, item) {
-  const need = requirementsOf(item);
-  return p.eff.str >= need.str && p.eff.dex >= need.dex;
-}
-
-/** @param {Item} item */
-export function requirementsOf(item) {
-  return { str: item.base.reqStr ?? 0, dex: item.base.reqDex ?? 0 };
+export function canEquip(_p, _item) {
+  return true;
 }
 
 /**

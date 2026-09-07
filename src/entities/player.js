@@ -65,9 +65,10 @@ export function createPlayer(name) {
     pos: { x: 0, y: 0 }, vel: { x: 0, y: 0 }, facing: 0, radius: 14,
 
     level: 1, xp: 0, xpNext: xpToNext(1),
-    stats: { str: 20, dex: 18, vit: 22, will: 12 },
-    eff: { str: 20, dex: 18, vit: 22, will: 12 },
-    statPoints: 0, skillPoints: 1,
+    /** Boon ranks, keyed by boon id. One card is picked per level. */
+    /** @type {Record<string, number>} */ boons: {},
+    /** Level-ups whose card has not been picked yet. */
+    boonPicks: 0,
 
     hp: 100, maxHp: 100, stamina: 60, maxStamina: 60, mana: 40, maxMana: 40,
     lifeRegen: 0.35, staminaRegen: 9, manaRegen: 5,
@@ -75,6 +76,7 @@ export function createPlayer(name) {
     critChance: 5, critMult: 150,
     coldDmg: 0, fireDmg: 0, lightDmg: 0, freezeChance: 0,
     lifeSteal: 0, magicFind: 0, moveSpeed: 168,
+    reachMult: 1, xpMult: 1, goldMult: 1, doubleStrike: 0,
     res: { cold: 0, fire: 0, light: 0 },
     resCap: 75, dmgReduction: 0, stunImmune: false,
 
@@ -86,7 +88,7 @@ export function createPlayer(name) {
     /** @type {Item[]} */ inventory: [],
     gold: 0, potions: 3,
 
-    /** @type {Record<string, number>} */ skills: {},
+    /** @type {Record<string, number>} */ skills: { cleave: 1 },
     /** @type {Record<string, number>} */ cooldowns: {},
     /** @type {(string|null)[]} */ hotbar: new Array(HOTBAR_SIZE).fill(null),
 
@@ -123,6 +125,9 @@ export function createPlayer(name) {
     walkPhase: 0,
   };
 
+  // One skill to start with, so the hotbar is not empty and the first fight has
+  // something to press. Every rank after this one is bought at the hearth.
+  bindToHotbar(p, 'cleave', false);
   recalc(p);
   p.hp = p.maxHp; p.stamina = p.maxStamina; p.mana = p.maxMana;
   return p;
@@ -140,8 +145,10 @@ export function grantXp(p, amount) {
     p.xp -= p.xpNext;
     p.level++;
     levels++;
-    p.statPoints += 4;
-    p.skillPoints += 1;
+    // One card per level. No attribute points, no skill points — skills are
+    // bought at the hearth with gold, so the fight is never interrupted by an
+    // allocation screen.
+    p.boonPicks += 1;
     p.xpNext = xpToNext(p.level);
   }
   if (levels) {

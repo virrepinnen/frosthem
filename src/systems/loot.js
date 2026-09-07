@@ -204,7 +204,6 @@ export function itemScore(item) {
     dmgPct: 0.55, dmgFlat: 2.4, attackSpeed: 0.9, critChance: 1.8, critMult: 0.35,
     coldDmg: 1.1, fireDmg: 1.1, lightDmg: 0.6, freezeChance: 0.6, lifeSteal: 3.0,
     armorPct: 0.3, armor: 0.5, life: 0.7, lifeRegen: 6, stamina: 0.15, moveSpeed: 2.2,
-    str: 1.2, dex: 1.2, vit: 1.5, will: 0.8,
     resCold: 0.5, resFire: 0.5, resLight: 0.5, resAll: 1.6, magicFind: 0.35,
   });
   for (const k in item.mods) s += (item.mods[k] || 0) * (w[k] ?? 0.5);

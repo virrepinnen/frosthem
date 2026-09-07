@@ -9,6 +9,7 @@ import { fx } from './fx.js';
 import { rng } from '../core/rng.js';
 import { hashNoise, clamp } from '../core/math.js';
 import { RARITY_COLOR } from '../data/items.js';
+import { strokeGlyph, KIND_GLYPH } from '../ui/glyphs.js';
 import { FOG_CELL } from '../systems/world.js';
 import { drawHero } from './hero.js';
 import { ORB_TIERS } from '../systems/orbs.js';
@@ -739,19 +740,50 @@ function drawExits(ctx, game) {
   }
 }
 
-/** @param {CanvasRenderingContext2D} ctx @param {any} game */
+/**
+ * Things lying on the ground.
+ *
+ * A rare or unique gets a pillar of light standing out of the snow. Drops are
+ * rare enough now that one should be visible across the clearing — you should
+ * see it before you read its label, and walk towards it on purpose.
+ * @param {CanvasRenderingContext2D} ctx @param {any} game
+ */
 function drawGroundItems(ctx, game) {
   const t = performance.now() / 1000;
   for (const g of game.ground) {
     const bob = Math.sin(t * 3 + g.x) * 2;
-    ctx.save(); ctx.translate(g.x, PY(g.y) + bob);
     const col = g.kind === 'gold' ? '#d8b26a' : g.kind === 'potion' ? '#e05a72' : RARITY_COLOR[g.item.rarity];
-    const rr = g.kind === 'item' && (g.item.rarity === 'unique' || g.item.rarity === 'rare') ? 44 : 26;
+    const big = g.kind === 'item' && (g.item.rarity === 'unique' || g.item.rarity === 'rare');
+
+    ctx.save(); ctx.translate(g.x, PY(g.y));
+    if (big) {
+      // The pillar: brightest at the ground, fading out well above head height.
+      const pulse = 0.55 + Math.sin(t * 2.2 + g.x) * 0.12;
+      const h = g.item.rarity === 'unique' ? 150 : 108;
+      const beam = ctx.createLinearGradient(0, 0, 0, -h);
+      beam.addColorStop(0, col + 'aa'); beam.addColorStop(0.35, col + '55');
+      beam.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.globalAlpha = pulse;
+      ctx.fillStyle = beam;
+      ctx.beginPath();
+      ctx.moveTo(-11, 0); ctx.lineTo(11, 0); ctx.lineTo(5, -h); ctx.lineTo(-5, -h);
+      ctx.closePath(); ctx.fill();
+      // A ring lying in the snow, so the pillar has a foot to stand on.
+      ctx.globalAlpha = pulse * 0.8;
+      ctx.strokeStyle = col; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.ellipse(0, 0, 22, 22 * PROJ, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    const rr = big ? 44 : 26;
     const grad = ctx.createRadialGradient(0, 0, 1, 0, 0, rr);
     grad.addColorStop(0, col + '99'); grad.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, 0, rr, 0, Math.PI * 2); ctx.fill();
-    ctx.font = '15px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(g.kind === 'gold' ? '🪙' : g.kind === 'potion' ? '🧪' : g.item.base.icon, 0, 0);
+    ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, bob, rr, 0, Math.PI * 2); ctx.fill();
+
+    ctx.translate(0, bob);
+    const name = g.kind === 'gold' ? 'gold' : g.kind === 'potion' ? 'potion'
+      : (KIND_GLYPH[g.item.base.kind] ?? 'ring');
+    strokeGlyph(ctx, name, big ? 26 : 21, col, big ? 1.9 : 1.7);
     ctx.restore();
   }
 }
@@ -1091,7 +1123,8 @@ function drawMonster(ctx, m, game) {
   }
   if (m.freezeT > 0 || m.stunT > 0) {
     ctx.save(); ctx.textAlign = 'center'; ctx.font = '12px system-ui';
-    ctx.fillText(m.freezeT > 0 ? '❄️' : '💫', gx, topY - 8);
+    strokeGlyph(ctx, m.freezeT > 0 ? 'wintergrasp' : 'spark', 13,
+      m.freezeT > 0 ? '#a8e4f8' : '#ffd88a', 2);
     ctx.restore();
   }
 }

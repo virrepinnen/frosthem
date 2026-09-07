@@ -31,14 +31,20 @@ function packItem(it) {
   };
 }
 
+/** Mods that no longer do anything; stripped on load so no tooltip lies. */
+const DEAD_MODS = ['str', 'dex', 'vit', 'will'];
+
 /** @param {any} o @returns {Item|null} */
 function unpackItem(o) {
   if (!o) return null;
   const base = BASES.find(b => b.id === o.b);
   if (!base) return null; // the base type no longer exists — skip the item
+  const mods = { ...(o.m ?? {}) };
+  for (const k of DEAD_MODS) delete mods[k];
   return {
     uid: Math.floor(Math.random() * 1e9), base, rarity: o.r, ilvl: o.i, name: o.n,
-    affixes: o.a ?? [], mods: o.m ?? {}, flavor: o.f, uniqueId: o.u,
+    affixes: (o.a ?? []).filter((/** @type {any} */ a) => !DEAD_MODS.includes(a.stat)),
+    mods, flavor: o.f, uniqueId: o.u,
   };
 }
 
@@ -114,7 +120,7 @@ export function saveGame(game) {
   const rec = {
     v: 1, id: game.charId, t: Date.now(),
     name: p.name, level: p.level, xp: p.xp,
-    stats: p.stats, statPoints: p.statPoints, skillPoints: p.skillPoints,
+    boons: p.boons, boonPicks: p.boonPicks,
     skills: p.skills, hotbar: p.hotbar,
     potions: p.potions, gold: p.gold, kills: p.kills, deaths: p.deaths,
     equipment, inventory: p.inventory.map(packItem),
@@ -139,15 +145,19 @@ export function playerFromSave(d) {
   p.level = d.level ?? 1;
   p.xp = d.xp ?? 0;
   p.xpNext = xpToNext(p.level);
-  p.stats = { ...p.stats, ...(d.stats ?? {}) };
-  p.statPoints = d.statPoints ?? 0;
-  p.skillPoints = d.skillPoints ?? 0;
+  p.boons = d.boons ?? {};
+  p.boonPicks = d.boonPicks ?? 0;
   p.skills = d.skills ?? {};
+  // Characters saved before the rework carry attribute and skill points that no
+  // longer have anywhere to go. Rather than drop them silently, unspent skill
+  // points are refunded as gold — which is now what buys skill ranks — and the
+  // attributes are simply gone, replaced by the level scaling in recalc.
+  const refund = (d.skillPoints ?? 0) * 90 + (d.statPoints ?? 0) * 15;
   if (Array.isArray(d.hotbar)) {
     for (let i = 0; i < p.hotbar.length; i++) p.hotbar[i] = d.hotbar[i] ?? null;
   }
   p.potions = d.potions ?? 3;
-  p.gold = d.gold ?? 0;
+  p.gold = (d.gold ?? 0) + refund;
   p.kills = d.kills ?? 0;
   p.deaths = d.deaths ?? 0;
 

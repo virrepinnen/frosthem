@@ -347,8 +347,8 @@ function weapon(ctx, item, reach) {
   const rarity = item?.rarity ?? 'normal';
   const blade = rarity === 'unique' ? '#d09a4a' : rarity === 'rare' ? '#e8d15a'
     : rarity === 'magic' ? '#9dc0f5' : '#c3cfdd';
-  const icon = item?.base?.icon ?? '';
-  const heavy = icon === '🔨', axe = icon === '🪓';
+  const kind = item?.base?.kind ?? '';
+  const heavy = kind === 'hammer', axe = kind === 'axe';
   const haft = reach * 0.7, x = haft;
 
   ctx.fillStyle = C.haft;

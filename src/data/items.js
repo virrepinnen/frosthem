@@ -19,75 +19,73 @@
  * @property {Slot} slot
  * @property {number} ilvl        Lowest zone level where it starts dropping
  * @property {number} value       Base value in gold
- * @property {string} icon
+ * @property {string} kind    Which glyph draws it, see ui/glyphs.js
  * @property {[number,number]} [size] Bag footprint, overrides the slot default
  * @property {number} [dmgMin]
  * @property {number} [dmgMax]
  * @property {number} [speed]     Attacks/sec multiplier (1 = normal)
  * @property {number} [armor]
- * @property {number} [reqStr]
- * @property {number} [reqDex]
  */
 
 /** @type {BaseItem[]} */
 export const BASES = [
   // ---- weapons --------------------------------------------------------------
-  { id: 'rustyaxe',  name: 'Rusty Axe',       slot: 'weapon', ilvl: 1,  dmgMin: 4,  dmgMax: 9,  speed: 1.00, reqStr: 0,  value: 12,  icon: '🪓', size: [2, 3] },
-  { id: 'cudgel',    name: 'Cudgel',          slot: 'weapon', ilvl: 1,  dmgMin: 5,  dmgMax: 8,  speed: 1.10, reqStr: 0,  value: 10,  icon: '🔨', size: [1, 3] },
-  { id: 'shortsword',name: 'Short Sword',     slot: 'weapon', ilvl: 3,  dmgMin: 4,  dmgMax: 10, speed: 1.15, reqDex: 12, value: 26,  icon: '🗡️', size: [1, 2] },
-  { id: 'handaxe',   name: 'Hand Axe',        slot: 'weapon', ilvl: 5,  dmgMin: 7,  dmgMax: 12, speed: 0.95, reqStr: 15, value: 32,  icon: '🪓', size: [2, 3] },
-  { id: 'mace',      name: 'Mace',            slot: 'weapon', ilvl: 8,  dmgMin: 9,  dmgMax: 14, speed: 0.90, reqStr: 22, value: 48,  icon: '🔨', size: [1, 3] },
-  { id: 'longsword', name: 'Long Sword',      slot: 'weapon', ilvl: 11, dmgMin: 9,  dmgMax: 24, speed: 1.05, reqDex: 24, value: 74,  icon: '⚔️', size: [1, 3] },
-  { id: 'battleaxe', name: 'Battle Axe',      slot: 'weapon', ilvl: 13, dmgMin: 14, dmgMax: 22, speed: 0.85, reqStr: 34, value: 88,  icon: '🪓', size: [2, 3] },
-  { id: 'morningstar',name:'Morning Star',    slot: 'weapon', ilvl: 16, dmgMin: 17, dmgMax: 26, speed: 0.88, reqStr: 40, value: 110, icon: '🔨', size: [2, 3] },
-  { id: 'greatsword',name: 'Great Sword',     slot: 'weapon', ilvl: 20, dmgMin: 18, dmgMax: 42, speed: 0.90, reqStr: 44, reqDex: 30, value: 165, icon: '⚔️', size: [1, 4] },
-  { id: 'warhammer', name: 'War Hammer',      slot: 'weapon', ilvl: 24, dmgMin: 28, dmgMax: 40, speed: 0.78, reqStr: 58, value: 210, icon: '🔨', size: [2, 4] },
-  { id: 'glaive',    name: 'Glaive',          slot: 'weapon', ilvl: 27, dmgMin: 24, dmgMax: 50, speed: 0.92, reqStr: 48, reqDex: 40, value: 260, icon: '🗡️', size: [1, 4] },
+  { id: 'rustyaxe',  name: 'Rusty Axe',       slot: 'weapon', ilvl: 1,  dmgMin: 4,  dmgMax: 9,  speed: 1.00,  value: 12,  kind: 'axe', size: [2, 3] },
+  { id: 'cudgel',    name: 'Cudgel',          slot: 'weapon', ilvl: 1,  dmgMin: 5,  dmgMax: 8,  speed: 1.10,  value: 10,  kind: 'hammer', size: [1, 3] },
+  { id: 'shortsword',name: 'Short Sword',     slot: 'weapon', ilvl: 3,  dmgMin: 4,  dmgMax: 10, speed: 1.15, value: 26,  kind: 'sword', size: [1, 2] },
+  { id: 'handaxe',   name: 'Hand Axe',        slot: 'weapon', ilvl: 5,  dmgMin: 7,  dmgMax: 12, speed: 0.95, value: 32,  kind: 'axe', size: [2, 3] },
+  { id: 'mace',      name: 'Mace',            slot: 'weapon', ilvl: 8,  dmgMin: 9,  dmgMax: 14, speed: 0.90, value: 48,  kind: 'hammer', size: [1, 3] },
+  { id: 'longsword', name: 'Long Sword',      slot: 'weapon', ilvl: 11, dmgMin: 9,  dmgMax: 24, speed: 1.05, value: 74,  kind: 'sword', size: [1, 3] },
+  { id: 'battleaxe', name: 'Battle Axe',      slot: 'weapon', ilvl: 13, dmgMin: 14, dmgMax: 22, speed: 0.85, value: 88,  kind: 'axe', size: [2, 3] },
+  { id: 'morningstar',name:'Morning Star',    slot: 'weapon', ilvl: 16, dmgMin: 17, dmgMax: 26, speed: 0.88, value: 110, kind: 'hammer', size: [2, 3] },
+  { id: 'greatsword',name: 'Great Sword',     slot: 'weapon', ilvl: 20, dmgMin: 18, dmgMax: 42, speed: 0.90, value: 165, kind: 'sword', size: [1, 4] },
+  { id: 'warhammer', name: 'War Hammer',      slot: 'weapon', ilvl: 24, dmgMin: 28, dmgMax: 40, speed: 0.78, value: 210, kind: 'hammer', size: [2, 4] },
+  { id: 'glaive',    name: 'Glaive',          slot: 'weapon', ilvl: 27, dmgMin: 24, dmgMax: 50, speed: 0.92, value: 260, kind: 'polearm', size: [1, 4] },
 
   // ---- shields --------------------------------------------------------------
-  { id: 'buckler',   name: 'Wooden Buckler',  slot: 'shield', ilvl: 1,  armor: 6,   value: 10,  icon: '🛡️', size: [2, 2] },
-  { id: 'roundshield',name:'Round Shield',    slot: 'shield', ilvl: 6,  armor: 16,  reqStr: 16, value: 34,  icon: '🛡️', size: [2, 2] },
-  { id: 'ironshield',name: 'Iron Shield',     slot: 'shield', ilvl: 13, armor: 34,  reqStr: 32, value: 78,  icon: '🛡️', size: [2, 3] },
-  { id: 'towershield',name:'Tower Shield',    slot: 'shield', ilvl: 22, armor: 60,  reqStr: 55, value: 170, icon: '🛡️', size: [2, 3] },
+  { id: 'buckler',   name: 'Wooden Buckler',  slot: 'shield', ilvl: 1,  armor: 6,   value: 10,  kind: 'shield', size: [2, 2] },
+  { id: 'roundshield',name:'Round Shield',    slot: 'shield', ilvl: 6,  armor: 16, value: 34,  kind: 'shield', size: [2, 2] },
+  { id: 'ironshield',name: 'Iron Shield',     slot: 'shield', ilvl: 13, armor: 34, value: 78,  kind: 'shield', size: [2, 3] },
+  { id: 'towershield',name:'Tower Shield',    slot: 'shield', ilvl: 22, armor: 60, value: 170, kind: 'shield', size: [2, 3] },
 
   // ---- helms ----------------------------------------------------------------
-  { id: 'hood',      name: 'Hood',            slot: 'helm',   ilvl: 1,  armor: 3,   value: 6,   icon: '⛑️', size: [2, 1] },
-  { id: 'leatherhelm',name:'Leather Helm',    slot: 'helm',   ilvl: 5,  armor: 12,  value: 24,  icon: '⛑️', size: [2, 2] },
-  { id: 'ironhelm',  name: 'Iron Helm',       slot: 'helm',   ilvl: 12, armor: 26,  reqStr: 24, value: 62,  icon: '⛑️', size: [2, 2] },
-  { id: 'hornhelm',  name: 'Horned Helm',     slot: 'helm',   ilvl: 21, armor: 46,  reqStr: 44, value: 140, icon: '⛑️', size: [2, 2] },
+  { id: 'hood',      name: 'Hood',            slot: 'helm',   ilvl: 1,  armor: 3,   value: 6,   kind: 'helm', size: [2, 1] },
+  { id: 'leatherhelm',name:'Leather Helm',    slot: 'helm',   ilvl: 5,  armor: 12,  value: 24,  kind: 'helm', size: [2, 2] },
+  { id: 'ironhelm',  name: 'Iron Helm',       slot: 'helm',   ilvl: 12, armor: 26, value: 62,  kind: 'helm', size: [2, 2] },
+  { id: 'hornhelm',  name: 'Horned Helm',     slot: 'helm',   ilvl: 21, armor: 46, value: 140, kind: 'helm', size: [2, 2] },
 
   // ---- chest ----------------------------------------------------------------
-  { id: 'rags',      name: 'Rags',            slot: 'chest',  ilvl: 1,  armor: 5,   value: 5,   icon: '🧥', size: [2, 2] },
-  { id: 'quilted',   name: 'Quilted Coat',    slot: 'chest',  ilvl: 3,  armor: 11,  value: 20,  icon: '🧥', size: [2, 3] },
-  { id: 'leatherarmor',name:'Leather Armour', slot: 'chest',  ilvl: 7,  armor: 22,  reqStr: 14, value: 46,  icon: '🧥', size: [2, 3] },
-  { id: 'studded',   name: 'Studded Leather', slot: 'chest',  ilvl: 11, armor: 34,  reqStr: 22, value: 72,  icon: '🧥', size: [2, 3] },
-  { id: 'chainmail', name: 'Chain Mail',      slot: 'chest',  ilvl: 15, armor: 52,  reqStr: 36, value: 118, icon: '🧥', size: [2, 3] },
-  { id: 'scalemail', name: 'Scale Mail',      slot: 'chest',  ilvl: 20, armor: 70,  reqStr: 48, value: 168, icon: '🧥', size: [2, 3] },
-  { id: 'platearmor',name: 'Plate Armour',    slot: 'chest',  ilvl: 26, armor: 100, reqStr: 66, value: 250, icon: '🧥', size: [2, 3] },
+  { id: 'rags',      name: 'Rags',            slot: 'chest',  ilvl: 1,  armor: 5,   value: 5,   kind: 'chest', size: [2, 2] },
+  { id: 'quilted',   name: 'Quilted Coat',    slot: 'chest',  ilvl: 3,  armor: 11,  value: 20,  kind: 'chest', size: [2, 3] },
+  { id: 'leatherarmor',name:'Leather Armour', slot: 'chest',  ilvl: 7,  armor: 22, value: 46,  kind: 'chest', size: [2, 3] },
+  { id: 'studded',   name: 'Studded Leather', slot: 'chest',  ilvl: 11, armor: 34, value: 72,  kind: 'chest', size: [2, 3] },
+  { id: 'chainmail', name: 'Chain Mail',      slot: 'chest',  ilvl: 15, armor: 52, value: 118, kind: 'chest', size: [2, 3] },
+  { id: 'scalemail', name: 'Scale Mail',      slot: 'chest',  ilvl: 20, armor: 70, value: 168, kind: 'chest', size: [2, 3] },
+  { id: 'platearmor',name: 'Plate Armour',    slot: 'chest',  ilvl: 26, armor: 100, value: 250, kind: 'chest', size: [2, 3] },
 
   // ---- gloves / boots / belts -----------------------------------------------
-  { id: 'ragwraps',  name: 'Rag Wraps',       slot: 'gloves', ilvl: 1,  armor: 2,   value: 4,   icon: '🧤', size: [2, 1] },
-  { id: 'leathergloves',name:'Leather Gloves',slot: 'gloves', ilvl: 5,  armor: 9,   value: 20,  icon: '🧤', size: [2, 2] },
-  { id: 'chaingloves',name:'Chain Gloves',    slot: 'gloves', ilvl: 13, armor: 19,  reqStr: 22, value: 56,  icon: '🧤', size: [2, 2] },
-  { id: 'gauntlets', name: 'Gauntlets',       slot: 'gloves', ilvl: 22, armor: 33,  reqStr: 45, value: 130, icon: '🧤', size: [2, 2] },
+  { id: 'ragwraps',  name: 'Rag Wraps',       slot: 'gloves', ilvl: 1,  armor: 2,   value: 4,   kind: 'gloves', size: [2, 1] },
+  { id: 'leathergloves',name:'Leather Gloves',slot: 'gloves', ilvl: 5,  armor: 9,   value: 20,  kind: 'gloves', size: [2, 2] },
+  { id: 'chaingloves',name:'Chain Gloves',    slot: 'gloves', ilvl: 13, armor: 19, value: 56,  kind: 'gloves', size: [2, 2] },
+  { id: 'gauntlets', name: 'Gauntlets',       slot: 'gloves', ilvl: 22, armor: 33, value: 130, kind: 'gloves', size: [2, 2] },
 
-  { id: 'footwraps', name: 'Foot Wraps',      slot: 'boots',  ilvl: 1,  armor: 2,   value: 4,   icon: '🥾', size: [2, 1] },
-  { id: 'leatherboots',name:'Leather Boots',  slot: 'boots',  ilvl: 5,  armor: 9,   value: 20,  icon: '🥾', size: [2, 2] },
-  { id: 'chainboots',name: 'Chain Boots',     slot: 'boots',  ilvl: 13, armor: 19,  reqStr: 22, value: 56,  icon: '🥾', size: [2, 2] },
-  { id: 'plateboots',name: 'Plate Boots',     slot: 'boots',  ilvl: 22, armor: 33,  reqStr: 45, value: 130, icon: '🥾', size: [2, 2] },
+  { id: 'footwraps', name: 'Foot Wraps',      slot: 'boots',  ilvl: 1,  armor: 2,   value: 4,   kind: 'boots', size: [2, 1] },
+  { id: 'leatherboots',name:'Leather Boots',  slot: 'boots',  ilvl: 5,  armor: 9,   value: 20,  kind: 'boots', size: [2, 2] },
+  { id: 'chainboots',name: 'Chain Boots',     slot: 'boots',  ilvl: 13, armor: 19, value: 56,  kind: 'boots', size: [2, 2] },
+  { id: 'plateboots',name: 'Plate Boots',     slot: 'boots',  ilvl: 22, armor: 33, value: 130, kind: 'boots', size: [2, 2] },
 
-  { id: 'ropebelt',  name: 'Rope Belt',       slot: 'belt',   ilvl: 1,  armor: 1,   value: 3,   icon: '🪢', size: [2, 1] },
-  { id: 'leatherbelt',name:'Leather Belt',    slot: 'belt',   ilvl: 6,  armor: 7,   value: 18,  icon: '🪢', size: [2, 1] },
-  { id: 'studdedbelt',name:'Studded Belt',    slot: 'belt',   ilvl: 14, armor: 15,  reqStr: 20, value: 50,  icon: '🪢', size: [2, 1] },
-  { id: 'warbelt',   name: 'War Belt',        slot: 'belt',   ilvl: 23, armor: 25,  reqStr: 42, value: 120, icon: '🪢', size: [2, 2] },
+  { id: 'ropebelt',  name: 'Rope Belt',       slot: 'belt',   ilvl: 1,  armor: 1,   value: 3,   kind: 'belt', size: [2, 1] },
+  { id: 'leatherbelt',name:'Leather Belt',    slot: 'belt',   ilvl: 6,  armor: 7,   value: 18,  kind: 'belt', size: [2, 1] },
+  { id: 'studdedbelt',name:'Studded Belt',    slot: 'belt',   ilvl: 14, armor: 15, value: 50,  kind: 'belt', size: [2, 1] },
+  { id: 'warbelt',   name: 'War Belt',        slot: 'belt',   ilvl: 23, armor: 25, value: 120, kind: 'belt', size: [2, 2] },
 
   // ---- jewellery (affixes only) ---------------------------------------------
-  { id: 'tinring',   name: 'Tin Ring',        slot: 'ring',   ilvl: 2,  value: 30,  icon: '💍', size: [1, 1] },
-  { id: 'silverring',name: 'Silver Ring',     slot: 'ring',   ilvl: 10, value: 90,  icon: '💍', size: [1, 1] },
-  { id: 'goldring',  name: 'Gold Ring',       slot: 'ring',   ilvl: 20, value: 200, icon: '💍', size: [1, 1] },
-  { id: 'boneamulet',name: 'Bone Amulet',     slot: 'amulet', ilvl: 3,  value: 40,  icon: '📿', size: [1, 1] },
-  { id: 'silveramulet',name:'Silver Amulet',  slot: 'amulet', ilvl: 12, value: 120, icon: '📿', size: [1, 1] },
-  { id: 'runeamulet',name: 'Rune Amulet',     slot: 'amulet', ilvl: 22, value: 260, icon: '📿', size: [1, 1] },
+  { id: 'tinring',   name: 'Tin Ring',        slot: 'ring',   ilvl: 2,  value: 30,  kind: 'ring', size: [1, 1] },
+  { id: 'silverring',name: 'Silver Ring',     slot: 'ring',   ilvl: 10, value: 90,  kind: 'ring', size: [1, 1] },
+  { id: 'goldring',  name: 'Gold Ring',       slot: 'ring',   ilvl: 20, value: 200, kind: 'ring', size: [1, 1] },
+  { id: 'boneamulet',name: 'Bone Amulet',     slot: 'amulet', ilvl: 3,  value: 40,  kind: 'amulet', size: [1, 1] },
+  { id: 'silveramulet',name:'Silver Amulet',  slot: 'amulet', ilvl: 12, value: 120, kind: 'amulet', size: [1, 1] },
+  { id: 'runeamulet',name: 'Rune Amulet',     slot: 'amulet', ilvl: 22, value: 260, kind: 'amulet', size: [1, 1] },
 ];
 
 /** Groups an affix can attach to. */
@@ -167,29 +165,15 @@ export const PREFIXES = [
   ]},
 ];
 
-/** Suffixes — "of the X". */
+/**
+ * Suffixes — "of the X".
+ *
+ * The four attribute suffixes went out with the attribute points: a mod that
+ * raises a number nothing reads is worse than no mod at all. Their weight is
+ * absorbed by the twenty-one that remain, which are all things you can feel.
+ */
 /** @type {AffixDef[]} */
 export const SUFFIXES = [
-  { id: 'str', kind: 'suffix', stat: 'str', slots: GROUPS.all, tiers: [
-    { label: 'of the Bear', ilvl: 1, min: 1, max: 3 },
-    { label: 'of the Bear', ilvl: 10, min: 4, max: 8 },
-    { label: 'of the Bear', ilvl: 20, min: 9, max: 15 },
-  ]},
-  { id: 'dex', kind: 'suffix', stat: 'dex', slots: GROUPS.all, tiers: [
-    { label: 'of the Fox', ilvl: 1, min: 1, max: 3 },
-    { label: 'of the Fox', ilvl: 10, min: 4, max: 8 },
-    { label: 'of the Fox', ilvl: 20, min: 9, max: 15 },
-  ]},
-  { id: 'vit', kind: 'suffix', stat: 'vit', slots: GROUPS.all, tiers: [
-    { label: 'of the Ox', ilvl: 1, min: 1, max: 3 },
-    { label: 'of the Ox', ilvl: 10, min: 4, max: 8 },
-    { label: 'of the Ox', ilvl: 20, min: 9, max: 15 },
-  ]},
-  { id: 'will', kind: 'suffix', stat: 'will', slots: GROUPS.all, tiers: [
-    { label: 'of the Owl', ilvl: 1, min: 1, max: 3 },
-    { label: 'of the Owl', ilvl: 10, min: 4, max: 8 },
-    { label: 'of the Owl', ilvl: 20, min: 9, max: 15 },
-  ]},
   { id: 'armorflat', kind: 'suffix', stat: 'armor', slots: [...GROUPS.armor, ...GROUPS.jewel], tiers: [
     { label: 'of the Shield', ilvl: 1,  min: 3,  max: 9 },
     { label: 'of the Shield', ilvl: 10, min: 10, max: 22 },
@@ -263,15 +247,15 @@ export const SUFFIXES = [
 /** @type {UniqueDef[]} */
 export const UNIQUES = [
   { id: 'wolfbite', name: 'Wolfbite', base: 'handaxe', ilvl: 5, flavor: '"It bit first. It bit last."',
-    mods: { dmgPct: 55, attackSpeed: 15, lifeSteal: 4, moveSpeed: 8, dex: 6 } },
+    mods: { dmgPct: 55, attackSpeed: 15, lifeSteal: 4, moveSpeed: 8, critChance: 5 } },
   { id: 'wintertongue', name: "Winter's Tongue", base: 'longsword', ilvl: 12, flavor: '"Steel that breathes out instead of in."',
     mods: { dmgPct: 60, coldDmg: 22, freezeChance: 18, resCold: 20 } },
   { id: 'jarlsburden', name: "The Jarl's Burden", base: 'chainmail', ilvl: 16, flavor: '"He wore it until the ground gave way."',
-    mods: { armorPct: 90, life: 45, resAll: 12, moveSpeed: -10, str: 10 } },
+    mods: { armorPct: 90, life: 45, resAll: 12, moveSpeed: -10, dmgFlat: 6 } },
   { id: 'lasthearth', name: 'The Last Hearth', base: 'silveramulet', ilvl: 13, flavor: '"For as long as one ember remains."',
     mods: { resAll: 16, lifeRegen: 3.5, life: 30, resFire: 15 } },
   { id: 'iceeye', name: 'Ice Eye', base: 'silverring', ilvl: 11, flavor: '"It sees what the snow has buried."',
-    mods: { coldDmg: 14, resCold: 28, magicFind: 25, will: 6 } },
+    mods: { coldDmg: 14, resCold: 28, magicFind: 25, mana: 25 } },
   { id: 'stormstride', name: 'Stormstride', base: 'chainboots', ilvl: 14, flavor: '"No drift ever held him."',
     mods: { moveSpeed: 22, armorPct: 40, resLight: 22, stamina: 20 } },
 ];
@@ -295,10 +279,6 @@ export const STAT_INFO = /** @type {Record<string,{label:string, fmt:(v:number)=
   stamina:     { label: 'Stamina',           fmt: v => `+${v}`,         order: 15 },
   mana:        { label: 'Mana',              fmt: v => `+${v}`,         order: 15.5 },
   moveSpeed:   { label: 'Movement speed',    fmt: v => `${v >= 0 ? '+' : ''}${v}%`, order: 16 },
-  str:         { label: 'Strength',          fmt: v => `+${v}`,         order: 17 },
-  dex:         { label: 'Dexterity',         fmt: v => `+${v}`,         order: 18 },
-  vit:         { label: 'Vitality',          fmt: v => `+${v}`,         order: 19 },
-  will:        { label: 'Intelligence',      fmt: v => `+${v}`,         order: 20 },
   resCold:     { label: 'Cold resistance',   fmt: v => `+${v}%`,        order: 21 },
   resFire:     { label: 'Fire resistance',   fmt: v => `+${v}%`,        order: 22 },
   resLight:    { label: 'Lightning resistance', fmt: v => `+${v}%`,     order: 23 },

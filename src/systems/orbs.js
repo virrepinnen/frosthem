@@ -142,6 +142,9 @@ export function updateOrbs(game, dt) {
     }
   }
   if (gained > 0) {
+    // Boons and shrines scale the haul at the moment it is collected, so a
+    // buff you pick up mid-fight still pays out on orbs already on the ground.
+    gained *= (p.xpMult ?? 1) * (1 + (p.xpBuff ?? 0));
     levels = grantXp(p, gained);
     // One number per sweep instead of one per orb — otherwise you get a rain
     // of text the moment you walk through a cleared pack.

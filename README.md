@@ -39,7 +39,7 @@ work.
 | — | The attack takes care of itself when an enemy is within reach |
 | `1`–`6` | Skills |
 | `Q` | Health potion |
-| `E` | Use: talk, waystone, portal, chest |
+| `E` | Use: talk, waystone, portal, chest, the hearth |
 | `Space` | Dodge roll (invulnerable mid-roll) |
 | `T` | Open a town portal (and go back again) |
 | `I` / `C` / `K` | Bag · Character · Skills |
@@ -55,9 +55,10 @@ marker shows whose turn it is. Both auto-aim and auto-attack can be switched off
 in the pause menu, and left click still works as a manual trigger.
 
 The icons under the minimap open the same views with the mouse; hover over them
-to see the shortcut. A gold dot means you have unspent points.
+to see the shortcut. A gold dot on the skill icon means there is a rank you can
+afford at the hearth.
 
-Skills go onto the hotbar automatically as you learn them. Right-clicking a skill
+Skills go onto the hotbar automatically as you buy them. Right-clicking a skill
 in the skill panel moves it to the next slot.
 
 Items can also be picked up by clicking their name label on the ground. Gold and
@@ -197,26 +198,50 @@ yellow, blue and purple — so you can see from the ground what is worth fetchin
 A heavy haul is split into several orbs, and once the field fills up new ones are
 merged into nearby orbs instead of scattering more gravel.
 
-**Loot.** Items drop rarely — barely one per twenty ordinary enemies felled — and
-white junk items almost always fall away entirely. Gold comes in fewer but
-heavier piles. Everything you find is picked up automatically as you walk over
-it, but something *you* drop stays put until you have walked away, so it is
-possible to put a weapon down in the wilderness.
+**Loot.** Items drop rarely — measured at roughly one per eighteen enemies
+felled across a full run — and plain white junk never reaches the ground outside
+chests at all. A rare or unique lands with a **pillar of light** standing out of
+the snow in its own colour, a burst, a screen flash and a line in the notices, so
+you see it across the clearing rather than reading about it in a label. Gold
+comes in fewer, heavier piles, and the pile scatters coins when you pick it up.
 
-**Progression.** Levels from 1 upward, four attribute points and one skill point
-per level. Three real **skill trees** (Steel, Frost, Endurance) — one per tab —
-with five skills each in three tiers: two entries, two middle steps that each
-require a point in their parent, and a capstone requiring both middle steps.
-Tier 2 opens at level 6, tier 3 at level 12. Plus synergies where skills
-strengthen each other.
+Everything you find is picked up automatically as you walk over it, but something
+*you* drop stays put until you have walked away, so it is possible to put a weapon
+down in the wilderness.
 
-**Levelling up.** The game pauses and shows a wide window with the attributes as
-four cards on the left and the **whole skill tree** on the right — nothing hides
-behind a button. Every card states outright what one click gives. The points go
-into a pending pile: you can take them back with minus and try again, and only
-*Confirm* writes them to the character. Attributes and skills are confirmed
-**separately**, because they are different decisions. You do not have to spend
-them at all; `Esc` takes you straight back into the fight and the points stay.
+**Levelling up is one click.** There are no attribute points. A level offers
+**three blessings**; you click one and you are back in the fight. The model is
+Halls of Torment's traits, and so is the reason: the interesting decision is which
+direction you lean, not how you split four points four ways. Sixteen blessings in
+three families — *Whetted, Swift Arm, Keen Edge, Heavy Hand* for offence,
+*Hardy, Tempered, Knitting Flesh, Coldblooded* for defence, *Light Footed, Second
+Breath, Ravenous, Wide Arc, Studious, Covetous* for utility, plus *Double Strike*
+and *Frostborn* which only enter the pool from level 10. Ranks open at levels 1,
+4, 8, 13 and 19, which is pitched against the levels a run actually reaches.
+
+There is no undo, because a choice that costs one click does not need one, and
+`Esc` skips the pick entirely. Several levels at once simply deal a new hand after
+each pick.
+
+What the attribute points used to carry is now split in two: a flat scaling with
+level, so every level is worth something on its own, and the blessings, so the
+direction is a choice. The constants were picked so a level-1 character is exactly
+as strong as it was before — removing the points changes how you build, not how
+hard the first pack hits.
+
+**The skill trees moved to the hearth.** Three real trees (Steel, Frost,
+Endurance) — one per tab — with five skills each in three tiers: two entries, two
+middle steps that each require a rank in their parent, and a capstone requiring
+both. Tier 2 opens at level 6, tier 3 at level 12, plus synergies where skills
+strengthen each other. The prerequisites are unchanged; what changed is where you
+buy them. Stand at the fire in Frosthem, press `E`, and spend **gold** on ranks.
+Out in the wilderness the same panel is a read-only overview.
+
+That makes gold the currency that permanently builds the character, which is why
+it drops in fewer and heavier piles: every pile is a step towards a rank you have
+your eye on. Measured over a full clear of all three zones, the gold found buys
+around twenty ranks — enough to develop a branch, nowhere near enough to take
+everything.
 
 The game opens no windows when you start — you stand in Frosthem immediately,
 with a notice in the corner instead of a modal to dismiss.
@@ -228,10 +253,18 @@ Frostcaller are listed as coming). Everything is saved in the browser's
 `localStorage`, automatically on level-up, zone change and when you leave the
 tab, or manually with `F5`.
 
-Every new character gets a short five-step walkthrough. The question mark in the
+Every new character gets a short six-step walkthrough. The question mark in the
 top right (or `F1`) brings it back at any time. The start screen offers
 *Continue* when a save exists. You always return to Frosthem, since the village
 is the only place that is not regenerated.
+
+**No emoji.** Every icon in the game — skills, items, blessings, the navigation
+buttons, the things lying in the snow — is a stroked line glyph in a 24×24 box,
+defined once in `src/ui/glyphs.js`. The same path data serves both worlds: an
+inline SVG in the DOM, and a canvas `Path2D` in the world, so a glyph can never
+look like two different things. Emoji rendered differently on every system,
+carried their own colour, and pulled the tone somewhere the rest of the art was
+not going.
 
 **Other.** Shrines with timed buffs, treasure chests, a minimap showing paths and
 waystones, comparing tooltips, an equipment doll in the shape of a body as in D2,
@@ -250,12 +283,13 @@ index.html          canvas + DOM overlay for the HUD and panels
 styles.css          the whole UI (panels, orbs, tooltips) in CSS
 src/
   core/             rng (seeded), math, input
-  data/             items.js (base types + affix tables), monsters.js, skills.js
+  data/             items.js (base types + affix tables), monsters.js, skills.js,
+                    boons.js
   entities/         player.js, monster.js — plain data structures
   systems/          world (generation + paths), spawn, ai, boss, combat,
-                    loot, stats, inventory, save
+                    loot, stats, boons, skillshop, inventory, orbs, save
   render/           camera, renderer (all canvas drawing), fx (particles/numbers)
-  ui/               hud, panels, tooltip — DOM, not canvas
+  ui/               hud, panels, skill-ui, glyphs, tooltip — DOM, not canvas
   game.js           game state + update loop
   main.js           bootstrap, canvas setup, rAF loop
 ```
@@ -291,10 +325,22 @@ A couple of deliberate choices:
 
 ## Balance status
 
-The opening is verified with a simple bot: a level-1 character with starting gear
-beats every ordinary group in Bleka hedarna and loses 20–50 % of its life on the
-way. The boss takes about a minute with reasonable gear. The middle segment
-(Vargpasset, levels 5–9) is the least tested part.
+Measured rather than guessed, by driving the game with a bot:
+
+- **Levelling.** The first level takes about three packs instead of one and a
+  half. Clearing all three zones once lands you around level 20; a normal run,
+  where you do not fight everything, lands nearer 16.
+- **Power at a given level.** A level-1 character is numerically identical to the
+  old one. At levels 6, 12 and 19 the new character is at least as strong as the
+  equivalent old one for both a defensive and an offensive build — and the gap
+  between those two builds is now far wider, which is the point.
+- **Loot.** Around seventeen items across a full three-zone clear, roughly one per
+  eighteen enemies.
+- **Gold.** A full clear buys about twenty skill ranks.
+
+The middle segment (Vargpasset, levels 5–9) is still the least tested part: the
+bot fights by standing still and swinging, so it underplays every pack, and the
+numbers above are floors rather than a verdict.
 
 Death is deliberately soft: you wake in Frosthem and keep everything. The penalty
 is easy to sharpen in `updatePlayer` in `src/game.js` once the balance settles.

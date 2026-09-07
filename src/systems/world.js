@@ -237,7 +237,9 @@ function village(index, seed, d) {
       { x: cx + 112, y: cy - 250 }, { x: cx + 70, y: cy - 420 },
       { x: cx - 20, y: cy - fenceR - 30 }], width: 54, main: true }],
     poi: null,
-    waypoint: { x: cx + 60, y: cy + 120, r: 34 },
+    // Clear of the hearth: the two interaction circles used to overlap, and
+    // [E] next to the fire opened the waystone instead of the skill trees.
+    waypoint: { x: cx + 165, y: cy + 145, r: 34 },
     // The portal gets its own spot on the far side of the hearth. Next to the
     // waypoint the two ways to travel sat on top of each other and [E] became a
     // guessing game.
