@@ -24,6 +24,8 @@ import { PORTAL_CAST, PORTAL_STEP } from '../entities/player.js';
  */
 
 const SNOW_TILE = 512;
+/** @type {CanvasPattern|null} */
+let snowPattern = null;
 /** How many world units the minimap window shows across. */
 const MINIMAP_SPAN = 3400;
 /** The minimap's logical size in CSS pixels. Must match styles.css. */
@@ -184,9 +186,11 @@ function drawGround(ctx, zones) {
   ctx.fillStyle = '#0a1018';
   ctx.fillRect(camera.x - 400, camera.y - 400, camera.w + 800, camera.h + 800);
   if (!snowTile) return;
-  const pat = ctx.createPattern(snowTile, 'repeat');
-  if (!pat) return;
-  ctx.fillStyle = pat;
+  // Built once. It was being rebuilt every frame, which is a new object and a
+  // new upload for a texture that never changes.
+  snowPattern ??= ctx.createPattern(snowTile, 'repeat');
+  if (!snowPattern) return;
+  ctx.fillStyle = snowPattern;
   // Right to the edge. The old inset drew a dark rim around the map, which read
   // as a cliff when a map stood alone — and as a black seam between two of them,
   // which is exactly the join this whole change exists to remove.
@@ -206,13 +210,8 @@ function drawRoads(ctx, zone) {
     ctx.save();
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
-    for (const pass of [
-      { w: road.width + 10, c: 'rgba(198,210,226,0.30)' },
-      { w: road.width,      c: 'rgba(139,152,171,0.55)' },
-      { w: road.width * 0.5, c: 'rgba(122,134,152,0.42)' },
-    ]) {
-      ctx.strokeStyle = pass.c;
-      ctx.lineWidth = pass.w;
+
+    const trace = () => {
       ctx.beginPath();
       ctx.moveTo(pts[0].x, pts[0].y);
       for (let i = 1; i < pts.length - 1; i++) {
@@ -221,6 +220,49 @@ function drawRoads(ctx, zone) {
       }
       ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
       ctx.stroke();
+    };
+    /** One stroke of the whole path, shifted towards or away from the light. */
+    const layer = (/** @type {number} */ w, /** @type {string} */ c,
+      /** @type {number} */ dx = 0, /** @type {number} */ dy = 0) => {
+      ctx.save(); ctx.translate(dx, dy);
+      ctx.strokeStyle = c; ctx.lineWidth = w; trace(); ctx.restore();
+    };
+
+    const W = road.width;
+    // A hollow, not a stripe. Everything else in the world is lit from the
+    // upper left — a mound would carry its highlight there and its shadow on
+    // the far side, so a dip in the ground is that turned around: shade caught
+    // along the near rim, snow catching the light along the far one. Without
+    // those two the path was just a lighter line laid over the snow.
+    layer(W + 22, 'rgba(88,100,120,0.20)', -5, -7);
+    layer(W + 16, 'rgba(234,243,253,0.26)', 5, 8);
+    // the slope down into it, the trodden floor, and the worn middle
+    layer(W + 7, 'rgba(151,163,182,0.30)');
+    layer(W, 'rgba(127,139,158,0.55)');
+    layer(W * 0.6, 'rgba(112,124,143,0.40)', 1, 1);
+
+    // Snow crowding in from the sides. A path in the world has an edge that
+    // wanders; a stroke has one that does not, and that alone reads as paint.
+    let carried = 0;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const ax = pts[i].x, ay = pts[i].y;
+      const bx = pts[i + 1].x, by = pts[i + 1].y;
+      const len = Math.hypot(bx - ax, by - ay) || 1;
+      const nx = -(by - ay) / len, ny = (bx - ax) / len;
+      for (let d = carried; d < len; d += 78) {
+        const t = d / len;
+        const px = ax + (bx - ax) * t, py = ay + (by - ay) * t;
+        const n1 = hashNoise(Math.round(px), Math.round(py), 3);
+        const n2 = hashNoise(Math.round(py), Math.round(px), 11);
+        const side = n1 < 0.5 ? -1 : 1;
+        const off = W * (0.42 + n2 * 0.22) * side;
+        ctx.fillStyle = 'rgba(216,228,242,0.42)';
+        ctx.beginPath();
+        ctx.ellipse(px + nx * off, py + ny * off,
+          W * (0.24 + n1 * 0.26), W * (0.18 + n2 * 0.2), Math.atan2(ny, nx), 0, Math.PI * 2);
+        ctx.fill();
+        carried = d + 78 - len;
+      }
     }
     ctx.restore();
   }
@@ -677,20 +719,10 @@ function drawExits(ctx, game) {
       y: PY(e.ty + oy * out + ay * along),
     });
 
-    // Haze that swallows the ground on the last stretch out.
-    ctx.save();
-    const a0 = at(-30, 0), a1 = at(234, 0);
-    const g = ctx.createLinearGradient(a0.x, a0.y, a1.x, a1.y);
-    g.addColorStop(0, 'rgba(206,226,244,0)');
-    g.addColorStop(0.45, 'rgba(212,231,246,0.38)');
-    g.addColorStop(1, 'rgba(224,238,250,0.92)');
-    ctx.fillStyle = g;
-    const q = [at(-30, -e.r), at(-30, e.r), at(234, e.r * 1.28), at(234, -e.r * 1.28)];
-    ctx.beginPath();
-    ctx.moveTo(q[0].x, q[0].y);
-    for (let i = 1; i < q.length; i++) ctx.lineTo(q[i].x, q[i].y);
-    ctx.closePath(); ctx.fill();
-    ctx.restore();
+    // The white glare that used to fill the last stretch is gone. It was there
+    // to say "this is a way out" back when the way out was a teleport, and once
+    // the border became a gap in a rock ridge it was a light with no source —
+    // the stones and the path say it now.
 
     // Two standing stones as a gate, one on each side of the path. They have
     // height, so they are drawn upright in unsquashed pixels wherever they sit.
