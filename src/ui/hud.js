@@ -9,6 +9,7 @@ import { drawBoons, takeBoon, boonRank } from '../systems/boons.js';
 import { ROMAN } from '../data/boons.js';
 import { glyph } from './glyphs.js';
 import { saveGame } from '../systems/save.js';
+import { ZONE_DEFS } from '../systems/world.js';
 
 const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (document.getElementById(id));
 
@@ -43,7 +44,8 @@ export function updateHud(game) {
   flashOnce('mana-orb', p.manaFlash);
   $('xp-fill').style.width = `${(p.xp / p.xpNext) * 100}%`;
   $('zone-name').textContent = game.zone.name;
-  $('zone-lvl').textContent = game.zone.isTown ? 'sanctuary' : `monster level ${game.zone.level}`;
+  $('zone-lvl').textContent = game.zone.isTown
+    ? 'sanctuary' : `${game.zone.area} · level ${game.zone.level}`;
   $('veil').style.opacity = String(game.veil ?? 0);
   $('char-level').textContent = `Level ${p.level}`;
   $('gold').textContent = String(p.gold);
@@ -54,6 +56,24 @@ export function updateHud(game) {
   if (sig !== lastHotbar) { rebuildSkillbar(game); lastHotbar = sig; }
   updateCooldowns(game);
   updateGroundLabels(game);
+}
+
+/**
+ * The inscription band: what a runestone says, what a villager says, what a
+ * place says about itself when you walk into it.
+ *
+ * Deliberately not a window. Lore that stops the game and asks to be dismissed
+ * gets clicked away unread; lore that appears low on the screen and fades on
+ * its own gets read, or does not, and either is fine.
+ * @param {string} text Newlines break lines
+ */
+export function showInscription(text) {
+  const el = $('inscription');
+  el.innerHTML = String(text).split('\n')
+    .map(l => `<span>${escape(l)}</span>`).join('');
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.classList.add('show');
 }
 
 /**
@@ -242,7 +262,8 @@ export function hidePauseMenu() { $('pause').classList.add('hidden'); }
 export function showPauseMenu(game) {
   const box = $('pause');
   const note = $('pause-note');
-  note.textContent = `${game.player.name} · level ${game.player.level} · ${game.zone.name}`;
+  note.innerHTML = `${escape(game.player.name)} · level ${game.player.level} · ${escape(game.zone.name)}` +
+    `<br>run ${(game.runs ?? 0) + 1} · deepest: ${escape(ZONE_DEFS[game.bestDepth ?? 0]?.name ?? '—')}`;
   const aim = /** @type {HTMLElement} */ (box.querySelector('[data-act="autoaim"]'));
   const atk = /** @type {HTMLElement} */ (box.querySelector('[data-act="autoattack"]'));
   aim.textContent = `Auto-aim: ${game.settings.autoAim ? 'On' : 'Off'}`;
@@ -261,6 +282,25 @@ export function showPauseMenu(game) {
           game.settings.autoAttack = !game.settings.autoAttack;
           atk.textContent = `Auto-attack: ${game.settings.autoAttack ? 'On' : 'Off'}`;
           break;
+        case 'newrun': {
+          // Giving up a run on purpose. The only thing it costs is the climb,
+          // so it needs a confirmation rather than a warning — but it does need
+          // one, because a mis-click would throw away the level you are on.
+          if (b.dataset.armed !== '1') {
+            b.dataset.armed = '1';
+            b.textContent = `Give up level ${game.player.level}?`;
+            setTimeout(() => {
+              if (!b.isConnected) return;
+              b.dataset.armed = ''; b.textContent = 'Start a new run';
+            }, 2600);
+            break;
+          }
+          b.dataset.armed = ''; b.textContent = 'Start a new run';
+          hidePauseMenu();
+          game.paused = false;
+          game.beginRun();
+          break;
+        }
         case 'quit':
           saveGame(game);
           location.reload();

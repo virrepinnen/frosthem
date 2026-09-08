@@ -4,6 +4,8 @@ import { angleDiff, clamp } from '../core/math.js';
 import { armorReduction, skillPower, rank, KILL_STAMINA } from './stats.js';
 import { rollItem } from './loot.js';
 import { RARITY_COLOR } from '../data/items.js';
+import { HRAVN } from '../data/lore.js';
+import { showInscription } from '../ui/hud.js';
 import { burst, floatText, decal, shake, screenFlash } from '../render/fx.js';
 import { lineBlocked } from './world.js';
 import { pickAttack } from '../render/hero.js';
@@ -76,6 +78,7 @@ export function hitMonster(game, m, d) {
         if (Math.hypot(o.pos.x - m.pos.x, o.pos.y - m.pos.y) < 460) { o.dormant = false; o.state = 'chase'; }
       }
       game.alert(`${m.name} rises.`);
+      showInscription(`${m.name}\n"${HRAVN.wake}"`);
       burst(m.pos.x, m.pos.y, 70, { color: '#a8e4f8', speed: 300, life: 1.1, size: 3.4, grav: -40 });
       screenFlash(0.3, '#7fd4f0');
       shake(14);
@@ -112,6 +115,7 @@ export function killMonster(game, m) {
   m.dead = true;
   m.corpseT = 14;
   game.player.kills++;
+  if (game.run) game.run.kills++;
   // A felled target grants breathing room. That keeps pack-clearing sustainable
   // while punishing missed swings — exactly the trade-off stamina should create.
   game.player.stamina = Math.min(game.player.maxStamina, game.player.stamina + KILL_STAMINA);
@@ -141,14 +145,17 @@ function dropLoot(game, m) {
   const ilvl = Math.max(1, m.level + (m.isBoss ? 4 : m.elite ? 2 : m.isChampion ? 1 : 0));
   const mf = p.magicFind;
 
-  // The drop rate is deliberately low, and lower than it was. With automatic
-  // pickup every item is otherwise noise in the bag — the rarity is the point,
-  // and a drop that happens once a pack should stop you where you stand.
+  // The drop rate is deliberately low, and lower again now that gear survives a
+  // run: what you find is permanent, so finding something has to be an event.
+  // Halved once more when act one grew to eight maps — the same rate over three
+  // times as many monsters had turned a run's haul back into a pile.
+  // Roughly one item per sixty ordinary enemies; the rest comes from chests,
+  // champions and elites, which is where looking around gets rewarded.
   let itemRolls = 0, boost = 1;
   if (m.isBoss) { itemRolls = 3; boost = 4.5; }
-  else if (m.elite) { itemRolls = rng.chance(0.35) ? 2 : 1; boost = 3.2; }
-  else if (m.isChampion) { itemRolls = rng.chance(0.2) ? 1 : 0; boost = 2.4; }
-  else if (rng.chance(0.02)) itemRolls = 1;
+  else if (m.elite) { itemRolls = rng.chance(0.15) ? 2 : 1; boost = 3.2; }
+  else if (m.isChampion) { itemRolls = rng.chance(0.1) ? 1 : 0; boost = 2.4; }
+  else if (rng.chance(0.007)) itemRolls = 1;
 
   for (let i = 0; i < itemRolls; i++) {
     const forced = m.isBoss ? /** @type {const} */ ('rare') : undefined;

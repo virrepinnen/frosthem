@@ -108,6 +108,8 @@ function renderCharList() {
       begin(playerFromSave(rec), {
         waypoints: rec.waypoints ?? [0],
         bossDefeated: rec.bossDefeated ?? false,
+        runs: rec.runs ?? 0,
+        bestDepth: rec.bestDepth ?? 0,
       }, false, rec.id);
     };
     /** @type {HTMLElement} */ (row.querySelector('.char-del')).onclick = (e) => {
@@ -301,7 +303,7 @@ requestAnimationFrame(menuStorm);
 
 /**
  * @param {ReturnType<typeof createPlayer>} player
- * @param {{waypoints?:number[], bossDefeated?:boolean}} [progress]
+ * @param {{waypoints?:number[], bossDefeated?:boolean, runs?:number, bestDepth?:number}} [progress]
  * @param {boolean} isNew
  * @param {string} [charId]
  */

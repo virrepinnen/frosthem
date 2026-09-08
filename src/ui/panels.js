@@ -22,10 +22,24 @@ export function anyPanelOpen() {
   return panels.inventory || panels.character || panels.skills || panels.vendor || panels.waypoint;
 }
 
+/**
+ * Which side of the screen each panel lives on. One panel per side, as in D2:
+ * character and skills share the left, the bag owns the right. Every panel is
+ * now a full-height sheet, so two on the same side would sit on top of each
+ * other — and stacking half-screen windows was never readable anyway.
+ */
+const SIDE = /** @type {Record<string,'left'|'right'>} */ ({
+  character: 'left', skills: 'left', vendor: 'left', waypoint: 'left',
+  inventory: 'right',
+});
+
 /** @param {any} game @param {keyof typeof panels} name */
 export function togglePanel(game, name) {
   const was = panels[name];
   if (name === 'vendor' && !was) panels.inventory = true;
+  if (!was) for (const k in SIDE) {
+    if (k !== name && SIDE[k] === SIDE[name]) panels[/** @type {'character'} */ (k)] = false;
+  }
   panels[name] = !was;
   if (name === 'inventory' && was) panels.vendor = false;
   hideTooltip();
@@ -50,39 +64,12 @@ export function renderPanels(game) {
   if (panels.vendor) root.appendChild(vendorPanel(game));
   if (panels.waypoint) root.appendChild(waypointPanel(game));
   if (panels.inventory) root.appendChild(inventoryPanel(game));
-  stackPanels(root);
-}
-
-/**
- * Several panels on the same side must not stack on top of each other.
- * @param {HTMLElement} root
- */
-function stackPanels(root) {
-  const gap = 12;
-  for (const side of /** @type {const} */ (['left', 'right'])) {
-    const list = /** @type {HTMLElement[]} */ ([...root.querySelectorAll('.panel.' + side)]);
-    let offset = 22;
-    for (const el of list) {
-      // The full-height sheet is anchored to the edge and never stacked.
-      if (el.classList.contains('sheet')) continue;
-      const w = el.getBoundingClientRect().width || (el.classList.contains('wide') ? 392 : 330);
-      // Two panels may sit side by side as long as they do not eat more than
-      // 62% of the width — the rest is needed for the panel on the other side.
-      if (offset + w > innerWidth * 0.62 && list.length > 1) {
-        el.style[side] = (22 + list.indexOf(el) * 18) + 'px';
-        el.style.top = (64 + list.indexOf(el) * 18) + 'px';
-        continue;
-      }
-      el.style[side] = offset + 'px';
-      offset += w + gap;
-    }
-  }
 }
 
 /** @param {string} title @param {'left'|'right'} side @param {()=>void} onClose @param {boolean} [wide] */
 function shell(title, side, onClose, wide) {
   const d = document.createElement('div');
-  d.className = `panel ${side}${wide ? ' wide' : ''}`;
+  d.className = `panel sheet ${side}${wide ? ' wide' : ''}`;
   d.innerHTML = `<h2>${title}</h2><div class="close">✕</div>`;
   /** @type {HTMLElement} */ (d.querySelector('.close')).onclick = onClose;
   return d;
@@ -96,7 +83,7 @@ function inventoryPanel(game) {
   // worst of both worlds — too small to read, too big to ignore.
   const d = shell('Equipment &amp; bag', 'right',
     () => { panels.inventory = false; panels.vendor = false; game.dirtyUI = true; }, true);
-  d.classList.add('sheet');
+  d.classList.add('bagsheet');
 
   const doll = document.createElement('div');
   doll.id = 'equip-doll';
@@ -178,7 +165,7 @@ function inventoryPanel(game) {
 }
 
 /** @param {string} s */
-function shorten(s) { return s.length > 20 ? s.slice(0, 18) + '…' : s; }
+function shorten(s) { return s.length > 17 ? s.slice(0, 15) + '…' : s; }
 
 /* ------------------------------------------------------------------ */
 /* Character                                                           */
@@ -322,7 +309,9 @@ function waypointPanel(game) {
     const row = document.createElement('div');
     row.className = 'node' + (z.known ? '' : ' locked');
     row.innerHTML = `<div class="ico">${glyph(z.index === 0 ? 'hearth' : 'waystone')}</div>` +
-      `<div class="t"><b>${escape(z.name)}</b><i>${z.known ? (z.index === 0 ? 'The village' : `Monster level ${z.level}`) : 'Not discovered'}</i></div>` +
+      `<div class="t"><b>${escape(z.name)}</b><i>${z.known
+        ? (z.index === 0 ? 'The village' : `${escape(z.area)} · monster level ${z.level}`)
+        : 'Not discovered'}</i></div>` +
       `<div class="rk">${z.here ? 'here' : z.known ? '→' : glyph('lock')}</div>`;
     row.style.marginBottom = '6px';
     if (z.known && !z.here) row.onclick = () => { game.travelToWaypoint(z.index); closeAllPanels(game); };

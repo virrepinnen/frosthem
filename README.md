@@ -66,26 +66,62 @@ potions are picked up automatically as you walk over them.
 
 ## What is built
 
+**Runs.** A run starts in Frosthem at level 1 and ends when you die or when
+Hravn falls. What it costs is the climb — the level and the blessings you drew
+along the way. What it never costs is your things: gold, gear and the skill
+ranks you bought with gold all come home either way.
+
+That split is the whole design. Gear and the skill trees are the *permanent*
+power, so every run leaves you a little stronger and gets you a little further;
+level and blessings are the *temporary* power, so every run still asks you to
+build a character from the bottom. Dying hurts without ever putting you behind
+where you started.
+
+Death and victory both end in a run summary: where you got to, what you carry
+home, and the deepest map yet. The pause menu can also start a fresh run on
+purpose, behind a second click.
+
 **The world.** The village of Frosthem (fixed layout, a merchant and an NPC) and
-three wilderness zones: Bleka hedarna → Vargpasset → Den frusna graven. The
-wilderness zones are generated procedurally every time you enter them, using
-hand-designed rules.
+act one as a **chain of eight maps** in three areas:
+
+```
+Bleka hedarna       Utmarkerna · Stenbrottet
+Vargpasset          Nedre passet · Lägret · Vindbrynet
+Den frusna graven   Gravfältet · Nedstigningen · Hravns hall
+```
+
+The model is Diablo 2's act one, where an area is several maps sharing a name.
+The road north is long enough to have a shape — somewhere the wolves are wrong,
+somewhere people camped and stayed, somewhere the ground is full of graves — and
+every map is a place rather than a stretch. All of them are generated
+procedurally on entry, using hand-designed rules.
+
+**Waystones sit only in the first map of an area**, as D2 does it. Eight rows in
+the travel list would be a table of contents rather than a choice, and a
+waystone in every map would make the chain pointless — you would never walk it
+twice.
 
 Every map has a **path** tying the entrance to the exit, and a **detour** leading
-to the zone's own place — The Quarry, The Abandoned Camp or The Offering Ground.
-There you find a chest, a shrine and an elite pack. The path is the zone's spine:
-it gives direction without the map becoming a corridor, and the monster groups
-sit *along* it so you meet them on the way.
+to the map's own place — the quarry, the toll post, the abandoned camp, the wind
+cairn. There you find a chest, a shrine and an elite pack. The path is the map's
+spine: it gives direction without the map becoming a corridor, and the monster
+groups sit *along* it so you meet them on the way.
 
-**The borders cannot be clicked.** The path continues out of the picture to the
-north, and where it leaves the map two standing stones flank it with the ground
-behind them dissolved into driving snow. Go there *under your own power* and the
-screen fades for a third of a second and you step into the next area — no portal,
-no `E`, no window. The same to the south, and the same when you walk out through
-the village gate in Frosthem. Requiring your own movement is deliberate: a shove
-in the back mid-fight should not be able to throw you out of the map, and you
-always land a little inside the threshold so the first step does not send you
-back.
+**The borders cannot be clicked, and they are not always north.** The path
+continues out of the picture, and where it leaves the map two standing stones
+flank it with the ground behind them dissolved into driving snow. Go there
+*under your own power* and the screen fades for a third of a second and you step
+into the next map — no portal, no `E`, no window.
+
+Each map's entrance and exit sit on any two *different* edges, agreed between
+neighbours by seeding on the map index, so every map takes a different line
+instead of being the same corridor with different trees. An exit carries its own
+outward normal, which is what the border check, the arrival point and the
+renderer all work from — none of them has to know which edge it is.
+
+Requiring your own movement is deliberate: a shove in the back mid-fight should
+not be able to throw you out of the map, and you always land a little inside the
+threshold so the first step does not send you back.
 
 The name of the place fades in high on the screen when you arrive, and then stays
 under the minimap for as long as you are there.
@@ -272,6 +308,25 @@ look like two different things. Emoji rendered differently on every system,
 carried their own colour, and pulled the tone somewhere the rest of the art was
 not going.
 
+**The story of act one: The Cold That Keeps.** Three generations ago Jarl Hravn
+went down into his ancestors' barrow to ask the old powers to hold the winter
+back. Something answered: the cold stopped killing him and started *keeping*
+him, and it has been keeping everything else since. He asked winter to spare his
+people. He never said for how long.
+
+None of that is stated outright. It is delivered four ways, none of which stop
+the game: **fifteen runestones** along the roads, read with `E`; **one line per
+map** fading in a beat after the banner; **Gerd and Olav saying different
+things** as you get deeper; and **Hravn himself**, when he wakes and when he
+falls. All the writing lives in `src/data/lore.js`, so the systems only ever ask
+for a line.
+
+**Panels are sheets.** Every panel is a full-height column down one side of the
+screen, and only one lives on each side — character and skills share the left,
+the bag owns the right, as in D2. **The world stops** while any of them is open.
+Fighting behind a window covering half the screen was never a real option, and
+this way reading a tooltip is never punished by something biting you.
+
 **Other.** Shrines with timed buffs, treasure chests, a minimap showing paths and
 waystones, comparing tooltips, an equipment doll in the shape of a body as in D2,
 particles, blood marks, screen shake and drifting snow.
@@ -290,10 +345,10 @@ styles.css          the whole UI (panels, orbs, tooltips) in CSS
 src/
   core/             rng (seeded), math, input
   data/             items.js (base types + affix tables), monsters.js, skills.js,
-                    boons.js
+                    boons.js, lore.js (all of act one's writing)
   entities/         player.js, monster.js — plain data structures
   systems/          world (generation + paths), spawn, ai, boss, combat,
-                    loot, stats, boons, skillshop, inventory, orbs, save
+                    loot, stats, boons, skillshop, run, inventory, orbs, save
   render/           camera, renderer (all canvas drawing), fx (particles/numbers)
   ui/               hud, panels, skill-ui, glyphs, tooltip — DOM, not canvas
   game.js           game state + update loop
@@ -348,20 +403,25 @@ The middle segment (Vargpasset, levels 5–9) is still the least tested part: th
 bot fights by standing still and swinging, so it underplays every pack, and the
 numbers above are floors rather than a verdict.
 
-Death is deliberately soft: you wake in Frosthem and keep everything. The penalty
-is easy to sharpen in `updatePlayer` in `src/game.js` once the balance settles.
+Death ends the run. You keep gold, gear and skill ranks; the level and the
+blessings start over. That is the whole penalty, and it is deliberate — the loop
+is meant to get you further every time, not put you behind where you started.
 
 ## Next steps
 
 A reasonable order, with the highest value per hour first:
 
-1. **Sound.** The biggest thing missing. Hits, death sounds and a wind loop do
+1. **Start a run from an unlocked area.** The bookkeeping is already in place —
+   saves carry `bestDepth` — but the choice is not offered yet, and a level-1
+   character dropped into Gravfältet would be unplayable. It needs a starting
+   level and a starting hand of blessings to match the area.
+2. **Sound.** The biggest thing missing. Hits, death sounds and a wind loop do
    more for the feel than any graphical upgrade — especially now that stamina has
    a rhythm that would benefit from being heard.
-2. **Telegraphed specials for ordinary elite monsters.** The boss has them now;
+3. **Telegraphed specials for ordinary elite monsters.** The boss has them now;
    the same device on the elite packs would lift the whole middle segment.
-3. **Sockets and runes**, giving loot a second layer to dig into.
-4. **More classes.** The Hunter and the Frostcaller are sketched; the systems are
+4. **Sockets and runes**, giving loot a second layer to dig into.
+5. **More classes.** The Hunter and the Frostcaller are sketched; the systems are
    built to receive them.
-5. **Difficulty tiers** (Nightmare, Hell) with resistance penalties — D2's
+6. **Difficulty tiers** (Nightmare, Hell) with resistance penalties — D2's
    cheapest way to make all the content relevant again.

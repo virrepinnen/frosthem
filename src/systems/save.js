@@ -127,6 +127,8 @@ export function saveGame(game) {
     waypoints: [...game.waypoints],
     zoneIndex: game.zone?.isTown ? 0 : (game.zone?.index ?? 0),
     bossDefeated: game.bossDefeated,
+    runs: game.runs ?? 0,
+    bestDepth: game.bestDepth ?? 0,
   };
 
   const data = readAll();
@@ -180,5 +182,6 @@ export function describeSave(d) {
     : mins < 60 ? `${mins} min ago`
     : mins < 60 * 24 ? `${Math.round(mins / 60)} h ago`
     : when.toLocaleDateString('en-GB');
-  return { rel, kills: d.kills ?? 0, gold: d.gold ?? 0, deaths: d.deaths ?? 0 };
+  return { rel, kills: d.kills ?? 0, gold: d.gold ?? 0, deaths: d.deaths ?? 0,
+    runs: d.runs ?? 0, bestDepth: d.bestDepth ?? 0 };
 }
