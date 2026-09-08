@@ -39,7 +39,8 @@ export const KNOBS = [
   { id: 'reach', group: 'You', label: 'Swing reach', min: 40, max: 160, step: 2, unit: 'px' },
   { id: 'swingStep', group: 'You', label: 'Step into the swing', min: 0, max: 90, step: 2, unit: 'px',
     note: 'How far the basic attack carries you forward.' },
-  { id: 'rollDist', group: 'You', label: 'Roll distance', min: 120, max: 500, step: 10, unit: 'px' },
+  { id: 'rollDist', group: 'You', label: 'Roll distance', min: 80, max: 500, step: 5, unit: 'px',
+    note: 'Actual pixels travelled, deceleration included.' },
   { id: 'rollTime', group: 'You', label: 'Roll duration', min: 0.14, max: 0.5, step: 0.02, unit: 's' },
   { id: 'rollCd', group: 'You', label: 'Roll cooldown', min: 0, max: 2.5, step: 0.05, unit: 's' },
   { id: 'rollIframes', group: 'You', label: 'Roll invulnerable window', min: 0, max: 1, step: 0.05,
@@ -60,22 +61,22 @@ export const KNOBS = [
 
 /** The defaults. Changing one of these is what "baking in a value" means. */
 export const DEFAULTS = /** @type {Record<string, number>} */ ({
-  viewWidth: 820,
+  viewWidth: 1075,
   moveSpeed: 168,
-  reach: 66,
-  swingStep: 0,
-  rollDist: 263,
-  rollTime: 0.28,
+  reach: 100,
+  swingStep: 4,
+  rollDist: 182,
+  rollTime: 0.32,
   rollCd: 0.85,
   rollIframes: 0.7,
   meleeWindup: 0.35,
-  rangedWindup: 0.45,
-  lungeWindup: 0,
+  rangedWindup: 0.55,
+  lungeWindup: 0.4,
   dmgMult: 1,
   monSpeed: 1,
   aggro: 520,
   potionCd: 0,
-  potions: 3,
+  potions: 2,
 });
 
 /** Live values. Read this, never a copy of it — the panel writes in place. */

@@ -597,9 +597,11 @@ function updatePlayer(game, dt) {
     p.roll.t -= dt;
     const k = 1 - p.roll.t / p.roll.dur;
     const ease = 1 - Math.pow(k, 2.2);
-    // The distance knob is the *total* travelled; the speed follows from it and
-    // the duration, so dragging one does not silently change the other.
-    const rollSpeed = (T.rollDist / Math.max(0.05, p.roll.dur)) * 2.2;
+    // The knob is the distance actually travelled. The roll decelerates on the
+    // curve below, whose integral over the whole motion is 1 - 1/3.2, so the
+    // speed has to be divided by that for the number to mean pixels. It did not
+    // before, and a slider that lies is worse than no slider.
+    const rollSpeed = T.rollDist / (Math.max(0.05, p.roll.dur) * 0.6875);
     p.pos.x += Math.cos(p.roll.dir) * rollSpeed * ease * dt;
     p.pos.y += Math.sin(p.roll.dir) * rollSpeed * ease * dt;
     // The invulnerable window sits in the middle of the motion, so the roll

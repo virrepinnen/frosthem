@@ -33,6 +33,13 @@ export function createMonster(def, level, x, y, opts = {}) {
 
     cd: rng.range(0, def.attackCd),
     windup: 0,
+    /** How long the current wind-up was, so the tell knows how full it is. */
+    windupDur: 0,
+    /** Time left of a charge's warning, before the lunge itself. */
+    lungeTell: 0,
+    /** @type {null|{kind:string,t:number,x:number,y:number,r:number,dir:number,
+     *   arc?:number,width?:number,color?:string}} */
+    telegraph: null,
     /** @type {'idle'|'chase'|'attack'|'lunge'} */ state: 'idle',
     lungeT: 0, lungeCd: rng.range(1, 4),
     wanderT: 0, wanderDir: rng.range(-Math.PI, Math.PI),

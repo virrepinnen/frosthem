@@ -1,6 +1,7 @@
 // @ts-check
 import { rng } from '../core/rng.js';
 import { PROJ } from './camera.js';
+import { T } from '../systems/tuning.js';
 import { PORTAL_CAST, PORTAL_STEP } from '../entities/player.js';
 
 /** The figure stands on the squashed ground but is drawn in unsquashed pixels. */
@@ -57,13 +58,19 @@ const mix = (a, b, k) => a + (b - a) * k;
  * how the body twists and how far it lunges. The wind-up lives in the first
  * ~30% — without it the blow looks like it came from nowhere.
  *
+ * `tip` is how far the drawn blade reaches at that variant's furthest extent,
+ * in the curve's own units. The drawing is scaled by the hitbox radius divided
+ * by this, so the blade visibly reaches exactly as far as the swing actually
+ * hits. They used to disagree by a third, which is why a blow could land on
+ * something the weapon plainly did not touch.
+ *
  * @typedef {(k:number) => {ang:number, reach:number, twist:number, lunge:number}} Pose
  * @type {Record<string, {pose:Pose, trail:string}>}
  */
 export const ATTACKS = {
   // Forehand: sweeps from right to left.
   slash: {
-    trail: '#eaf3ff',
+    trail: '#eaf3ff', tip: 62,
     pose: (k) => k < 0.28
       ? { ang: mix(-0.55, 1.35, easeOut(k / 0.28)), reach: mix(20, 23, k / 0.28),
           twist: mix(0, -0.34, k / 0.28), lunge: 0 }
@@ -74,7 +81,7 @@ export const ATTACKS = {
   },
   // Backhand: the same sweep back, so two strikes in a row never look alike.
   backhand: {
-    trail: '#e6f0ff',
+    trail: '#e6f0ff', tip: 60,
     pose: (k) => k < 0.28
       ? { ang: mix(-0.55, -1.4, easeOut(k / 0.28)), reach: mix(20, 23, k / 0.28),
           twist: mix(0, 0.3, k / 0.28), lunge: 0 }
@@ -85,7 +92,7 @@ export const ATTACKS = {
   },
   // Overhead: the weapon is drawn round from behind and falls straight down the middle.
   overhead: {
-    trail: '#fff3d6',
+    trail: '#fff3d6', tip: 50,
     pose: (k) => k < 0.34
       ? { ang: mix(-0.55, 2.5, easeOut(k / 0.34)), reach: mix(20, 15, k / 0.34),
           twist: mix(0, -0.2, k / 0.34), lunge: -2 }
@@ -96,7 +103,7 @@ export const ATTACKS = {
   },
   // Thrust: a short pull-back and a straight lunge.
   thrust: {
-    trail: '#dfeaff',
+    trail: '#dfeaff', tip: 58,
     pose: (k) => k < 0.32
       ? { ang: mix(-0.55, -0.12, easeOut(k / 0.32)), reach: mix(20, 11, easeOut(k / 0.32)),
           twist: mix(0, 0.22, k / 0.32), lunge: -3 }
@@ -382,9 +389,9 @@ function weapon(ctx, item, reach) {
 /**
  * The trail behind the edge, drawn from the same pose curve as the weapon.
  * @param {CanvasRenderingContext2D} ctx @param {{pose:Pose, trail:string}} v
- * @param {number} k @param {number} mirror
+ * @param {number} k @param {number} mirror @param {number} scale
  */
-function trail(ctx, v, k, mirror) {
+function trail(ctx, v, k, mirror, scale) {
   const from = Math.max(0, k - 0.34);
   if (k - from < 0.03) return;
   const steps = 12;
@@ -392,7 +399,7 @@ function trail(ctx, v, k, mirror) {
   /** @type {{x:number,y:number}[]} */ const inner = [];
   for (let i = 0; i <= steps; i++) {
     const q = v.pose(mix(from, k, i / steps));
-    const ang = -q.ang * mirror, len = 6 + q.reach;
+    const ang = -q.ang * mirror, len = (6 + q.reach) * scale;
     outer.push({ x: Math.cos(ang) * len, y: Math.sin(ang) * len });
     inner.push({ x: Math.cos(ang) * len * 0.42, y: Math.sin(ang) * len * 0.42 });
   }
@@ -545,7 +552,10 @@ export function drawHero(ctx, game) {
   ctx.translate(7, H.chest + 1);
   ctx.scale(mirror, 1);     // back into screen space
   ctx.rotate(aim);
-  if (variant) trail(ctx, variant, k, mirror);
+  // The blade is drawn to the same radius the swing hits at, so what the eye
+  // measures and what the hitbox measures are one number.
+  const reachScale = T.reach / (variant?.tip ?? 62);
+  if (variant) trail(ctx, variant, k, mirror, reachScale);
   ctx.rotate(-pose.ang * mirror);
   ctx.strokeStyle = flash ? '#ffffff' : C.robeLit;
   ctx.lineWidth = 4.6;
@@ -557,7 +567,7 @@ export function drawHero(ctx, game) {
     ctx.fillStyle = C.skin;
     ctx.beginPath(); ctx.ellipse(0.5, 0, 2.2, 2.5, 0, 0, Math.PI * 2); ctx.fill();
   }
-  if (p.equipment.weapon) weapon(ctx, p.equipment.weapon, pose.reach);
+  if (p.equipment.weapon) weapon(ctx, p.equipment.weapon, pose.reach * reachScale);
   ctx.restore();
 
   // --- fur collar, head and raven -----------------------------------------
