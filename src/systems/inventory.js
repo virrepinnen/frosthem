@@ -168,6 +168,15 @@ export function pickup(game, g) {
     game.dirtyUI = true;
     return true;
   }
+  if (g.kind === 'relic') {
+    p.relics ??= {};
+    p.relics[g.relic] = true;
+    floatText(p.pos.x, p.pos.y - 30, g.name, '#cfa6ff', 16);
+    burst(p.pos.x, p.pos.y - 8, 30, { color: '#cfa6ff', speed: 190, life: 0.9, size: 3, grav: -60 });
+    game.alert(`${g.name} — its ranks will start appearing when you level.`);
+    game.dirtyUI = true;
+    return true;
+  }
   if (g.kind === 'potion') {
     p.potions += g.amount;
     floatText(p.pos.x, p.pos.y - 26, `+${g.amount} potion`, '#e05a72', 13);

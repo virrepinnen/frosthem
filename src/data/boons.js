@@ -19,6 +19,7 @@
  * @property {number} [weight] Draw weight (default 10)
  * @property {(r:number)=>string} line  What one more rank gives, in words
  * @property {Record<string,number>} per Stat gained per rank; folded in by recalc
+ * @property {string} [needs] Relic that must be found before this is offered
  */
 
 /**
@@ -31,8 +32,32 @@ const BASIC = [1, 4, 8, 13, 19];
 /** The rarer boons only enter the pool once the build has shape. */
 const HIGH = [10, 16, 24];
 
+/**
+ * A weapon that fights on its own is not part of the pool you start with. Its
+ * relic drops from an elite or the jarl and stays with the character; only then
+ * do its ranks turn up among the cards, and more rarely than the rest — they
+ * should feel like something the run handed you, not a lane you can plan on.
+ */
+const RELIC_RANKS = [1, 1, 1, 1, 1];
+
 /** @type {BoonDef[]} */
 export const BOONS = [
+  // ---- weapons that fight on their own -------------------------------------
+  {
+    id: 'axes', name: 'Whirling Axes', icon: 'axe', group: 'offence',
+    at: RELIC_RANKS, weight: 4, needs: 'axes', per: {},
+    line: (r) => r <= 1
+      ? 'An axe circles you, striking whatever it passes through.'
+      : `Faster, wider, heavier${r % 2 === 1 ? ' — and one axe more' : ''} (rank ${r}).`,
+  },
+  {
+    id: 'javelin', name: 'Hurled Javelins', icon: 'polearm', group: 'offence',
+    at: RELIC_RANKS, weight: 4, needs: 'javelin', per: {},
+    line: (r) => r <= 1
+      ? 'You throw a javelin at whatever you can see, on your own.'
+      : `Thrown harder and more often${r >= 4 ? ', and through two' : ''} (rank ${r}).`,
+  },
+
   // ---- offence -------------------------------------------------------------
   {
     id: 'edge', name: 'Whetted', icon: 'edge', group: 'offence', at: BASIC,

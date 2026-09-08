@@ -68,6 +68,10 @@ export function createPlayer(name) {
     level: 1, xp: 0, xpNext: xpToNext(1),
     /** Boon ranks, keyed by boon id. One card is picked per level. */
     /** @type {Record<string, number>} */ boons: {},
+    /** Relics found; a weapon's ranks are only offerable once its relic is here. @type {Record<string, boolean>} */
+    relics: {},
+    /** The lean into a swing. @type {null|{t:number,dur:number,dir:number,dist:number}} */
+    step: null,
     /** Level-ups whose card has not been picked yet. */
     boonPicks: 0,
 

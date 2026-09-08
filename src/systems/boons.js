@@ -21,6 +21,8 @@ export const boonRank = (p, id) => p.boons[id] || 0;
 export function boonAvailable(p, b) {
   const r = boonRank(p, b.id);
   if (r >= b.at.length) return false;
+  // A weapon you have not found the relic for is not a card you can be shown.
+  if (b.needs && !p.relics?.[b.needs]) return false;
   return p.level >= b.at[r];
 }
 

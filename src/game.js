@@ -8,6 +8,7 @@ import { performSwing, useSkill, drinkPotion, hitMonster, applyFreeze, spawnGrou
   announceDrop } from './systems/combat.js';
 import { pickup, canAdd } from './systems/inventory.js';
 import { updateOrbs } from './systems/orbs.js';
+import { updateAutoWeapons, resetAutoWeapons } from './systems/autoweapons.js';
 import { rollItem } from './systems/loot.js';
 import { SKILL_BY_ID } from './data/skills.js';
 import { input, keyPressed, keyDown } from './core/input.js';
@@ -169,6 +170,7 @@ function travel(game, to, from, opts = {}) {
 
   game.world = createWorld();
   game.monsters = [];
+  resetAutoWeapons(game);
   game.ground = [];
   game.projectiles = [];
   game.novas = [];
@@ -404,6 +406,7 @@ function update(game, dt) {
   game.playerSlow = 0;
   revealFog(game.zone, p.pos.x, p.pos.y);
   updatePlayer(game, dt);
+  updateAutoWeapons(game, dt);
   updateMonsters(game, dt);
   updateProjectiles(game, dt);
   updateGround(game, dt);
@@ -606,6 +609,17 @@ function updatePlayer(game, dt) {
   } else {
     p.moving = false;
   }
+  // The lean into a swing. Applied after the walk and before the world gets a
+  // say, so a rock still stops you.
+  if (p.step) {
+    p.step.t -= dt;
+    if (p.step.t <= 0) p.step = null;
+    else {
+      const k = (dt / p.step.dur) * (p.step.t / p.step.dur) * 2;
+      p.pos.x += Math.cos(p.step.dir) * p.step.dist * k;
+      p.pos.y += Math.sin(p.step.dir) * p.step.dist * k;
+    }
+  }
   collide(game.world, p.pos, p.radius);
 
   // Velocity is measured from the actual movement — so it holds equally for
@@ -644,6 +658,11 @@ function updatePlayer(game, dt) {
       p.combatT = COMBAT_WINDOW;
       p.attackTimer = 1 / (1.5 * p.attackSpeed);
       performSwing(game, { arc: 1.5, reach: T.reach, mult: 1, kind: 'basic' });
+      // A step into the blow, so striking and closing are one motion instead of
+      // two. It is short and it decays, so it reads as leaning in rather than as
+      // being moved — and it never fights the arrow keys, because it is added to
+      // wherever you were already going.
+      if (T.swingStep > 0) p.step = { t: 0.16, dur: 0.16, dir: p.facing, dist: T.swingStep };
     }
   }
   for (let i = 0; i < HOTBAR_SIZE; i++) {

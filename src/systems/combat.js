@@ -11,6 +11,7 @@ import { burst, floatText, decal, shake, screenFlash } from '../render/fx.js';
 import { losBlocked } from './worldmap.js';
 import { pickAttack } from '../render/hero.js';
 import { spawnXpOrbs } from './orbs.js';
+import { RELICS } from './autoweapons.js';
 
 /** @typedef {import('../entities/monster.js').Monster} Monster */
 /** @typedef {import('../entities/player.js').Player} Player */
@@ -49,7 +50,7 @@ export function applyBleed(m, dps, dur) {
 /**
  * @param {any} game
  * @param {Monster} m
- * @param {{phys?:number, cold?:number, fire?:number, light?:number, crit?:boolean, ignoreArmor?:boolean, silent?:boolean}} d
+ * @param {{phys?:number, cold?:number, fire?:number, light?:number, crit?:boolean, ignoreArmor?:boolean, silent?:boolean, src?:string}} d
  * @returns {number} faktiskt utdelad skada
  */
 export function hitMonster(game, m, d) {
@@ -66,6 +67,13 @@ export function hitMonster(game, m, d) {
   if (d.light) total += d.light * (1 - clamp(m.res.light || 0, -100, 95) / 100);
 
   total = Math.max(1, Math.round(total));
+  // Off unless something switches it on. It exists so that the share of your
+  // damage the automatic weapons account for can be measured rather than
+  // guessed at — the whole point of them is that the share stays small.
+  if (game.dmgLog) {
+    const key = d.src ?? 'you';
+    game.dmgLog[key] = (game.dmgLog[key] ?? 0) + total;
+  }
 
   // The first hit wakes whatever is sleeping. Strike the jarl and the whole
   // arena rises with him.
@@ -179,6 +187,19 @@ function dropLoot(game, m) {
   // you are carrying is the one you have to make last.
   if (rng.chance(m.isBoss ? 1 : m.elite ? 0.10 : 0.004)) {
     spawnGround(game, m.pos.x, m.pos.y, { kind: 'potion', amount: m.isBoss ? 3 : 1 });
+  }
+
+  // A relic, from something worth killing. Only one you do not already carry,
+  // and it stays with the character — this is the half of the build a run hands
+  // you rather than the half you assemble.
+  if (m.isBoss || m.elite) {
+    const missing = RELICS.filter(id => !p.relics?.[id]);
+    if (missing.length && rng.chance(m.isBoss ? 1 : 0.16)) {
+      const id = rng.pick(missing);
+      const name = id === 'axes' ? 'Whirling Axes' : 'Hurled Javelins';
+      spawnGround(game, m.pos.x, m.pos.y, { kind: 'relic', relic: id, name: `Relic: ${name}` });
+      announceDrop(game, /** @type {any} */ ({ name, rarity: 'unique' }), m.pos.x, m.pos.y);
+    }
   }
 }
 

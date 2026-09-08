@@ -146,10 +146,15 @@ export function render(ctx, game, dt) {
   if (!game.player.dead || game.player.deathT > 0) {
     list.push({ y: game.player.pos.y, f: () => drawPlayer(ctx, game) });
   }
+  // The axes go in the same sorted list as everything else, so the ring passes
+  // behind you on its way round and in front on the way back. Drawn on top they
+  // read as an overlay rather than as something turning about you.
+  for (const ax of game.axes ?? []) list.push({ y: ax.y, f: () => drawAxe(ctx, ax) });
   list.sort((a, b) => a.y - b.y);
   for (const e of list) e.f();
 
   drawAimTarget(ctx, game);
+  drawJavelins(ctx, game);
   drawProjectiles(ctx, game);
   drawInteractPrompt(ctx, game);
   drawParticles(ctx);
@@ -791,14 +796,20 @@ function drawGroundItems(ctx, game) {
   const t = performance.now() / 1000;
   for (const g of game.ground) {
     const bob = Math.sin(t * 3 + g.x) * 2;
-    const col = g.kind === 'gold' ? '#d8b26a' : g.kind === 'potion' ? '#e05a72' : RARITY_COLOR[g.item.rarity];
-    const big = g.kind === 'item' && (g.item.rarity === 'unique' || g.item.rarity === 'rare');
+    // A relic gets the tallest pillar there is. It is the rarest thing that
+    // drops and the only one that changes how the character fights.
+    const col = g.kind === 'gold' ? '#d8b26a'
+      : g.kind === 'potion' ? '#e05a72'
+      : g.kind === 'relic' ? '#cfa6ff'
+      : RARITY_COLOR[g.item.rarity];
+    const big = g.kind === 'relic'
+      || (g.kind === 'item' && (g.item.rarity === 'unique' || g.item.rarity === 'rare'));
 
     ctx.save(); ctx.translate(g.x, PY(g.y));
     if (big) {
       // The pillar: brightest at the ground, fading out well above head height.
       const pulse = 0.55 + Math.sin(t * 2.2 + g.x) * 0.12;
-      const h = g.item.rarity === 'unique' ? 150 : 108;
+      const h = g.kind === 'relic' ? 170 : g.item.rarity === 'unique' ? 150 : 108;
       const beam = ctx.createLinearGradient(0, 0, 0, -h);
       beam.addColorStop(0, col + 'aa'); beam.addColorStop(0.35, col + '55');
       beam.addColorStop(1, 'rgba(0,0,0,0)');
@@ -820,7 +831,9 @@ function drawGroundItems(ctx, game) {
     ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, bob, rr, 0, Math.PI * 2); ctx.fill();
 
     ctx.translate(0, bob);
-    const name = g.kind === 'gold' ? 'gold' : g.kind === 'potion' ? 'potion'
+    const name = g.kind === 'gold' ? 'gold'
+      : g.kind === 'potion' ? 'potion'
+      : g.kind === 'relic' ? (g.relic === 'axes' ? 'axe' : 'polearm')
       : (KIND_GLYPH[g.item.base.kind] ?? 'ring');
     strokeGlyph(ctx, name, big ? 26 : 21, col, big ? 1.9 : 1.7);
     ctx.restore();
@@ -1397,4 +1410,41 @@ export function renderMinimap(ctx, game) {
   ctx.moveTo(6, 0); ctx.lineTo(-3.5, -3.6); ctx.lineTo(-1.5, 0); ctx.lineTo(-3.5, 3.6);
   ctx.closePath(); ctx.fill();
   ctx.restore();
+}
+
+/**
+ * One circling axe. The haft turns with the ring so the head always leads.
+ * @param {CanvasRenderingContext2D} ctx @param {any} ax
+ */
+function drawAxe(ctx, ax) {
+  const t = performance.now() / 1000;
+  ctx.save();
+  ctx.translate(ax.x, PY(ax.y) - 16);
+  shadow(ctx, 2, 18, 11, 5);
+  ctx.rotate(ax.a + t * 7);
+  ctx.strokeStyle = '#6b563c';
+  ctx.lineWidth = 3; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-9, 0); ctx.lineTo(7, 0); ctx.stroke();
+  ctx.fillStyle = '#c9d6e6';
+  ctx.beginPath();
+  ctx.moveTo(5, -8); ctx.quadraticCurveTo(15, -4, 15, 0);
+  ctx.quadraticCurveTo(15, 4, 5, 8);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#8d9cb0';
+  ctx.beginPath(); ctx.ellipse(4, 0, 2.4, 5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+/** @param {CanvasRenderingContext2D} ctx @param {any} game */
+function drawJavelins(ctx, game) {
+  for (const j of game.javelins ?? []) {
+    ctx.save();
+    ctx.translate(j.x, PY(j.y));
+    ctx.rotate(Math.atan2(Math.sin(j.a) * PROJ, Math.cos(j.a)));
+    ctx.strokeStyle = '#8a7350'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-17, 0); ctx.lineTo(9, 0); ctx.stroke();
+    ctx.fillStyle = '#d8e4f2';
+    ctx.beginPath(); ctx.moveTo(9, -3.4); ctx.lineTo(18, 0); ctx.lineTo(9, 3.4); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
 }
