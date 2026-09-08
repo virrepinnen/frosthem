@@ -23,13 +23,18 @@ export const RES_CAP = 75;
  * XP required to go from `level` to the next one.
  *
  * Slower than it was, and measured rather than guessed. The flat floor means
- * the first levels take two or three packs instead of arriving mid-fight; the
- * exponent keeps that pace roughly constant as packs get richer. Clearing all
- * three zones once lands you around level 19, a normal run around 16.
+ * the first levels take three or four packs instead of arriving mid-fight; the
+ * exponent keeps that pace roughly constant as packs get richer.
+ *
+ * Retuned when act one grew from three maps to eight: the same curve then ran
+ * to level 30, which maxed most of the blessings well before the barrow.
+ * Clearing every map once now lands you around level 22, a normal run nearer 19
+ * — so the fifth rank of a blessing, which opens at 19, is something the last
+ * stretch can just about buy.
  * @param {number} level
  */
 export function xpToNext(level) {
-  return Math.floor(140 + 22 * Math.pow(level, 1.72));
+  return Math.floor(180 + 34 * Math.pow(level, 1.78));
 }
 
 /**

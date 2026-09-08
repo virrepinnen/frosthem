@@ -147,13 +147,15 @@ function dropLoot(game, m) {
 
   // The drop rate is deliberately low, and lower again now that gear survives a
   // run: what you find is permanent, so finding something has to be an event.
-  // Roughly one item per thirty ordinary enemies; the rest comes from chests,
+  // Halved once more when act one grew to eight maps — the same rate over three
+  // times as many monsters had turned a run's haul back into a pile.
+  // Roughly one item per sixty ordinary enemies; the rest comes from chests,
   // champions and elites, which is where looking around gets rewarded.
   let itemRolls = 0, boost = 1;
   if (m.isBoss) { itemRolls = 3; boost = 4.5; }
-  else if (m.elite) { itemRolls = rng.chance(0.25) ? 2 : 1; boost = 3.2; }
-  else if (m.isChampion) { itemRolls = rng.chance(0.15) ? 1 : 0; boost = 2.4; }
-  else if (rng.chance(0.013)) itemRolls = 1;
+  else if (m.elite) { itemRolls = rng.chance(0.15) ? 2 : 1; boost = 3.2; }
+  else if (m.isChampion) { itemRolls = rng.chance(0.1) ? 1 : 0; boost = 2.4; }
+  else if (rng.chance(0.007)) itemRolls = 1;
 
   for (let i = 0; i < itemRolls; i++) {
     const forced = m.isBoss ? /** @type {const} */ ('rare') : undefined;
