@@ -2,6 +2,7 @@
 import { generateZone, ZONE_DEFS, initFog, pushOut, lineBlocked } from './world.js';
 import { populateZone } from './spawn.js';
 import { rng } from '../core/rng.js';
+import { hashNoise } from '../core/math.js';
 
 /** @typedef {import('./world.js').Zone} Zone */
 
@@ -25,10 +26,22 @@ import { rng } from '../core/rng.js';
 const KEEP_DIST = 2200;
 /** How thick the wall along an unshared edge is. Only has to be unsteppable. */
 const WALL = 500;
+/** Spacing of the boulders in a ridge. Less than a diameter, so they overlap. */
+const RIDGE_STEP = 44;
+/** Half the width of the gap left where the road crosses a border. */
+const DOOR_HALF = 150;
+/** Cell size of the lookup that keeps ridge collision cheap. */
+const ROCK_CELL = 256;
 
-/** @returns {{zones: Map<number, Zone>, walls: any[], bounds: {x0:number,y0:number,x1:number,y1:number}}} */
 export function createWorld() {
-  return { zones: new Map(), walls: [], bounds: { x0: 0, y0: 0, x1: 0, y1: 0 } };
+  return {
+    /** @type {Map<number, any>} */ zones: new Map(),
+    /** Invisible limits at the outside of the world. @type {any[]} */ walls: [],
+    /** The boulder ridges you can see. @type {any[]} */ rocks: [],
+    /** Those same boulders, bucketed, so collision does not scan all of them. @type {Map<string, any[]>} */
+    rockGrid: new Map(),
+    bounds: { x0: 0, y0: 0, x1: 0, y1: 0 },
+  };
 }
 
 /**
@@ -211,6 +224,7 @@ export function rebuildWalls(world) {
   for (const z of world.zones.values()) strips = strips.flatMap(s => subtract(s, rectOf(z)));
 
   world.walls = strips.map(s => ({ kind: 'rect', x: s.x, y: s.y, w: s.w, h: s.h, type: 'wall', s: 0 }));
+  buildRidges(world);
 
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const z of world.zones.values()) {
@@ -254,7 +268,22 @@ export function collide(world, pos, radius) {
     const near = zonesNear(world, pos.x, pos.y, 300);
     for (const z of near) pushOut(z.obstacles, pos, radius);
     pushOut(world.walls, pos, radius);
+    pushOut(rocksNear(world, pos.x, pos.y), pos, radius);
   }
+}
+
+/** The ridge boulders in the nine cells around a point. @param {any} world */
+export function rocksNear(world, x, y) {
+  const cx = Math.floor(x / ROCK_CELL), cy = Math.floor(y / ROCK_CELL);
+  /** @type {any[]} */
+  const out = [];
+  for (let j = -1; j <= 1; j++) {
+    for (let i = -1; i <= 1; i++) {
+      const cell = world.rockGrid.get(`${cx + i},${cy + j}`);
+      if (cell) out.push(...cell);
+    }
+  }
+  return out;
 }
 
 /**
@@ -268,4 +297,67 @@ export function losBlocked(world, x0, y0, x1, y1) {
     Math.max(x0, x1) + 40, Math.max(y0, y1) + 40);
   for (const z of zs) if (lineBlocked(z, x0, y0, x1, y1)) return true;
   return false;
+}
+
+/**
+ * The stone that closes every map edge, and the one gap in it.
+ *
+ * The maps used to meet along the whole stretch their rectangles had in common,
+ * which made a border a wide-open field: you crossed it wherever you happened to
+ * be walking, and it read as nothing at all. A border should be somewhere you go
+ * *to*. So every edge is walled with boulders, and the only way through is where
+ * the road already runs — the same shape Diablo's wildernesses use, a way on
+ * that you have to find rather than one you cannot miss.
+ *
+ * The boulders are ordinary obstacles: the collision and the drawing that
+ * already existed for rocks do all the work. Both maps at a seam lay theirs on
+ * the same lattice with the same jitter, so their ridges are one ridge.
+ * @param {any} world
+ */
+function buildRidges(world) {
+  /** @type {Map<string, any>} */
+  const byKey = new Map();
+
+  for (const z of world.zones.values()) {
+    const R = rectOf(z);
+    for (const edge of /** @type {const} */ (['n', 's', 'e', 'w'])) {
+      const along = edge === 'n' || edge === 's';
+      const fixed = edge === 'n' ? R.y0 : edge === 's' ? R.y1 : edge === 'w' ? R.x0 : R.x1;
+      const a0 = along ? R.x0 : R.y0;
+      const a1 = along ? R.x1 : R.y1;
+      // Where the road leaves on this side. That is the gap, and the only one.
+      const doors = z.exits
+        .filter((/** @type {any} */ e) => e.edge === edge)
+        .map((/** @type {any} */ e) => (along ? e.x : e.y));
+
+      // Snapped to a global lattice so the neighbour's ridge lands on ours.
+      // Two boulders per step at different depths: one row of evenly spaced
+      // stones of the same size reads as a fence, which is not what a cliff
+      // looks like. The scatter is across the edge, never along it, so it
+      // thickens the ridge without ever narrowing the way through.
+      for (let t = Math.ceil(a0 / RIDGE_STEP) * RIDGE_STEP; t <= a1; t += RIDGE_STEP) {
+        if (doors.some(d => Math.abs(t - d) < DOOR_HALF)) continue;
+        for (let k = 0; k < 2; k++) {
+          const n1 = hashNoise(Math.round(t), Math.round(fixed) + k * 91, 7);
+          const n2 = hashNoise(Math.round(fixed) + k * 57, Math.round(t), 13);
+          const n3 = hashNoise(Math.round(t) + k * 33, Math.round(t), 21);
+          if (k === 1 && n3 < 0.35) continue;         // the back row is broken up
+          const off = (n1 - 0.5) * 34 + (k ? (n3 - 0.5) * 46 : 0);
+          const x = along ? t + (k ? (n2 - 0.5) * 16 : 0) : fixed + off;
+          const y = along ? fixed + off : t + (k ? (n2 - 0.5) * 16 : 0);
+          const key = `${Math.round(x / 8)},${Math.round(y / 8)}`;
+          if (byKey.has(key)) continue;
+          byKey.set(key, { kind: 'circle', x, y, r: 21 + n2 * 26, type: 'rock', s: 0 });
+        }
+      }
+    }
+  }
+
+  world.rocks = [...byKey.values()];
+  world.rockGrid = new Map();
+  for (const o of world.rocks) {
+    const key = `${Math.floor(o.x / ROCK_CELL)},${Math.floor(o.y / ROCK_CELL)}`;
+    const cell = world.rockGrid.get(key);
+    if (cell) cell.push(o); else world.rockGrid.set(key, [o]);
+  }
 }

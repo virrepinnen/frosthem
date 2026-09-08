@@ -56,6 +56,7 @@ export function createMonster(def, level, x, y, opts = {}) {
 
     /** @type {null|{mods:import('../data/monsters.js').EliteMod[], color:string}} */ elite: null,
     isChampion: !!opts.champion,
+    /** Blue ring under a magic pack's members. @type {string|null} */ champColor: null,
     isBoss: !!opts.boss,
     /**
      * The boss stands still in his arena until he is struck. You are meant to
@@ -70,11 +71,14 @@ export function createMonster(def, level, x, y, opts = {}) {
   }
   if (opts.champion) {
     // Champions: tougher versions of ordinary monsters, no modifier of their own.
-    m.maxHp *= 2.4; m.dmgMin *= 1.3; m.dmgMax *= 1.3; m.xp *= 3; m.radius *= 1.18;
+    // The blue is the whole point — one of these among ordinary ones was
+    // invisible, and a pack of them has to announce itself from across the map.
+    m.maxHp *= 2.4; m.dmgMin *= 1.3; m.dmgMax *= 1.3; m.xp *= 3; m.radius *= 1.22;
+    m.champColor = '#6f96ff';
   }
   if (opts.elite) {
     const mods = rng.shuffle(ELITE_MODS).slice(0, rng.int(1, 2));
-    m.maxHp *= 3.6; m.dmgMin *= 1.5; m.dmgMax *= 1.5; m.xp *= 7; m.radius *= 1.3;
+    m.maxHp *= 3.6; m.dmgMin *= 1.5; m.dmgMax *= 1.5; m.xp *= 7; m.radius *= 1.45;
     for (const mod of mods) mod.apply(m);
     m.elite = { mods, color: mods[0].color };
   }

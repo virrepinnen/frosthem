@@ -131,6 +131,12 @@ export function render(ctx, game, dt) {
     }
     for (const n of z.npcs) list.push({ y: n.y, f: () => drawNpc(ctx, n, game) });
   }
+  // The ridges that close the map edges. They belong to the world rather than
+  // to any one map, because a seam is shared by two.
+  for (const o of game.world?.rocks ?? []) {
+    if (o.x < vx0 || o.y < vy0 || o.x > vx1 || o.y > vy1) continue;
+    list.push({ y: o.y, f: () => drawObstacle(ctx, o) });
+  }
   for (const m of game.monsters) {
     if (m.pos.x < vx0 || m.pos.y < vy0 || m.pos.x > vx1 || m.pos.y > vy1) continue;
     list.push({ y: m.pos.y, f: () => drawMonster(ctx, m, game) });
@@ -963,13 +969,18 @@ function drawMonster(ctx, m, game) {
   ctx.save();
   ctx.translate(gx, gy);
 
-  // the elite's aura stays on the ground
-  if (m.elite) {
+  // What it is, stated on the ground before you are in range to find out.
+  // The yellow burns brighter than the blue, and both are drawn under the
+  // figure so a whole pack of them reads as one shape from a distance.
+  const auraColor = m.elite ? m.elite.color : m.champColor;
+  if (auraColor) {
+    const reach = m.elite ? 3.2 : 2.2;
     ctx.save();
     ctx.scale(1, PROJ);
-    const g = ctx.createRadialGradient(0, 0, R * 0.4, 0, 0, R * 2.8);
-    g.addColorStop(0, m.elite.color + '55'); g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R * 2.8, 0, Math.PI * 2); ctx.fill();
+    const g = ctx.createRadialGradient(0, 0, R * 0.4, 0, 0, R * reach);
+    g.addColorStop(0, auraColor + (m.elite ? '77' : '4d'));
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R * reach, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
 
@@ -1102,7 +1113,7 @@ function drawMonster(ctx, m, game) {
     ctx.save();
     ctx.fillStyle = 'rgba(6,10,17,0.8)';
     ctx.fillRect(gx - w / 2 - 1, topY - 1, w + 2, 5);
-    ctx.fillStyle = m.isBoss ? '#c8354a' : m.elite ? m.elite.color : '#a8202a';
+    ctx.fillStyle = m.isBoss ? '#c8354a' : m.elite ? m.elite.color : m.champColor ?? '#a8202a';
     ctx.fillRect(gx - w / 2, topY, w * clamp(m.hp / m.maxHp, 0, 1), 3);
     ctx.restore();
   }
@@ -1324,8 +1335,9 @@ export function renderMinimap(ctx, game) {
   for (const m of game.monsters) {
     if (m.dead) continue;
     if (Math.hypot(m.pos.x - px, m.pos.y - py) > 620) continue;
-    pip(m.pos.x, m.pos.y, m.isBoss ? '#ff4a5a' : m.elite ? m.elite.color : '#c04a54',
-      m.isBoss ? 4 : m.elite ? 3 : 1.8);
+    pip(m.pos.x, m.pos.y,
+      m.isBoss ? '#ff4a5a' : m.elite ? m.elite.color : m.champColor ?? '#c04a54',
+      m.isBoss ? 4 : m.elite ? 3.4 : m.isChampion ? 2.4 : 1.8);
   }
 
   // ---- yourself, with facing ---------------------------------------------

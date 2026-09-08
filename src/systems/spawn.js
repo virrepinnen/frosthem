@@ -54,6 +54,7 @@ export function populateZone(zone) {
     const count = Math.max(1, Math.round(a.n * scale * thin));
 
     if (a.elite) {
+      // One yellow, with its own pack around it. Never two of them together.
       out.push(createMonster(def, level + 2, a.x, a.y, { elite: true }));
       for (let i = 0; i < count; i++) {
         const ang = (i / count) * Math.PI * 2 + r.range(-0.3, 0.3);
@@ -63,10 +64,15 @@ export function populateZone(zone) {
       continue;
     }
 
+    // A blue pack is a whole pack of one kind, all of them tougher — not a
+    // stronger individual hidden among ordinary ones. Scattered singles never
+    // read as anything: you killed something that took a while and never knew
+    // why. A group that is plainly all the same is a decision to make.
+    const magic = r.chance(0.16);
     for (let i = 0; i < count; i++) {
       const ang = r.range(0, Math.PI * 2), rad = r.range(0, 62);
       out.push(createMonster(def, level, a.x + Math.cos(ang) * rad, a.y + Math.sin(ang) * rad,
-        { champion: r.chance(0.1) }));
+        { champion: magic }));
     }
   }
 

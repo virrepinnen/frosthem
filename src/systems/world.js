@@ -342,12 +342,16 @@ function wilderness(index, seed, d) {
   const exitPt = edgePoint(E.to, d.w, d.h, tTo, 300);
 
   const THEME = {
-    moor:   { treeClusters: 16, clusterSize: [3, 9],  rocks: 55, ponds: 5, elites: 2, density: 0.55,
-              packs: 9,  pack: [4, 7], poi: { kind: 'quarry', name: 'The Quarry' } },
-    pass:   { treeClusters: 26, clusterSize: [5, 14], rocks: 70, ponds: 3, elites: 3, density: 0.78,
-              packs: 11, pack: [7, 11], poi: { kind: 'camp',   name: 'The Abandoned Camp' } },
-    barrow: { treeClusters: 10, clusterSize: [2, 6],  rocks: 90, ponds: 8, elites: 4, density: 0.62,
-              packs: 10, pack: [6, 10], poi: { kind: 'offering', name: 'The Offering Ground' } },
+    // `elites` is how many yellow packs come *on top of* the one at the detour.
+    // Two or three of them at once turned into a wall of modifiers you could not
+    // read; one at a time, each with its own pack, is a thing you can see coming
+    // and decide about. The ordinary packs are more numerous to make up for it.
+    moor:   { treeClusters: 16, clusterSize: [3, 9],  rocks: 55, ponds: 5, elites: 0, density: 0.55,
+              packs: 12, pack: [5, 8], poi: { kind: 'quarry', name: 'The Quarry' } },
+    pass:   { treeClusters: 26, clusterSize: [5, 14], rocks: 70, ponds: 3, elites: 1, density: 0.78,
+              packs: 14, pack: [8, 12], poi: { kind: 'camp',   name: 'The Abandoned Camp' } },
+    barrow: { treeClusters: 10, clusterSize: [2, 6],  rocks: 90, ponds: 8, elites: 1, density: 0.62,
+              packs: 13, pack: [7, 11], poi: { kind: 'offering', name: 'The Offering Ground' } },
   };
   const params = THEME[/** @type {'moor'|'pass'|'barrow'} */ (d.theme)];
   // Each map may name its own detour; the theme's is the fallback.
@@ -461,8 +465,14 @@ function wilderness(index, seed, d) {
     anchors.push({ x: at.x + at.nx * r.range(-90, 90), y: at.y + at.ny * r.range(-90, 90),
       n: r.int(params.pack[0], params.pack[1]), elite: false });
   }
-  for (let i = 1; i <= params.elites && i < anchors.length; i++) {
-    anchors[anchors.length - i].elite = true;
+  // Spread out, not stacked. They used to be the last few anchors made, which
+  // were the two on the side path — so the map's elites stood next to each other
+  // and you met all of them in one fight or none of them at all.
+  for (let i = 0; i < params.elites; i++) {
+    const far = anchors.filter(a => !a.elite
+      && anchors.every(b => !b.elite || Math.hypot(a.x - b.x, a.y - b.y) > 900));
+    if (!far.length) break;
+    r.pick(far).elite = true;
   }
 
   for (let i = 0; i < 2; i++) {
