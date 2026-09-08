@@ -25,6 +25,9 @@ import { clamp, smoothNoise, wrapAngle } from '../core/math.js';
  * @property {number} seed
  * @property {number} w
  * @property {number} h
+ * @property {number} [ox] Where this map sits in world space
+ * @property {number} [oy]
+ * @property {any[]} [monsters]
  * @property {boolean} isTown
  * @property {{x:number,y:number}} entry
  * @property {Obstacle[]} obstacles
@@ -223,6 +226,8 @@ export function initFog(zone) {
 export function revealFog(zone, x, y, radius = FOG_RADIUS) {
   if (!zone.fog) initFog(zone);
   const r2 = radius * radius;
+  // The grid belongs to the map; the coordinates come in as world ones.
+  x -= zone.ox ?? 0; y -= zone.oy ?? 0;
   const cx = x / FOG_CELL, cy = y / FOG_CELL;
   const span = Math.ceil(radius / FOG_CELL);
   const x0 = Math.max(0, Math.floor(cx - span)), x1 = Math.min(zone.fogW - 1, Math.ceil(cx + span));
@@ -238,7 +243,7 @@ export function revealFog(zone, x, y, radius = FOG_RADIUS) {
 /** @param {Zone} zone @param {number} x @param {number} y */
 export function isRevealed(zone, x, y) {
   if (!zone.fog) return false;
-  const gx = Math.floor(x / FOG_CELL), gy = Math.floor(y / FOG_CELL);
+  const gx = Math.floor((x - (zone.ox ?? 0)) / FOG_CELL), gy = Math.floor((y - (zone.oy ?? 0)) / FOG_CELL);
   if (gx < 0 || gy < 0 || gx >= zone.fogW || gy >= zone.fogH) return false;
   return zone.fog[gy * zone.fogW + gx] === 1;
 }
@@ -669,46 +674,46 @@ export function lineBlocked(zone, x0, y0, x1, y1) {
 }
 
 /**
- * Collision resolution: push a circle out of every obstacle it overlaps.
- * Simple but stable — we iterate twice so corners do not snag.
- * @param {Zone} zone @param {{x:number,y:number}} pos @param {number} radius
+ * Push a circle out of every obstacle in one list. One pass.
+ *
+ * Split out from the old per-zone version because a position is no longer the
+ * business of a single map: standing on a seam, you are inside two of them, and
+ * the walls that keep you in the world belong to the world rather than to any
+ * one map.
+ * @param {any[]} obstacles @param {{x:number,y:number}} pos @param {number} radius
  */
-export function resolveCollision(zone, pos, radius) {
-  for (let iter = 0; iter < 2; iter++) {
-    for (const o of zone.obstacles) {
-      if (o.type === 'drift') continue;
-      if (o.kind === 'circle') {
-        const dx = pos.x - o.x, dy = pos.y - o.y;
-        const d = Math.hypot(dx, dy), min = o.r + radius;
-        if (d < min && d > 0.0001) {
-          pos.x = o.x + (dx / d) * min;
-          pos.y = o.y + (dy / d) * min;
-        } else if (d <= 0.0001) {
-          pos.x = o.x + min;
-        }
-      } else {
-        const nx = clamp(pos.x, o.x, o.x + o.w);
-        const ny = clamp(pos.y, o.y, o.y + o.h);
-        const dx = pos.x - nx, dy = pos.y - ny;
-        const d = Math.hypot(dx, dy);
-        if (d < radius) {
-          if (d > 0.0001) { pos.x = nx + (dx / d) * radius; pos.y = ny + (dy / d) * radius; }
-          else {
-            // Dead inside the rectangle: push out to the nearest edge.
-            const left = pos.x - o.x, right = o.x + o.w - pos.x;
-            const top = pos.y - o.y, bottom = o.y + o.h - pos.y;
-            const m = Math.min(left, right, top, bottom);
-            if (m === left) pos.x = o.x - radius;
-            else if (m === right) pos.x = o.x + o.w + radius;
-            else if (m === top) pos.y = o.y - radius;
-            else pos.y = o.y + o.h + radius;
-          }
+export function pushOut(obstacles, pos, radius) {
+  for (const o of obstacles) {
+    if (o.type === 'drift') continue;
+    if (o.kind === 'circle') {
+      const dx = pos.x - o.x, dy = pos.y - o.y;
+      const d = Math.hypot(dx, dy), min = o.r + radius;
+      if (d < min && d > 0.0001) {
+        pos.x = o.x + (dx / d) * min;
+        pos.y = o.y + (dy / d) * min;
+      } else if (d <= 0.0001) {
+        pos.x = o.x + min;
+      }
+    } else {
+      const nx = clamp(pos.x, o.x, o.x + o.w);
+      const ny = clamp(pos.y, o.y, o.y + o.h);
+      const dx = pos.x - nx, dy = pos.y - ny;
+      const d = Math.hypot(dx, dy);
+      if (d < radius) {
+        if (d > 0.0001) { pos.x = nx + (dx / d) * radius; pos.y = ny + (dy / d) * radius; }
+        else {
+          // Dead inside the rectangle: push out to the nearest edge.
+          const left = pos.x - o.x, right = o.x + o.w - pos.x;
+          const top = pos.y - o.y, bottom = o.y + o.h - pos.y;
+          const m = Math.min(left, right, top, bottom);
+          if (m === left) pos.x = o.x - radius;
+          else if (m === right) pos.x = o.x + o.w + radius;
+          else if (m === top) pos.y = o.y - radius;
+          else pos.y = o.y + o.h + radius;
         }
       }
     }
   }
-  pos.x = clamp(pos.x, radius + 30, zone.w - radius - 30);
-  pos.y = clamp(pos.y, radius + 30, zone.h - radius - 30);
 }
 
 /** Line-of-sight test against obstacles. @param {Zone} zone @param {number} x @param {number} y */

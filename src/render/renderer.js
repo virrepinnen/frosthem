@@ -11,6 +11,7 @@ import { hashNoise, clamp } from '../core/math.js';
 import { RARITY_COLOR } from '../data/items.js';
 import { strokeGlyph, KIND_GLYPH } from '../ui/glyphs.js';
 import { FOG_CELL } from '../systems/world.js';
+import { zonesInRect } from '../systems/worldmap.js';
 import { drawHero } from './hero.js';
 import { ORB_TIERS } from '../systems/orbs.js';
 import { PORTAL_CAST, PORTAL_STEP } from '../entities/player.js';
@@ -23,6 +24,8 @@ import { PORTAL_CAST, PORTAL_STEP } from '../entities/player.js';
  */
 
 const SNOW_TILE = 512;
+/** How many world units the minimap window shows across. */
+const MINIMAP_SPAN = 3400;
 /** The minimap's logical size in CSS pixels. Must match styles.css. */
 export const MINIMAP_SIZE = 180;
 /** @type {HTMLCanvasElement|null} */
@@ -83,6 +86,12 @@ export function initRenderer(w, h) {
 export function render(ctx, game, dt) {
   const W = camera.w, H = camera.h;
   const zone = game.zone;
+  // Every map that reaches the screen, not just the one you are standing in.
+  // At a seam that is two of them, and the join has to be invisible.
+  const pad = 120;
+  const vx0 = camera.x - pad, vy0 = camera.y - pad;
+  const vx1 = camera.x + W + pad, vy1 = camera.y + H + pad;
+  const shown = zonesInRect(game.world, vx0, vy0, vx1, vy1);
 
   ctx.save();
   const sh = fx.shake;
@@ -92,9 +101,9 @@ export function render(ctx, game, dt) {
   // The ground: everything lying *in* the plane is drawn squashed vertically.
   ctx.save();
   ctx.scale(1, PROJ);
-  drawGround(ctx, zone);
-  drawRoads(ctx, zone);
-  drawDecor(ctx, zone);
+  drawGround(ctx, shown);
+  for (const z of shown) drawRoads(ctx, z);
+  for (const z of shown) drawDecor(ctx, z);
   drawDecals(ctx);
   drawTelegraphs(ctx, game);
   ctx.restore();
@@ -112,16 +121,16 @@ export function render(ctx, game, dt) {
   // ---- djupsorterad lista -------------------------------------------------
   /** @type {{y:number, f:()=>void}[]} */
   const list = [];
-  const pad = 120;
-  const vx0 = camera.x - pad, vy0 = camera.y - pad, vx1 = camera.x + W + pad, vy1 = camera.y + H + pad;
 
-  for (const o of zone.obstacles) {
-    const cx = o.kind === 'circle' ? o.x : o.x + o.w / 2;
-    const cy = o.kind === 'circle' ? o.y : o.y + o.h;
-    if (cx < vx0 || cy < vy0 || cx > vx1 || cy > vy1) continue;
-    list.push({ y: cy, f: () => drawObstacle(ctx, o) });
+  for (const z of shown) {
+    for (const o of z.obstacles) {
+      const cx = o.kind === 'circle' ? o.x : o.x + o.w / 2;
+      const cy = o.kind === 'circle' ? o.y : o.y + o.h;
+      if (cx < vx0 || cy < vy0 || cx > vx1 || cy > vy1) continue;
+      list.push({ y: cy, f: () => drawObstacle(ctx, o) });
+    }
+    for (const n of z.npcs) list.push({ y: n.y, f: () => drawNpc(ctx, n, game) });
   }
-  for (const n of zone.npcs) list.push({ y: n.y, f: () => drawNpc(ctx, n, game) });
   for (const m of game.monsters) {
     if (m.pos.x < vx0 || m.pos.y < vy0 || m.pos.x > vx1 || m.pos.y > vy1) continue;
     list.push({ y: m.pos.y, f: () => drawMonster(ctx, m, game) });
@@ -156,24 +165,26 @@ export function render(ctx, game, dt) {
 
 /* ------------------------------------------------------------------ */
 
-/** @param {CanvasRenderingContext2D} ctx @param {any} zone */
-function drawGround(ctx, zone) {
-  const x0 = Math.floor(camera.x / SNOW_TILE) * SNOW_TILE;
-  const y0 = Math.floor(camera.y / SNOW_TILE) * SNOW_TILE;
+/**
+ * The ground under everything.
+ *
+ * Painted the other way round from before: the void first, then snow over each
+ * map on screen. When there was only ever one map you could paint the dark
+ * around its four sides; with two maps meeting at a seam that no longer
+ * describes the shape of the world, and the join showed as a black band.
+ * @param {CanvasRenderingContext2D} ctx @param {any[]} zones
+ */
+function drawGround(ctx, zones) {
+  ctx.fillStyle = '#0a1018';
+  ctx.fillRect(camera.x - 400, camera.y - 400, camera.w + 800, camera.h + 800);
   if (!snowTile) return;
   const pat = ctx.createPattern(snowTile, 'repeat');
-  if (pat) {
-    ctx.fillStyle = pat;
-    ctx.fillRect(x0 - SNOW_TILE, y0 - SNOW_TILE, camera.w + SNOW_TILE * 3, camera.h + SNOW_TILE * 3);
-  }
-  // Outside the zone: dark chasm/cliff
-  ctx.fillStyle = '#0a1018';
-  const m = 30;
-  ctx.fillRect(camera.x - 400, camera.y - 400, camera.w + 800, Math.max(0, m - camera.y + 400) - 400 + 400);
-  if (camera.x < m) ctx.fillRect(camera.x - 400, camera.y - 400, m - camera.x + 400, camera.h + 800);
-  if (camera.y < m) ctx.fillRect(camera.x - 400, camera.y - 400, camera.w + 800, m - camera.y + 400);
-  if (camera.x + camera.w > zone.w - m) ctx.fillRect(zone.w - m, camera.y - 400, camera.x + camera.w - zone.w + m + 400, camera.h + 800);
-  if (camera.y + camera.h > zone.h - m) ctx.fillRect(camera.x - 400, zone.h - m, camera.w + 800, camera.y + camera.h - zone.h + m + 400);
+  if (!pat) return;
+  ctx.fillStyle = pat;
+  // Right to the edge. The old inset drew a dark rim around the map, which read
+  // as a cliff when a map stood alone — and as a black seam between two of them,
+  // which is exactly the join this whole change exists to remove.
+  for (const z of zones) ctx.fillRect(z.ox, z.oy, z.w, z.h);
 }
 
 /**
@@ -279,7 +290,7 @@ function drawPortal(ctx, game) {
 /** @param {CanvasRenderingContext2D} ctx @param {any} game */
 function drawChests(ctx, game) {
   const t = performance.now() / 1000;
-  for (const c of game.zone.chests ?? []) {
+  for (const z of game.world.zones.values()) for (const c of z.chests ?? []) {
     ctx.save();
     ctx.translate(c.x, PY(c.y));
     shadow(ctx, 3, 8, 26, 10);
@@ -619,7 +630,7 @@ function drawNpc(ctx, n, game) {
 /** @param {CanvasRenderingContext2D} ctx @param {any} game */
 function drawShrines(ctx, game) {
   const t = performance.now() / 1000;
-  for (const s of game.zone.shrines) {
+  for (const z of game.world.zones.values()) for (const s of z.shrines) {
     ctx.save(); ctx.translate(s.x, PY(s.y));
     const alive = !s.used;
     shadow(ctx, 2, 4, 18, 8);
@@ -650,7 +661,7 @@ function drawShrines(ctx, game) {
  */
 function drawExits(ctx, game) {
   const t = performance.now() / 1000;
-  for (const e of game.zone.exits) {
+  for (const z of game.world.zones.values()) for (const e of z.exits) {
     // Outward normal and the along-edge direction, both in world space. The
     // projection squashes y, so screen-space positions come from PY().
     const ox = e.dirX, oy = e.dirY;
@@ -1236,59 +1247,73 @@ export function renderMinimap(ctx, game) {
   }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  const zone = game.zone;
-  const sc = Math.min(S / zone.w, S / zone.h);
-  const offX = (S - zone.w * sc) / 2, offY = (S - zone.h * sc) / 2;
-  const wx = (/** @type {number} */ x) => offX + x * sc;
-  const wy = (/** @type {number} */ y) => offY + y * sc;
+  const px = game.player.pos.x, py = game.player.pos.y;
+  const world = game.world;
+
+  // A window onto the world rather than a whole map scaled to fit. It follows
+  // you, and stops following when it reaches the edge of what exists — so at
+  // the far end of the act you see yourself walking towards the corner instead
+  // of the world sliding out from under you. Walk back inward and it picks you
+  // up again.
+  const sc = S / MINIMAP_SPAN;
+  const b = world?.bounds ?? { x0: 0, y0: 0, x1: game.zone.w, y1: game.zone.h };
+  const bw = b.x1 - b.x0, bh = b.y1 - b.y0;
+  const half = MINIMAP_SPAN / 2;
+  const cx = bw <= MINIMAP_SPAN ? (b.x0 + b.x1) / 2 : clamp(px, b.x0 + half, b.x1 - half);
+  const cy = bh <= MINIMAP_SPAN ? (b.y0 + b.y1) / 2 : clamp(py, b.y0 + half, b.y1 - half);
+  const wx = (/** @type {number} */ x) => (x - cx) * sc + S / 2;
+  const wy = (/** @type {number} */ y) => (y - cy) * sc + S / 2;
 
   ctx.clearRect(0, 0, S, S);
-  ctx.fillStyle = '#05080e';           // outside the zone
+  ctx.fillStyle = '#05080e';                       // outside the world
   ctx.fillRect(0, 0, S, S);
-  ctx.fillStyle = '#243448';           // utforskad mark
-  ctx.fillRect(offX, offY, zone.w * sc, zone.h * sc);
 
-  // hinder, skalade efter sin verkliga storlek
+  const zones = world ? [...world.zones.values()] : [game.zone];
+  ctx.fillStyle = '#243448';
+  for (const z of zones) ctx.fillRect(wx(z.ox), wy(z.oy), z.w * sc, z.h * sc);
+
   ctx.fillStyle = '#3d5271';
-  for (const o of zone.obstacles) {
+  for (const z of zones) for (const o of z.obstacles) {
     if (o.type === 'drift') continue;
     if (o.kind === 'circle') {
       const r = Math.max(0.7, o.r * sc);
       ctx.fillRect(wx(o.x) - r, wy(o.y) - r, r * 2, r * 2);
     } else ctx.fillRect(wx(o.x), wy(o.y), Math.max(1, o.w * sc), Math.max(1, o.h * sc));
   }
-  if (zone.roads) {
-    ctx.strokeStyle = 'rgba(186,204,228,0.7)';
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    for (const road of zone.roads) {
-      ctx.lineWidth = road.main ? 2.6 : 1.6;
-      ctx.beginPath();
-      road.pts.forEach((/** @type {any} */ pt, /** @type {number} */ i) =>
-        i ? ctx.lineTo(wx(pt.x), wy(pt.y)) : ctx.moveTo(wx(pt.x), wy(pt.y)));
-      ctx.stroke();
-    }
+  ctx.strokeStyle = 'rgba(186,204,228,0.7)';
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const z of zones) for (const road of z.roads ?? []) {
+    ctx.lineWidth = road.main ? 2.6 : 1.6;
+    ctx.beginPath();
+    road.pts.forEach((/** @type {any} */ pt, /** @type {number} */ i) =>
+      i ? ctx.lineTo(wx(pt.x), wy(pt.y)) : ctx.moveTo(wx(pt.x), wy(pt.y)));
+    ctx.stroke();
   }
+
   /** @param {number} x @param {number} y @param {string} color @param {number} r */
   const pip = (x, y, color, r) => {
     ctx.fillStyle = color;
     ctx.beginPath(); ctx.arc(wx(x), wy(y), r, 0, 6.3); ctx.fill();
   };
-  for (const e of zone.exits) pip(e.x, e.y, '#7fd4f0', 3);
-  for (const sh of zone.shrines) if (!sh.used) pip(sh.x, sh.y, '#e0a86a', 2.5);
-  for (const c of zone.chests ?? []) if (!c.opened) pip(c.x, c.y, '#d8b26a', 2.8);
+  for (const z of zones) {
+    for (const sh of z.shrines) if (!sh.used) pip(sh.x, sh.y, '#e0a86a', 2.5);
+    for (const c of z.chests ?? []) if (!c.opened) pip(c.x, c.y, '#d8b26a', 2.8);
+  }
 
   // ---- the fog: paint over what you have not seen -------------------------
-  if (zone.fog) {
-    const cw = FOG_CELL * sc;
-    ctx.fillStyle = '#0a0f18';
-    for (let gy = 0; gy < zone.fogH; gy++) {
+  const cw = FOG_CELL * sc;
+  ctx.fillStyle = '#0a0f18';
+  for (const z of zones) {
+    if (!z.fog) continue;
+    for (let gy = 0; gy < z.fogH; gy++) {
       let run = -1;
-      for (let gx = 0; gx <= zone.fogW; gx++) {
-        const hidden = gx < zone.fogW && zone.fog[gy * zone.fogW + gx] === 0;
+      for (let gx = 0; gx <= z.fogW; gx++) {
+        const hidden = gx < z.fogW && z.fog[gy * z.fogW + gx] === 0;
         if (hidden) { if (run < 0) run = gx; }
         else if (run >= 0) {
           // Whole runs at a time instead of cell by cell.
-          ctx.fillRect(wx(run * FOG_CELL), wy(gy * FOG_CELL), (gx - run) * cw + 0.6, cw + 0.6);
+          ctx.fillRect(wx(z.ox + run * FOG_CELL), wy(z.oy + gy * FOG_CELL),
+            (gx - run) * cw + 0.6, cw + 0.6);
           run = -1;
         }
       }
@@ -1296,7 +1321,6 @@ export function renderMinimap(ctx, game) {
   }
 
   // ---- enemies: only those you could plausibly perceive right now ---------
-  const px = game.player.pos.x, py = game.player.pos.y;
   for (const m of game.monsters) {
     if (m.dead) continue;
     if (Math.hypot(m.pos.x - px, m.pos.y - py) > 620) continue;

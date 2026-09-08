@@ -8,7 +8,7 @@ import { HRAVN } from '../data/lore.js';
 import { T } from './tuning.js';
 import { showInscription } from '../ui/hud.js';
 import { burst, floatText, decal, shake, screenFlash } from '../render/fx.js';
-import { lineBlocked } from './world.js';
+import { losBlocked } from './worldmap.js';
 import { pickAttack } from '../render/hero.js';
 import { spawnXpOrbs } from './orbs.js';
 
@@ -243,7 +243,7 @@ export function performSwing(game, o) {
     if (d > reach + m.radius) continue;
     if (arc < Math.PI * 1.99 && angleDiff(Math.atan2(dy, dx), dir) > arc / 2) continue;
     // No damage through rock walls — you could clear the whole quarry from outside.
-    if (lineBlocked(game.zone, p.pos.x, p.pos.y, m.pos.x, m.pos.y)) continue;
+    if (losBlocked(game.world, p.pos.x, p.pos.y, m.pos.x, m.pos.y)) continue;
 
     const elemScale = 0.5 + 0.5 * o.mult;
     for (let strike = 0; strike < (twice ? 2 : 1); strike++) {
@@ -334,7 +334,7 @@ export function useSkill(game, id) {
         if (m.dead) continue;
         const d = Math.hypot(m.pos.x - p.pos.x, m.pos.y - p.pos.y);
         if (d > 175 + m.radius) continue;
-        if (lineBlocked(game.zone, p.pos.x, p.pos.y, m.pos.x, m.pos.y)) continue;
+        if (losBlocked(game.world, p.pos.x, p.pos.y, m.pos.x, m.pos.y)) continue;
         hitMonster(game, m, { cold: dmg });
         applySlow(m, 0.45, 3);
       }
@@ -354,7 +354,7 @@ export function useSkill(game, id) {
       for (const m of game.monsters) {
         if (m.dead) continue;
         if (Math.hypot(m.pos.x - p.pos.x, m.pos.y - p.pos.y) > 300 + m.radius) continue;
-        if (lineBlocked(game.zone, p.pos.x, p.pos.y, m.pos.x, m.pos.y)) continue;
+        if (losBlocked(game.world, p.pos.x, p.pos.y, m.pos.x, m.pos.y)) continue;
         hitMonster(game, m, { cold: dmg });
         applyFreeze(m, 2.4 + r * 0.2);
       }
@@ -370,7 +370,7 @@ export function useSkill(game, id) {
       for (const m of game.monsters) {
         if (m.dead) continue;
         if (Math.hypot(m.pos.x - p.pos.x, m.pos.y - p.pos.y) > 220) continue;
-        if (lineBlocked(game.zone, p.pos.x, p.pos.y, m.pos.x, m.pos.y)) continue;
+        if (losBlocked(game.world, p.pos.x, p.pos.y, m.pos.x, m.pos.y)) continue;
         applyStun(m, 1.2 + r * 0.12);
         n++;
       }

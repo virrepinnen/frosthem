@@ -1,7 +1,8 @@
 // @ts-check
 import { createPlayer, HOTBAR_SIZE, bindToHotbar, PORTAL_CAST, PORTAL_STEP } from './entities/player.js';
-import { generateZone, resolveCollision, lineBlocked, revealFog, ZONE_DEFS } from './systems/world.js';
-import { populateZone } from './systems/spawn.js';
+import { revealFog, ZONE_DEFS } from './systems/world.js';
+import { createWorld, ensureZone, ensureAround, unloadFar, zoneAt, zonesNear, collide, losBlocked }
+  from './systems/worldmap.js';
 import { updateMonsters, updateProjectiles } from './systems/ai.js';
 import { performSwing, useSkill, drinkPotion, hitMonster, applyFreeze, spawnGround,
   announceDrop } from './systems/combat.js';
@@ -58,6 +59,8 @@ export function createGame(existing, progress) {
     seen: new Set(),
     /** @type {string|undefined} The save slot's id; set on the first save. */
     charId: progress?.charId,
+    /** Which map the player is standing on. */
+    zoneIndex: 0,
     victoryT: 3,
     /** @type {null|{zoneIndex:number, zoneName:string, fromPos:{x:number,y:number}, townPos:{x:number,y:number}|null, stash:any}} */
     portal: null,
@@ -65,18 +68,12 @@ export function createGame(existing, progress) {
     aim: { x: 0, y: 0 },
     /** @type {any} */ aimTarget: null,
     /** @type {any} */ interact: null,
-    /** @type {null|{t:number, to:number, from:number|undefined, done:boolean}} Zone change in progress. */
     /**
-     * Maps generated ahead of time, keyed by index — the neighbours of wherever
-     * you are standing. Building one takes a few milliseconds, and doing it at
-     * the moment you cross is what made a border feel like a door rather than a
-     * step. Now it is already done before you get there.
-     * @type {Map<number, {zone:any, monsters:any[]}>}
+     * The act as one surface. Holds the map you are standing on and the ones on
+     * either side, all placed in the same coordinate system, so a border is a
+     * line you walk over rather than something that happens to you.
      */
-    ready: new Map(),
-    prefetchT: 0.5,
-    /** @type {null|{to:number, from:number}} */
-    pendingTravel: null,
+    world: createWorld(),
     /** The screen's darkening 0..1 during a zone change. */
     veil: 0,
     time: 0,
@@ -159,41 +156,27 @@ function snapshot(game) {
 }
 
 /**
+ * Put the player somewhere in the act, and build the world around that spot.
+ *
+ * This is no longer how you get from one map to the next — you walk there now.
+ * What is left is the handful of jumps that really are jumps: starting a run,
+ * stepping through a town portal, and the development panel's map buttons.
  * @param {Game} game @param {number} to @param {number} [from]
- * @param {{restore?:any, at?:{x:number,y:number}, keepPortal?:boolean}} [opts]
+ * @param {{at?:{x:number,y:number}, keepPortal?:boolean}} [opts]
  */
 function travel(game, to, from, opts = {}) {
   const idx = clamp(to, 0, ZONE_DEFS.length - 1);
 
-  if (opts.restore) {
-    game.zone = opts.restore.zone;
-    game.monsters = opts.restore.monsters;
-    game.ground = opts.restore.ground;
-    game.projectiles = opts.restore.projectiles;
-    game.novas = opts.restore.novas;
-    game.orbs = opts.restore.orbs ?? [];
-  } else {
-    const prepared = game.ready.get(idx);
-    if (prepared) {
-      game.zone = prepared.zone;
-      game.monsters = prepared.monsters;
-    } else {
-      game.zone = generateZone(idx, (rng.next() * 0xffffffff) >>> 0);
-      game.monsters = populateZone(game.zone);
-    }
-    game.ground = [];
-    game.projectiles = [];
-    game.novas = [];
-    game.orbs = [];
-  }
-  // Whatever was prepared for the map you just left is no use here. Keep only
-  // the neighbours of where you now stand, and start building those.
-  const adjacent = new Set((game.zone.exits ?? []).map((/** @type {any} */ e) => e.to));
-  for (const k of [...game.ready.keys()]) if (!adjacent.has(k) || k === idx) game.ready.delete(k);
-  game.prefetchT = 0.5;
+  game.world = createWorld();
+  game.monsters = [];
+  game.ground = [];
+  game.projectiles = [];
+  game.novas = [];
+  game.orbs = [];
+  const zone = ensureZone(game.world, idx);
+  game.zone = zone;
   game.groundVersion++;
   game.victoryT = 3;
-  markDepth(game, idx);
   clearFx();
 
   // An open portal only survives travel between its own two endpoints.
@@ -203,9 +186,9 @@ function travel(game, to, from, opts = {}) {
   }
 
   const p = game.player;
-  let spawn = opts.at ?? { ...game.zone.entry };
+  let spawn = opts.at ?? { ...zone.entry };
   if (!opts.at && from !== undefined) {
-    const back = game.zone.exits.find(e => e.to === from);
+    const back = zone.exits.find((/** @type {any} */ e) => e.to === from);
     // A little inside the threshold, or the first step would send you straight
     // back out. Measured inward along the border's own normal.
     if (back) spawn = { x: back.tx - back.dirX * 132, y: back.ty - back.dirY * 132 };
@@ -213,91 +196,89 @@ function travel(game, to, from, opts = {}) {
   p.pos.x = spawn.x; p.pos.y = spawn.y;
   p.vel.x = p.vel.y = 0;
   p.swing = null; p.dash = null; p.whirl = null; p.cast = null;
-  resolveCollision(game.zone, p.pos, p.radius);
+
+  // The neighbours are built now, before the first frame, so the ground on the
+  // far side of a border is already there the moment you can see it.
+  ensureAround(game.world, idx);
+  syncMonsters(game);
+  collide(game.world, p.pos, p.radius);
 
   camera.x = p.pos.x - camera.w / 2;
   camera.y = p.pos.y - camera.h / 2;
 
-  // The name fades in over the screen instead of sitting in the notice list —
-  // you should notice you have arrived somewhere without reading a corner.
-  // The banner names the map; the line under it names the area, so the chain
-  // reads as one journey rather than eight unrelated places.
-  showZoneBanner(game.zone.name, game.zone.isTown
-    ? 'the hearth still burns'
-    : `${game.zone.area} · monster level ${game.zone.level}`);
-  // The place says one thing about itself as you arrive, a beat after the name.
-  // Once per run per map: a line you have read four times stops being a line.
-  if (!game.seen.has(idx)) {
-    game.seen.add(idx);
-    const line = ZONE_LINE[idx];
-    if (line) setTimeout(() => showInscription(line), 900);
-  }
-  if (game.zone.isTown) { p.hp = p.maxHp; p.mana = p.maxMana; }
-  // A short dip, fading out from here. Nothing waits for it.
-  game.veil = CROSS_VEIL;
+  game.zoneIndex = idx;
+  announceZone(game, zone);
+  markDepth(game, idx);
+  if (zone.isTown) { p.hp = p.maxHp; p.mana = p.maxMana; }
   game.dirtyUI = true;
   hideTooltip();
   game.autosave();
 }
 
 /**
- * How long the brief dip lasts when you cross a border.
- *
- * There used to be a third of a second of fading to black, the map being built
- * while you waited, and then half a second of fading back — nearly a second of
- * standing still, which read as a level load. The map is built in advance now,
- * so all that is left is a short dip to cover the fact that every pixel on the
- * screen changes at once. You never stop walking.
+ * The name over the screen when you set foot somewhere new.
+ * @param {Game} game @param {any} zone
  */
-const FADE_IN = 0.28;
-/** How dark that dip goes. Enough to hide the swap, not enough to be a curtain. */
-const CROSS_VEIL = 0.6;
-
-/**
- * The border between two zones. No portal and no button: the path leads out of
- * the picture, and if you go there *under your own power* you continue into the
- * next zone. The requirement to move yourself matters — otherwise a shove in the
- * back mid-fight could throw you out of the map.
- * @param {Game} game
- */
-function checkZoneEdge(game) {
-  const p = game.player;
-  if (game.pendingTravel || p.dead) return;
-  for (const e of game.zone.exits) {
-    // Measured along and across the border, so the same test works on all four
-    // edges. `out` is how far past the trigger line you are; `along` how far
-    // sideways from the opening's centre.
-    const dx = p.pos.x - e.tx, dy = p.pos.y - e.ty;
-    const out = dx * e.dirX + dy * e.dirY;
-    const along = Math.abs(dx * -e.dirY + dy * e.dirX);
-    if (out <= 0 || along > e.r) continue;
-    // You have to walk out under your own power. A shove in the back mid-fight
-    // must not be able to throw you out of the map.
-    const willing = p.inX * e.dirX + p.inY * e.dirY > 0.05;
-    if (!willing) continue;
-    // Handled at the top of the next frame rather than here: the rest of this
-    // one is still holding the old zone's monsters.
-    game.pendingTravel = { to: e.to, from: game.zone.index };
-    return;
+function announceZone(game, zone) {
+  // The banner names the map; the line under it names the area, so the chain
+  // reads as one journey rather than nine unrelated places.
+  showZoneBanner(zone.name, zone.isTown
+    ? 'the hearth still burns'
+    : `${zone.area} · monster level ${zone.level}`);
+  // The place says one thing about itself as you arrive, a beat after the name.
+  // Once per run per map: a line you have read four times stops being a line.
+  if (!game.seen.has(zone.index)) {
+    game.seen.add(zone.index);
+    const line = ZONE_LINE[zone.index];
+    if (line) setTimeout(() => showInscription(line), 900);
   }
 }
 
 /**
- * Builds the maps on the other side of this one's borders, one at a time and
- * spaced out, so the work never lands on the frame where you walk through.
- * @param {Game} game @param {number} dt
+ * Brings the live monster list in line with the maps that are loaded.
+ *
+ * Monsters are made with their map and stay tagged with it, so that dropping a
+ * map you have walked away from takes its monsters with it — and so that the
+ * one list the rest of the game works from stays a single flat array.
+ * @param {Game} game
  */
-function prefetchNeighbours(game, dt) {
-  game.prefetchT -= dt;
-  if (game.prefetchT > 0) return;
-  const next = (game.zone.exits ?? [])
-    .map((/** @type {any} */ e) => e.to)
-    .find((/** @type {number} */ i) => !game.ready.has(i));
-  if (next === undefined) return;
-  const zone = generateZone(next, (rng.next() * 0xffffffff) >>> 0);
-  game.ready.set(next, { zone, monsters: populateZone(zone) });
-  game.prefetchT = 0.35;
+function syncMonsters(game) {
+  for (const z of game.world.zones.values()) {
+    if (!z.monsters) continue;
+    for (const m of z.monsters) { m.zoneIndex = z.index; game.monsters.push(m); }
+    z.monsters = null;
+  }
+  const live = game.world.zones;
+  if (game.monsters.some((/** @type {any} */ m) => !live.has(m.zoneIndex))) {
+    game.monsters = game.monsters.filter((/** @type {any} */ m) => live.has(m.zoneIndex));
+  }
 }
+
+/**
+ * Which map are we standing on?
+ *
+ * Called every frame. Crossing a border is nothing more than this answer
+ * changing: there is no fade, no pause and nothing to load, because the ground
+ * you just stepped onto was built while you were walking towards it.
+ * @param {Game} game
+ */
+function updateWorldAround(game) {
+  const p = game.player;
+  const here = zoneAt(game.world, p.pos.x, p.pos.y);
+  if (here && here.index !== game.zoneIndex) {
+    game.zoneIndex = here.index;
+    game.zone = here;
+    announceZone(game, here);
+    markDepth(game, here.index);
+    if (here.isTown) { p.hp = p.maxHp; p.mana = p.maxMana; }
+    game.dirtyUI = true;
+    game.autosave();
+  }
+  ensureAround(game.world, game.zoneIndex);
+  if (unloadFar(game.world, game.zoneIndex, p.pos.x, p.pos.y)) game.dirtyUI = true;
+  syncMonsters(game);
+}
+
 
 
 /**
@@ -410,18 +391,14 @@ function update(game, dt) {
     if (game.saveT <= 0) saveGame(game);
   }
 
-  if (game.pendingTravel) {
-    const t = game.pendingTravel;
-    game.pendingTravel = null;
-    travel(game, t.to, t.from);
-  }
-  if (game.veil > 0) game.veil = Math.max(0, game.veil - dt / FADE_IN);
+  // Nothing darkens the screen any more: a border is walked over, not loaded
+  // through. The element stays so a future fade has somewhere to live.
+  if (game.veil > 0) game.veil = Math.max(0, game.veil - dt / 0.28);
   // An open panel stops the world. The bag now covers half the screen, so
   // fighting behind it was never really an option — freezing makes that honest,
   // and it means reading a tooltip is never punished by something biting you.
   if (game.paused || game.tunerOpen || anyPanelOpen()) { updateFx(dt); return; }
 
-  prefetchNeighbours(game, dt);
   game.time += dt;
 
   game.playerSlow = 0;
@@ -608,7 +585,7 @@ function updatePlayer(game, dt) {
     const half = T.rollIframes / 2;
     if (k > 0.5 - half && k < 0.5 + half) p.invuln = Math.max(p.invuln, 0.05);
     if (rng.chance(0.6)) burst(p.pos.x, p.pos.y + 8, 2, { color: '#e8f0fa', speed: 60, life: 0.4, size: 2.4, grav: -10 });
-    resolveCollision(zone, p.pos, p.radius);
+    collide(game.world, p.pos, p.radius);
     if (p.roll.t <= 0) p.roll = null;
   } else if (p.dash) {
     p.dash.t -= dt;
@@ -629,7 +606,7 @@ function updatePlayer(game, dt) {
   } else {
     p.moving = false;
   }
-  resolveCollision(zone, p.pos, p.radius);
+  collide(game.world, p.pos, p.radius);
 
   // Velocity is measured from the actual movement — so it holds equally for
   // walking, dashing, rolling and being stopped by a wall.
@@ -684,7 +661,9 @@ function updatePlayer(game, dt) {
   if (keyPressed('e') && !casting) interact(game);
 
   // ---- places you walk into ------------------------------------------------
-  for (const s of zone.shrines) {
+  // Across every map you are near, not just the one underfoot: standing on a
+  // seam, half of what is in reach belongs to the map next door.
+  for (const s of zonesNear(game.world, p.pos.x, p.pos.y, 400).flatMap(z => z.shrines)) {
     if (s.used) continue;
     if (Math.hypot(p.pos.x - s.x, p.pos.y - s.y) > s.r + p.radius) continue;
     activateShrine(game, s);
@@ -709,7 +688,7 @@ function updatePlayer(game, dt) {
   }
   game.interact = findInteract(game);
 
-  checkZoneEdge(game);
+  updateWorldAround(game);
 
 }
 
@@ -728,7 +707,7 @@ function updateAiming(game, mx, my) {
     if (m.dead) continue;
     const d = Math.hypot(m.pos.x - p.pos.x, m.pos.y - p.pos.y);
     if (d > 360 || d >= bestD) continue;
-    if (lineBlocked(game.zone, p.pos.x, p.pos.y, m.pos.x, m.pos.y)) continue;
+    if (losBlocked(game.world, p.pos.x, p.pos.y, m.pos.x, m.pos.y)) continue;
     bestD = d; best = m;
   }
   game.aimTarget = best;
@@ -890,12 +869,13 @@ export function findInteract(game) {
     return { kind: 'hearth', obj: hearth, x: /** @type {any} */ (hearth).x,
       y: /** @type {any} */ (hearth).y - 96, label: 'Train' };
   }
-  for (const c of game.zone.chests) {
+  const around = zonesNear(game.world, game.player.pos.x, game.player.pos.y, 400);
+  for (const c of around.flatMap((/** @type {any} */ z) => z.chests)) {
     if (!c.opened && near(c, c.r + 46)) {
       return { kind: 'chest', obj: c, x: c.x, y: c.y - 60, label: 'Open' };
     }
   }
-  for (const n of game.zone.npcs) {
+  for (const n of around.flatMap((/** @type {any} */ z) => z.npcs)) {
     if (near(n, 115)) {
       return { kind: 'npc', obj: n, x: n.x, y: n.y - 64,
         label: n.id === 'gerd' ? 'Trade' : 'Talk' };

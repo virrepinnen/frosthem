@@ -5,7 +5,7 @@ import { damagePlayer, applySlow } from './combat.js';
 import { createMonster } from '../entities/monster.js';
 import { MONSTERS } from '../data/monsters.js';
 import { burst, shake, screenFlash, floatText } from '../render/fx.js';
-import { resolveCollision } from './world.js';
+import { collide } from './worldmap.js';
 
 /** @typedef {import('../entities/monster.js').Monster} Monster */
 
@@ -67,7 +67,7 @@ export function updateBoss(game, m, dt) {
     const sp = 720;
     m.pos.x += Math.cos(B.charge.dir) * sp * dt;
     m.pos.y += Math.sin(B.charge.dir) * sp * dt;
-    resolveCollision(game.zone, m.pos, m.radius);
+    collide(game.world, m.pos, m.radius);
     burst(m.pos.x, m.pos.y, 3, { color: '#a8e4f8', speed: 60, life: 0.4, size: 3, grav: 10 });
     if (!B.charge.hit.has(0) && dist < m.radius + p.radius + 22) {
       B.charge.hit.add(0);

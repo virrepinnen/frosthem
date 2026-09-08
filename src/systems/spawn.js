@@ -6,6 +6,23 @@ import { Rng } from '../core/rng.js';
 /** @typedef {import('./world.js').Zone} Zone */
 
 /**
+ * How far a point is from the nearest crossing into the next map.
+ *
+ * Measured to the doorway, not to the whole edge it sits on: the road runs from
+ * one border to the other, so nearly every pack is near *an* edge, and treating
+ * the edge as the border emptied the maps.
+ * @param {Zone} zone @param {number} x @param {number} y
+ */
+function borderDistance(zone, x, y) {
+  let best = Infinity;
+  for (const e of zone.exits) {
+    const d = Math.hypot(x - e.x, y - e.y);
+    if (d < best) best = d;
+  }
+  return best;
+}
+
+/**
  * Fills a zone with monsters from its anchor points.
  *
  * Groups are placed tightly (55 px spread) rather than scattered: a pack should
@@ -21,11 +38,20 @@ export function populateZone(zone) {
   const pool = MONSTERS.filter(m => m.minZone <= zone.index);
 
   for (const a of zone.anchors) {
+    // Thin the ground near a border. The maps join into one landscape now, so
+    // the seam is somewhere you walk through rather than a doorway you appear
+    // in — and arriving into a pack you could not have seen coming is the one
+    // thing that made a crossing feel unfair. It also keeps the two maps'
+    // monsters from becoming one enormous fight the moment you step over.
+    const toBorder = borderDistance(zone, a.x, a.y);
+    if (toBorder < 520) continue;
+    const thin = toBorder < 900 ? 0.5 : 1;
+
     const def = r.weighted(pool, m => (m.weight ?? 5) * (m.minZone === zone.index ? 1.6 : 1));
     const level = zone.level + r.int(0, 2);
     // Archetypes that normally travel in big packs get more members than the heavy ones.
     const scale = ((def.pack[0] + def.pack[1]) / 2) / 5;
-    const count = Math.max(1, Math.round(a.n * scale));
+    const count = Math.max(1, Math.round(a.n * scale * thin));
 
     if (a.elite) {
       out.push(createMonster(def, level + 2, a.x, a.y, { elite: true }));

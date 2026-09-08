@@ -33,6 +33,10 @@ export function createMonster(def, level, x, y, opts = {}) {
 
     cd: rng.range(0, def.attackCd),
     windup: 0,
+    /** Which map it was made in, so it goes when that map is dropped. */
+    zoneIndex: 0,
+    /** Close enough to the player to be worth thinking this frame. */
+    sim: true,
     /**
      * Ground marking for a wind-up. Only the boss uses one: its moves are big,
      * slow and worth reading. Ordinary monsters have nothing to telegraph — they

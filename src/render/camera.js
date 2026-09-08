@@ -41,9 +41,12 @@ export function updateCamera(game, dt) {
   camera.x += (tx - camera.x) * k;
   camera.y += (ty - camera.y) * k;
 
-  // keep the camera inside the zone when the zone is larger than the screen
-  camera.x = game.zone.w > camera.w ? clamp(camera.x, 0, game.zone.w - camera.w) : (game.zone.w - camera.w) / 2;
-  camera.y = game.zone.h > camera.h ? clamp(camera.y, 0, game.zone.h - camera.h) : (game.zone.h - camera.h) / 2;
+  // Kept inside the *world*, not inside one map: at a seam the camera has to be
+  // allowed over the join, or it would stop dead halfway across a border.
+  const b = game.world?.bounds ?? { x0: 0, y0: 0, x1: game.zone.w, y1: game.zone.h };
+  const bw = b.x1 - b.x0, bh = b.y1 - b.y0;
+  camera.x = bw > camera.w ? clamp(camera.x, b.x0, b.x1 - camera.w) : b.x0 + (bw - camera.w) / 2;
+  camera.y = bh > camera.h ? clamp(camera.y, b.y0, b.y1 - camera.h) : b.y0 + (bh - camera.h) / 2;
 }
 
 /** @param {number} x @param {number} y */

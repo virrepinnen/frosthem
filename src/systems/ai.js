@@ -1,6 +1,6 @@
 // @ts-check
 import { rng } from '../core/rng.js';
-import { resolveCollision, lineBlocked } from './world.js';
+import { collide, losBlocked } from './worldmap.js';
 import { damagePlayer, hitMonster, applySlow } from './combat.js';
 import { burst, floatText } from '../render/fx.js';
 import { rank } from './stats.js';
@@ -23,13 +23,34 @@ const aggroFar = () => T.aggro * AGGRO_FAR_MULT;
 /**
  * @param {any} game @param {number} dt
  */
+/**
+ * How far from the player a monster still thinks.
+ *
+ * Three maps are loaded at once now, which is three times the monsters, and the
+ * crowding pass compares every monster with every other one. Anything this far
+ * away is off screen and has nobody to crowd, so it simply waits — the cost of
+ * a frame stays what it was when only one map existed.
+ */
+const SIM_RANGE = 1700;
+
+/** @param {any} game @param {number} dt */
 export function updateMonsters(game, dt) {
   const p = game.player;
-  const zone = game.zone;
   const rimeR = rank(p, 'rimeaura');
+
+  /** @type {Monster[]} */
+  const active = [];
+  for (const m of game.monsters) {
+    m.sim = !m.dead
+      && Math.abs(m.pos.x - p.pos.x) < SIM_RANGE
+      && Math.abs(m.pos.y - p.pos.y) < SIM_RANGE;
+    if (m.sim) active.push(m);
+  }
 
   for (let i = game.monsters.length - 1; i >= 0; i--) {
     const m = game.monsters[i];
+
+    if (!m.sim && !m.dead) continue;
 
     if (m.dead) {
       m.telegraph = null;
@@ -85,12 +106,12 @@ export function updateMonsters(game, dt) {
         m.pos.y += (b.my / bl) * sp * dt;
         m.walk = (m.walk ?? 0) + dt * sp * 0.05;
       }
-      resolveCollision(zone, m.pos, m.radius);
+      collide(game.world, m.pos, m.radius);
       continue;
     }
 
     // Dormant: stands and waits. Only a hit wakes it.
-    if (m.dormant) { resolveCollision(zone, m.pos, m.radius); continue; }
+    if (m.dormant) { collide(game.world, m.pos, m.radius); continue; }
 
     // ---- aggro ----------------------------------------------------------
     if (m.state === 'idle') {
@@ -122,7 +143,7 @@ export function updateMonsters(game, dt) {
         const want = m.attackRange * 0.72;
         if (dist > want) { mx = dx / dist; my = dy / dist; }
         if (m.cd <= 0 && dist < m.attackRange
-            && !lineBlocked(zone, m.pos.x, m.pos.y, p.pos.x, p.pos.y)) {
+            && !losBlocked(game.world, m.pos.x, m.pos.y, p.pos.x, p.pos.y)) {
           // The aim is locked at the draw, not at the shot, so stepping sideways
           // works: the arrow goes where you *were*.
           m.windup = T.rangedWindup;
@@ -148,8 +169,8 @@ export function updateMonsters(game, dt) {
     // The force is capped: otherwise a dense pack can push its own members
     // away from the target instead of surrounding it.
     let sx = 0, sy = 0;
-    for (const o of game.monsters) {
-      if (o === m || o.dead) continue;
+    for (const o of active) {
+      if (o === m) continue;
       const ox = m.pos.x - o.pos.x, oy = m.pos.y - o.pos.y;
       const od = Math.hypot(ox, oy);
       const minD = m.radius + o.radius;
@@ -178,7 +199,7 @@ export function updateMonsters(game, dt) {
     m.pos.x += m.vel.x * dt; m.pos.y += m.vel.y * dt;
     m.vel.x *= Math.pow(0.0005, dt); m.vel.y *= Math.pow(0.0005, dt);
 
-    resolveCollision(zone, m.pos, m.radius);
+    collide(game.world, m.pos, m.radius);
 
     // Touching hurts. Measured after the move, so what is on screen is what is
     // tested, and the cooldown means a monster in contact wears you down at a
@@ -229,7 +250,7 @@ export function updateProjectiles(game, dt) {
     pr.x += pr.vx * dt; pr.y += pr.vy * dt;
     pr.life -= dt;
     if (pr.life <= 0) { game.projectiles.splice(i, 1); continue; }
-    if (lineBlocked(game.zone, px, py, pr.x, pr.y)) {
+    if (losBlocked(game.world, px, py, pr.x, pr.y)) {
       burst(pr.x, pr.y, 6, { color: '#b6c2d4', speed: 90, life: 0.3, size: 2 });
       game.projectiles.splice(i, 1);
       continue;
