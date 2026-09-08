@@ -59,19 +59,19 @@ export const KNOBS = [
 
 /** The defaults. Changing one of these is what "baking in a value" means. */
 export const DEFAULTS = /** @type {Record<string, number>} */ ({
-  viewWidth: 1075,
+  viewWidth: 1350,
   moveSpeed: 168,
   reach: 100,
   swingStep: 4,
-  rollDist: 182,
+  rollDist: 120,
   rollTime: 0.32,
   rollCd: 0.85,
   rollIframes: 0.7,
   rangedWindup: 0.55,
-  dmgMult: 1,
-  monSpeed: 1,
-  aggro: 520,
-  potionCd: 0,
+  dmgMult: 1.5,
+  monSpeed: 0.9,
+  aggro: 580,
+  potionCd: 1,
   potions: 2,
 });
 

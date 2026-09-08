@@ -128,7 +128,7 @@ Synergy: +7% damage per rank in Frostbite.`,
     id: 'secondwind', tree: 'endurance', tier: 1, name: 'Second Wind', icon: 'secondwind', type: 'passive',
     reqLevel: 1, maxRank: 10, requires: [],
     desc: (r) => `You recover faster than you have any right to.
-+${r * 9} max life · +${(r * 0.5).toFixed(1)} life/s · +${r * 6} mana.`,
++${r * 9} max life · +${(r * 0.06).toFixed(2)} life/s · +${r * 6} mana.`,
   },
   {
     id: 'warcry', tree: 'endurance', tier: 2, name: 'War Cry', icon: 'warcry', type: 'active',

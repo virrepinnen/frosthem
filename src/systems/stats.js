@@ -80,14 +80,20 @@ export function recalc(p) {
   // was with the old starting attributes (20/18/22/12) — removing the points
   // should change how you build, not how hard the first pack hits.
   p.maxHp = Math.round(128 + L * 10 + m('life') + rSecond * 9);
-  p.lifeRegen = 0.35 + m('lifeRegen') + rSecond * 0.5;
+  // Six a minute. Regeneration used to quietly undo a fight between packs,
+  // which meant a hit you took cost you nothing a few seconds later. Now what
+  // you lose stays lost until you drink, and the potion is the decision.
+  p.lifeRegen = 0.1 + m('lifeRegen') + rSecond * 0.06;
 
   // One resource. Stamina used to sit alongside this and meter your swings, but
   // a bar that stops you attacking mid-fight reads as the game taking the
   // controls away, so it is gone: the basic swing is free and every skill draws
   // on mana instead.
   p.maxMana = Math.round(70 + L * 3 + m('mana') + rSecond * 6);
-  p.manaRegen = 6 + L * 0.2 + m('manaRegen');
+  // One a second, and it no longer grows with level. Mana is the only thing
+  // metering your skills now, so it has to actually run out — at six a second
+  // the pool refilled faster than the cooldowns did, and nothing bound.
+  p.manaRegen = 1 + m('manaRegen');
 
   const wSpeed = w?.base.speed ?? 1.15;
 

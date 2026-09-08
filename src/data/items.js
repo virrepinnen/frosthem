@@ -214,9 +214,11 @@ export const SUFFIXES = [
     { label: 'of the Wolf', ilvl: 12, min: 1, max: 2, w: 7 },
     { label: 'of the Wolf', ilvl: 24, min: 3, max: 5, w: 4 },
   ]},
+  // Scaled to the new trickle: a good roll is worth roughly three times your
+  // base regeneration, not twenty times it.
   { id: 'regen', kind: 'suffix', stat: 'lifeRegen', slots: [...GROUPS.armor, ...GROUPS.jewel], float: true, tiers: [
-    { label: 'of the Hearth', ilvl: 2, min: 0.3, max: 0.8 },
-    { label: 'of the Hearth', ilvl: 14, min: 0.9, max: 2.0 },
+    { label: 'of the Hearth', ilvl: 2, min: 0.05, max: 0.12 },
+    { label: 'of the Hearth', ilvl: 14, min: 0.14, max: 0.30 },
   ]},
   { id: 'sta', kind: 'suffix', stat: 'mana', slots: [...GROUPS.armor, ...GROUPS.jewel], tiers: [
     { label: 'of Endurance', ilvl: 1,  min: 3, max: 7 },
@@ -255,7 +257,7 @@ export const UNIQUES = [
   { id: 'jarlsburden', name: "The Jarl's Burden", base: 'chainmail', ilvl: 16, flavor: '"He wore it until the ground gave way."',
     mods: { armorPct: 55, life: 28, resAll: 8, moveSpeed: -8, dmgFlat: 4 } },
   { id: 'lasthearth', name: 'The Last Hearth', base: 'silveramulet', ilvl: 13, flavor: '"For as long as one ember remains."',
-    mods: { resAll: 10, lifeRegen: 2.0, life: 20, resFire: 10 } },
+    mods: { resAll: 10, lifeRegen: 0.3, life: 20, resFire: 10 } },
   { id: 'iceeye', name: 'Ice Eye', base: 'silverring', ilvl: 11, flavor: '"It sees what the snow has buried."',
     mods: { coldDmg: 9, resCold: 18, magicFind: 16, mana: 16 } },
   { id: 'stormstride', name: 'Stormstride', base: 'chainboots', ilvl: 14, flavor: '"No drift ever held him."',

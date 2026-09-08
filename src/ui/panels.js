@@ -233,7 +233,11 @@ function characterPanel(game) {
     'you need more armour for the same protection deeper into the wild.'));
   if (p.dmgReduction) d.appendChild(row('Damage reduction', `${(p.dmgReduction * 100).toFixed(1)}%`));
   d.appendChild(row('Max life', String(p.maxHp)));
-  d.appendChild(row('Life regeneration', `${p.lifeRegen.toFixed(1)}/s`));
+  // Shown per minute as well: at a tenth a second the per-second figure alone
+  // reads as nothing at all, and it is not nothing — it is just slow.
+  d.appendChild(row('Life regeneration', `${(p.lifeRegen * 60).toFixed(0)}/min`,
+    '<div class="tt-name">Life regeneration</div><div class="tt-core">A trickle, on purpose. '
+    + 'What a fight costs you stays lost — the flask is how you get it back.</div>'));
   const cap = p.resCap ?? RES_CAP;
   d.appendChild(row('Cold resistance', `${p.res.cold}% / ${cap}%`));
   d.appendChild(row('Fire resistance', `${p.res.fire}% / ${cap}%`));
@@ -242,9 +246,9 @@ function characterPanel(game) {
 
   d.appendChild(g('Mana'));
   d.appendChild(row('Max mana', String(p.maxMana),
-    '<div class="tt-name">Mana</div><div class="tt-core">Only Frost skills draw mana. ' +
-    'It refills at a steady rate and does not care whether you are fighting.</div>' +
-    '<div class="tt-req">Gear and blessings are what raise it.</div>'));
+    '<div class="tt-name">Mana</div><div class="tt-core">Every skill draws mana. '
+    + 'The basic swing is free; mana is what decides how often you do something better than swinging.</div>'
+    + '<div class="tt-req">Gear and blessings are what raise it.</div>'));
   d.appendChild(row('Regeneration', `${p.manaRegen.toFixed(1)}/s`));
 
   d.appendChild(g('Other'));

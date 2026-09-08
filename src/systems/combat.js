@@ -174,8 +174,11 @@ function dropLoot(game, m) {
     const amount = Math.round(base * rng.range(0.7, 1.7) * (m.isBoss ? 16 : m.elite ? 6 : m.isChampion ? 3.2 : 4));
     spawnGround(game, m.pos.x, m.pos.y, { kind: 'gold', amount });
   }
-  if (rng.chance(m.isBoss ? 1 : m.elite ? 0.5 : 0.07)) {
-    spawnGround(game, m.pos.x, m.pos.y, { kind: 'potion', amount: m.isBoss ? 5 : 1 });
+  // About one potion per map. When they fell at seven percent you finished a
+  // zone with a pocketful and drinking stopped being a decision; now the flask
+  // you are carrying is the one you have to make last.
+  if (rng.chance(m.isBoss ? 1 : m.elite ? 0.10 : 0.004)) {
+    spawnGround(game, m.pos.x, m.pos.y, { kind: 'potion', amount: m.isBoss ? 3 : 1 });
   }
 }
 

@@ -68,8 +68,8 @@ export const BOONS = [
   },
   {
     id: 'knitting', name: 'Knitting Flesh', icon: 'regen', group: 'defence', at: BASIC,
-    per: { lifeRegen: 0.6 },
-    line: (r) => `+0.6 life per second (rank ${r} → +${(r * 0.6).toFixed(1)}/s)`,
+    per: { lifeRegen: 0.1 },
+    line: (r) => `+0.1 life per second (rank ${r} → +${(r * 0.1).toFixed(1)}/s)`,
   },
   {
     id: 'coldblooded', name: 'Coldblooded', icon: 'resist', group: 'defence', at: BASIC,
@@ -85,8 +85,8 @@ export const BOONS = [
   },
   {
     id: 'breath', name: 'Second Breath', icon: 'secondwind', group: 'utility', at: BASIC,
-    per: { mana: 12, manaRegen: 1.5 },
-    line: (r) => `+12 mana, +1.5 mana per second (rank ${r})`,
+    per: { mana: 12, manaRegen: 0.25 },
+    line: (r) => `+12 mana, +0.25 mana per second (rank ${r})`,
   },
   {
     id: 'ravenous', name: 'Ravenous', icon: 'leech', group: 'utility', at: BASIC,
