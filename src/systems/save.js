@@ -168,7 +168,6 @@ export function playerFromSave(d) {
 
   recalc(p);
   p.hp = p.maxHp;
-  p.stamina = p.maxStamina;
   p.mana = p.maxMana;
   return p;
 }

@@ -203,7 +203,7 @@ export function itemScore(item) {
   const w = /** @type {Record<string,number>} */ ({
     dmgPct: 0.9, dmgFlat: 3.4, attackSpeed: 1.4, critChance: 2.8, critMult: 0.5,
     coldDmg: 1.6, fireDmg: 1.6, lightDmg: 0.9, freezeChance: 0.8, lifeSteal: 5.0,
-    armorPct: 0.5, armor: 0.8, life: 1.1, lifeRegen: 9, stamina: 0.25, moveSpeed: 3.4,
+    armorPct: 0.5, armor: 0.8, life: 1.1, lifeRegen: 9, moveSpeed: 3.4,
     resCold: 0.8, resFire: 0.8, resLight: 0.8, resAll: 2.5, magicFind: 0.55,
   });
   for (const k in item.mods) s += (item.mods[k] || 0) * (w[k] ?? 0.5);

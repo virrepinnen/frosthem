@@ -37,10 +37,6 @@ export function updateHud(game) {
   $('hp-text').textContent = `${Math.ceil(p.hp)}/${p.maxHp}`;
   $('mana-fill').style.height = `${Math.max(0, (p.mana / p.maxMana) * 100)}%`;
   $('mana-text').textContent = `${Math.ceil(p.mana)}/${p.maxMana}`;
-  $('stamina-fill').style.width = `${Math.max(0, (p.stamina / p.maxStamina) * 100)}%`;
-  $('sta-text').textContent = `${Math.ceil(p.stamina)}/${p.maxStamina}`;
-  $('stamina-bar').classList.toggle('low', !!p.exhausted);
-  flashOnce('stamina-bar', p.staminaFlash);
   flashOnce('mana-orb', p.manaFlash);
   $('xp-fill').style.width = `${(p.xp / p.xpNext) * 100}%`;
   $('zone-name').textContent = game.zone.name;
@@ -128,9 +124,7 @@ function updateCooldowns(game) {
     if (t > 0.05) { cd.classList.remove('hidden'); cd.textContent = t.toFixed(1); }
     else cd.classList.add('hidden');
     const def = SKILL_BY_ID.get(id);
-    const usable = t <= 0
-      && p.stamina >= (def?.stamina ?? 0)
-      && p.mana >= (def?.mana ?? 0);
+    const usable = t <= 0 && p.mana >= (def?.mana ?? 0);
     el.classList.toggle('active', usable);
   }
   const pot = document.getElementById('potion-slot');
@@ -411,8 +405,8 @@ const TUTORIAL = [
     body: 'Walk with the <b>arrow keys</b>. The path through every map leads out of the picture to the north — <b>just keep going where it ends</b> and you are in the next area. A side path leads to something worth finding.' },
   { ico: 'axe', title: 'You fight on your own',
     body: 'When an enemy comes within reach <b>you attack automatically</b>, aiming at the nearest one. You never have to click.<br><b>Space</b> rolls aside — you are invulnerable in the middle of the roll.' },
-  { ico: 'wind', title: 'Stamina is your clock',
-    body: 'Every swing costs stamina, and <b>in combat you recover only slowly</b>. Run out and you cannot strike.<br>Every enemy felled gives a gulp back — so the one who lands blows is rewarded, not the one swinging at air.' },
+  { ico: 'wind', title: 'Keep moving',
+    body: 'Anything that reaches you hurts you just by <b>touching</b> you — there is no blow to block, only contact to avoid.<br>Standing still in a pack is how you die. Walking is how you fight.' },
   { ico: 'potion', title: 'Stay alive',
     body: '<b>Q</b> drinks a health potion. Skills sit on <b>1–6</b>.<br>Loot is picked up automatically as you walk over it — but it drops rarely, so what falls is worth a look.' },
   { ico: 'spark', title: 'One card per level',

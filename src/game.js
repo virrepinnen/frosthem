@@ -22,7 +22,7 @@ import { T } from './systems/tuning.js';
 import { hideTooltip } from './ui/tooltip.js';
 import { toggleTuner } from './ui/tuner.js';
 import { saveGame } from './systems/save.js';
-import { COMBAT_REGEN, COMBAT_WINDOW, recalc } from './systems/stats.js';
+import { COMBAT_WINDOW, recalc } from './systems/stats.js';
 import { rng } from './core/rng.js';
 import { clamp } from './core/math.js';
 
@@ -227,7 +227,7 @@ function travel(game, to, from, opts = {}) {
     if (line) setTimeout(() => showInscription(line), 900);
   }
   if (game.zone.isTown) {
-    p.hp = p.maxHp; p.stamina = p.maxStamina; p.mana = p.maxMana;
+    p.hp = p.maxHp; p.mana = p.maxMana;
     game.waypoints.add(0);
   }
   game.dirtyUI = true;
@@ -518,7 +518,7 @@ function updatePlayer(game, dt) {
       // can look at the same fight twenty times without any ceremony.
       if (game.testMode) {
         p.dead = false; p.deathT = 0;
-        p.hp = p.maxHp; p.stamina = p.maxStamina; p.mana = p.maxMana;
+        p.hp = p.maxHp; p.mana = p.maxMana;
         p.potions = Math.max(p.potions, 3);
         p.swing = null; p.dash = null; p.whirl = null; p.cast = null;
         p.invuln = 1.5;
@@ -556,14 +556,7 @@ function updatePlayer(game, dt) {
   if (p.swing) { p.swing.t += dt; if (p.swing.t >= p.swing.dur) p.swing = null; }
 
   p.hp = Math.min(p.maxHp, p.hp + p.lifeRegen * dt);
-  // Stamina recovers slowly while you are fighting and quickly once you break
-  // contact. That rhythm is what the whole combat economy rests on.
   p.combatT = Math.max(0, (p.combatT ?? 0) - dt);
-  const regen = p.staminaRegen * (p.combatT > 0 ? COMBAT_REGEN : 1);
-  p.stamina = Math.min(p.maxStamina, p.stamina + regen * dt);
-  p.exhausted = p.stamina < p.attackCost;
-  // Mana does not care about combat — it refills at a steady rate, so the two
-  // resources feel different in the hand instead of being one thing in two colours.
   p.mana = Math.min(p.maxMana, p.mana + p.manaRegen * dt);
   p.manaFlash = Math.max(0, (p.manaFlash ?? 0) - dt);
 
@@ -660,23 +653,16 @@ function updatePlayer(game, dt) {
     // not start the fight for you. To wake him, you have to click.
     const inReach = t && !t.dead && !t.dormant
       && Math.hypot(t.pos.x - p.pos.x, t.pos.y - p.pos.y) <= T.reach + t.radius;
-    const wants = input.mouse.down || (game.settings.autoAttack && inReach);
+    // And it holds entirely when the screen is empty. Swinging at nothing on
+    // the walk between packs makes the character look like it is malfunctioning.
+    const wants = input.mouse.down
+      || (game.settings.autoAttack && inReach && enemyOnScreen(game));
     if (wants) {
-      if (p.stamina >= p.attackCost) {
-        p.stamina -= p.attackCost;
-        p.combatT = COMBAT_WINDOW;
-        p.attackTimer = 1 / (1.5 * p.attackSpeed);
-        performSwing(game, { arc: 1.5, reach: T.reach, mult: 1, kind: 'basic' });
-      } else {
-        // Exhausted: does not bother spamming warnings, but marks it clearly.
-        p.attackTimer = 0.3;
-        p.staminaFlash = 0.45;
-        if ((p.exhaustAlertT ?? 0) <= 0) { p.exhaustAlertT = 6; game.alert('Exhausted — pull back and catch your breath.'); }
-      }
+      p.combatT = COMBAT_WINDOW;
+      p.attackTimer = 1 / (1.5 * p.attackSpeed);
+      performSwing(game, { arc: 1.5, reach: T.reach, mult: 1, kind: 'basic' });
     }
   }
-  p.exhaustAlertT = Math.max(0, (p.exhaustAlertT ?? 0) - dt);
-  p.staminaFlash = Math.max(0, (p.staminaFlash ?? 0) - dt);
   for (let i = 0; i < HOTBAR_SIZE; i++) {
     if (keyPressed(String(i + 1))) {
       const id = p.hotbar[i];
@@ -817,18 +803,34 @@ function dodgeRoll(game) {
   const p = game.player;
   if (p.roll || p.dash || p.whirl) return;
   if ((p.rollCd ?? 0) > 0) return;
-  if (p.stamina < 16) { game.alert('Not enough stamina to roll.'); return; }
   let mx = 0, my = 0;
   if (keyDown('arrowup')) my -= 1;
   if (keyDown('arrowdown')) my += 1;
   if (keyDown('arrowleft')) mx -= 1;
   if (keyDown('arrowright')) mx += 1;
   const dir = (mx || my) ? Math.atan2(my, mx) : p.facing;
-  p.stamina -= 16;
   p.rollCd = T.rollCd;
   p.roll = { t: T.rollTime, dur: T.rollTime, dir };
   p.swing = null;
   burst(p.pos.x, p.pos.y + 6, 14, { color: '#e8f0fa', speed: 150, life: 0.5, size: 2.6, dir: dir + Math.PI, spread: 1.6 });
+}
+
+/**
+ * Is there anything alive to fight within view?
+ *
+ * The camera's rectangle, not a radius: what the player can see is exactly what
+ * should decide whether the character keeps swinging.
+ * @param {Game} game
+ */
+function enemyOnScreen(game) {
+  const pad = 40;
+  for (const m of game.monsters) {
+    if (m.dead || m.dormant) continue;
+    if (m.pos.x < camera.x - pad || m.pos.x > camera.x + camera.w + pad) continue;
+    if (m.pos.y < camera.y - pad || m.pos.y > camera.y + camera.h + pad) continue;
+    return true;
+  }
+  return false;
 }
 
 /** @param {any} p @param {number} dt */
@@ -854,7 +856,7 @@ function activateShrine(game, s) {
     case 'speed': p.speedBuff = 0.3; p.speedBuffT = 40; game.alert('Shrine: +30% movement speed for 40 s'); break;
     case 'xp': p.xpBuff = 0.25; p.xpBuffT = 60; game.alert('Shrine: +25% experience for 60 s'); break;
     case 'heal':
-      p.hp = p.maxHp; p.stamina = p.maxStamina; p.mana = p.maxMana;
+      p.hp = p.maxHp; p.mana = p.maxMana;
       floatText(p.pos.x, p.pos.y - 34, 'Restored', '#7ce39a', 15);
       game.alert('Shrine: fully restored');
       break;

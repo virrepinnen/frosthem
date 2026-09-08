@@ -33,12 +33,13 @@ export function createMonster(def, level, x, y, opts = {}) {
 
     cd: rng.range(0, def.attackCd),
     windup: 0,
-    /** How long the current wind-up was, so the tell knows how full it is. */
-    windupDur: 0,
-    /** Time left of a charge's warning, before the lunge itself. */
-    lungeTell: 0,
-    /** @type {null|{kind:string,t:number,x:number,y:number,r:number,dir:number,
-     *   arc?:number,width?:number,color?:string}} */
+    /**
+     * Ground marking for a wind-up. Only the boss uses one: its moves are big,
+     * slow and worth reading. Ordinary monsters have nothing to telegraph — they
+     * hurt you by touching you.
+     * @type {null|{kind:string,t:number,x:number,y:number,r:number,dir:number,
+     *   arc?:number,width?:number,color?:string}}
+     */
     telegraph: null,
     /** @type {'idle'|'chase'|'attack'|'lunge'} */ state: 'idle',
     lungeT: 0, lungeCd: rng.range(1, 4),

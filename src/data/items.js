@@ -218,7 +218,7 @@ export const SUFFIXES = [
     { label: 'of the Hearth', ilvl: 2, min: 0.3, max: 0.8 },
     { label: 'of the Hearth', ilvl: 14, min: 0.9, max: 2.0 },
   ]},
-  { id: 'sta', kind: 'suffix', stat: 'stamina', slots: [...GROUPS.armor, ...GROUPS.jewel], tiers: [
+  { id: 'sta', kind: 'suffix', stat: 'mana', slots: [...GROUPS.armor, ...GROUPS.jewel], tiers: [
     { label: 'of Endurance', ilvl: 1,  min: 3, max: 7 },
     { label: 'of Endurance', ilvl: 13, min: 8, max: 15 },
   ]},
@@ -259,7 +259,7 @@ export const UNIQUES = [
   { id: 'iceeye', name: 'Ice Eye', base: 'silverring', ilvl: 11, flavor: '"It sees what the snow has buried."',
     mods: { coldDmg: 9, resCold: 18, magicFind: 16, mana: 16 } },
   { id: 'stormstride', name: 'Stormstride', base: 'chainboots', ilvl: 14, flavor: '"No drift ever held him."',
-    mods: { moveSpeed: 13, armorPct: 26, resLight: 14, stamina: 13 } },
+    mods: { moveSpeed: 13, armorPct: 26, resLight: 14, mana: 13 } },
 ];
 
 /** Readable names + formatting for every stat. */
@@ -278,7 +278,9 @@ export const STAT_INFO = /** @type {Record<string,{label:string, fmt:(v:number)=
   armor:       { label: 'Armour',            fmt: v => `+${v}`,         order: 12 },
   life:        { label: 'Life',              fmt: v => `+${v}`,         order: 13 },
   lifeRegen:   { label: 'Life regeneration', fmt: v => `+${v.toFixed(1)}/s`, order: 14 },
-  stamina:     { label: 'Stamina',           fmt: v => `+${v}`,         order: 15 },
+  // Only ever seen on gear rolled before stamina was removed; kept so such an
+  // item still describes itself instead of showing a blank line.
+  stamina:     { label: 'Stamina (unused)',  fmt: v => `+${v}`,         order: 15 },
   mana:        { label: 'Mana',              fmt: v => `+${v}`,         order: 15.5 },
   moveSpeed:   { label: 'Movement speed',    fmt: v => `${v >= 0 ? '+' : ''}${v}%`, order: 16 },
   resCold:     { label: 'Cold resistance',   fmt: v => `+${v}%`,        order: 21 },

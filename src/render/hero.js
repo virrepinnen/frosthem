@@ -114,7 +114,7 @@ export const ATTACKS = {
   },
 };
 
-/** Rest pose: weapon lowered at the side. */
+/** Rest pose: the striking arm hangs at the side. */
 const REST = { ang: -0.55, reach: 20, twist: 0, lunge: 0 };
 
 /**
@@ -347,47 +347,8 @@ function raven(ctx, t, flash) {
 }
 
 /**
- * The weapon, drawn along +x from the hand.
- * @param {CanvasRenderingContext2D} ctx @param {any} item @param {number} reach
- */
-function weapon(ctx, item, reach) {
-  const rarity = item?.rarity ?? 'normal';
-  const blade = rarity === 'unique' ? '#d09a4a' : rarity === 'rare' ? '#e8d15a'
-    : rarity === 'magic' ? '#9dc0f5' : '#c3cfdd';
-  const kind = item?.base?.kind ?? '';
-  const heavy = kind === 'hammer', axe = kind === 'axe';
-  const haft = reach * 0.7, x = haft;
-
-  ctx.fillStyle = C.haft;
-  ctx.fillRect(-3, -1.8, haft + 3, 3.6);
-  ctx.fillStyle = C.gold;
-  ctx.fillRect(-3, -1.8, 5, 3.6);
-  ctx.fillRect(x - 2, -3.2, 2.6, 6.4);
-
-  ctx.fillStyle = blade;
-  ctx.beginPath();
-  if (axe) {
-    ctx.moveTo(x - 1, -2);
-    ctx.quadraticCurveTo(x + reach * 0.15, -10, x + reach * 0.3, -3.5);
-    ctx.quadraticCurveTo(x + reach * 0.22, 1.5, x - 1, 2.6);
-  } else if (heavy) {
-    ctx.moveTo(x, -6.5); ctx.lineTo(x + reach * 0.3, -5.5);
-    ctx.lineTo(x + reach * 0.3, 5.5); ctx.lineTo(x, 6.5);
-  } else {
-    ctx.moveTo(x, -4.4); ctx.lineTo(x + reach * 0.46, -1.6);
-    ctx.lineTo(x + reach * 0.46, 1.6); ctx.lineTo(x, 4.4);
-  }
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(x, axe ? -3.5 : -3.2);
-  ctx.lineTo(x + reach * (axe ? 0.18 : heavy ? 0.26 : 0.42), axe ? -8 : -1);
-  ctx.stroke();
-}
-
-/**
- * The trail behind the edge, drawn from the same pose curve as the weapon.
+ * The sweep, drawn from the same pose curve the arm used to travel through.
+ * With the weapon gone this is the entire visible attack.
  * @param {CanvasRenderingContext2D} ctx @param {{pose:Pose, trail:string}} v
  * @param {number} k @param {number} mirror @param {number} scale
  */
@@ -544,30 +505,31 @@ export function drawHero(ctx, game) {
     ctx.beginPath(); ctx.ellipse(-6.4, H.chest, 2.1, 2.4, 0, 0, Math.PI * 2); ctx.fill();
   }
 
-  // --- weapon arm: swings in the screen plane, aimed at the target ---------
+  // --- striking arm --------------------------------------------------------
   // The facing is projected into a screen angle, so a strike upward or diagonal
   // really goes where the enemy stands — not just left or right.
+  //
+  // The drawn weapon is gone, and the arm no longer travels through the attack
+  // pose with it. A stubby figure whipping a blade around at this size read as
+  // broken rather than fierce; the sweep alone says "you struck here", and says
+  // it more clearly with nothing else moving. The arm stays where it rests.
   const aim = Math.atan2(Math.sin(p.facing) * PROJ, Math.cos(p.facing));
   ctx.save();
   ctx.translate(7, H.chest + 1);
   ctx.scale(mirror, 1);     // back into screen space
   ctx.rotate(aim);
-  // The blade is drawn to the same radius the swing hits at, so what the eye
+  // The sweep is drawn to the same radius the swing hits at, so what the eye
   // measures and what the hitbox measures are one number.
-  const reachScale = T.reach / (variant?.tip ?? 62);
-  if (variant) trail(ctx, variant, k, mirror, reachScale);
-  ctx.rotate(-pose.ang * mirror);
+  if (variant) trail(ctx, variant, k, mirror, T.reach / (variant.tip ?? 62));
+  ctx.rotate(-REST.ang * mirror);
   ctx.strokeStyle = flash ? '#ffffff' : C.robeLit;
   ctx.lineWidth = 4.6;
   ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(7, 0); ctx.stroke();
   ctx.translate(7, 0);
   if (!flash) {
-    ctx.fillStyle = C.gold;
-    ctx.beginPath(); ctx.ellipse(-2, 0, 1.6, 2.6, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = C.skin;
     ctx.beginPath(); ctx.ellipse(0.5, 0, 2.2, 2.5, 0, 0, Math.PI * 2); ctx.fill();
   }
-  if (p.equipment.weapon) weapon(ctx, p.equipment.weapon, pose.reach * reachScale);
   ctx.restore();
 
   // --- fur collar, head and raven -----------------------------------------

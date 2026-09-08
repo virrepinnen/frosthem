@@ -333,7 +333,7 @@ function beginTest() {
   }
   p.gold = 4000;
   recalc(p);
-  p.hp = p.maxHp; p.stamina = p.maxStamina; p.mana = p.maxMana;
+  p.hp = p.maxHp; p.mana = p.maxMana;
 
   begin(p, { waypoints: [0, 1], bossDefeated: false }, false, undefined, true);
   game.testMode = true;

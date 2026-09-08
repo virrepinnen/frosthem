@@ -46,7 +46,7 @@ export function startRun(game) {
   p.deathT = 0;
   p.potions = Math.max(p.potions ?? 0, T.potions);
   recalc(p);
-  p.hp = p.maxHp; p.stamina = p.maxStamina; p.mana = p.maxMana;
+  p.hp = p.maxHp; p.mana = p.maxMana;
   game.run = newRunStats();
   game.runNo = (game.runNo ?? 0) + 1;
   // A line you have read four times stops being a line, but a new run is a new

@@ -403,21 +403,13 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
 .tab i{font-style:normal;font-size:9.5px;font-family:var(--mono);color:var(--muted)}
 .tab.on i{color:var(--ink)}
 
-/* ---------- stamina: a clear signal when it runs out ---------- */
-/* Stamina is the melee fighter's clock and deserves its own bar in the centre
-   of the view — mana is magic's resource and gets the orb on the right. */
-#stamina-bar{position:relative;width:100%;height:15px;background:#0b1019;
+/* ---------- the centre strip: experience and the skill bar ---------- */
   border:1px solid var(--border);border-radius:4px;overflow:hidden;
   box-shadow:inset 0 1px 4px rgba(0,0,0,.7)}
-#stamina-fill{height:100%;width:100%;transition:width .1s linear;
   background:linear-gradient(180deg,#e0c46a,#8a6a1e)}
-#stamina-bar.low #stamina-fill{background:linear-gradient(180deg,#d4626c,#6b1a22)}
-#stamina-text{position:absolute;inset:0;display:flex;align-items:center;
   justify-content:space-between;padding:0 8px;font-size:9.5px;letter-spacing:.1em;
   text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,.9);color:#f0e6cf}
-#stamina-text .val{font-family:var(--mono);letter-spacing:0}
-#stamina-bar.low #stamina-text{color:#ffdfe2}
-#stamina-bar.flash,.orb-mana.flash{animation:resflash .45s ease-out}
+.orb-mana.flash{animation:resflash .45s ease-out}
 @keyframes resflash{
   0%{box-shadow:0 0 0 3px rgba(224,196,106,.8), inset 0 1px 4px rgba(0,0,0,.7)}
   100%{box-shadow:0 0 0 0 rgba(224,196,106,0), inset 0 1px 4px rgba(0,0,0,.7)}

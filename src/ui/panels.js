@@ -239,13 +239,6 @@ function characterPanel(game) {
   d.appendChild(row('Fire resistance', `${p.res.fire}% / ${cap}%`));
   d.appendChild(row('Lightning resistance', `${p.res.light}% / ${cap}%`));
 
-  d.appendChild(g('Stamina'));
-  d.appendChild(row('Max stamina', String(p.maxStamina),
-    '<div class="tt-name">Stamina</div><div class="tt-core">Every swing and every skill costs. ' +
-    'In combat you recover at only 40% — break contact for the full rate.</div>' +
-    '<div class="tt-req">Every enemy felled gives 8 back.</div>'));
-  d.appendChild(row('Cost per swing', (p.attackCost ?? 8).toFixed(1)));
-  d.appendChild(row('Regeneration', `${p.staminaRegen.toFixed(1)}/s · ${(p.staminaRegen * 0.4).toFixed(1)}/s in combat`));
 
   d.appendChild(g('Mana'));
   d.appendChild(row('Max mana', String(p.maxMana),

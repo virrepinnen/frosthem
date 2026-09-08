@@ -71,8 +71,8 @@ export function createPlayer(name) {
     /** Level-ups whose card has not been picked yet. */
     boonPicks: 0,
 
-    hp: 100, maxHp: 100, stamina: 60, maxStamina: 60, mana: 40, maxMana: 40,
-    lifeRegen: 0.35, staminaRegen: 9, manaRegen: 5,
+    hp: 100, maxHp: 100, mana: 40, maxMana: 40,
+    lifeRegen: 0.35, manaRegen: 5,
     armor: 0, dmgMin: 1, dmgMax: 3, attackSpeed: 1,
     critChance: 5, critMult: 150,
     coldDmg: 0, fireDmg: 0, lightDmg: 0, freezeChance: 0,
@@ -130,7 +130,7 @@ export function createPlayer(name) {
   // something to press. Every rank after this one is bought at the hearth.
   bindToHotbar(p, 'cleave', false);
   recalc(p);
-  p.hp = p.maxHp; p.stamina = p.maxStamina; p.mana = p.maxMana;
+  p.hp = p.maxHp; p.mana = p.maxMana;
   return p;
 }
 
@@ -155,7 +155,6 @@ export function grantXp(p, amount) {
   if (levels) {
     recalc(p);
     p.hp = p.maxHp;
-    p.stamina = p.maxStamina;
     p.mana = p.maxMana;
   }
   return levels;

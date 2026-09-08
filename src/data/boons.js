@@ -85,8 +85,8 @@ export const BOONS = [
   },
   {
     id: 'breath', name: 'Second Breath', icon: 'secondwind', group: 'utility', at: BASIC,
-    per: { stamina: 12, staminaRegen: 1.5 },
-    line: (r) => `+12 stamina, +1.5 stamina per second (rank ${r})`,
+    per: { mana: 12, manaRegen: 1.5 },
+    line: (r) => `+12 mana, +1.5 mana per second (rank ${r})`,
   },
   {
     id: 'ravenous', name: 'Ravenous', icon: 'leech', group: 'utility', at: BASIC,

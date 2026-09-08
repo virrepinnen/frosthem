@@ -1,7 +1,7 @@
 // @ts-check
 import { rng } from '../core/rng.js';
 import { angleDiff, clamp } from '../core/math.js';
-import { armorReduction, skillPower, rank, KILL_STAMINA } from './stats.js';
+import { armorReduction, skillPower, rank } from './stats.js';
 import { rollItem } from './loot.js';
 import { RARITY_COLOR } from '../data/items.js';
 import { HRAVN } from '../data/lore.js';
@@ -117,9 +117,6 @@ export function killMonster(game, m) {
   m.corpseT = 14;
   game.player.kills++;
   if (game.run) game.run.kills++;
-  // A felled target grants breathing room. That keeps pack-clearing sustainable
-  // while punishing missed swings — exactly the trade-off stamina should create.
-  game.player.stamina = Math.min(game.player.maxStamina, game.player.stamina + KILL_STAMINA);
 
   decal(m.pos.x, m.pos.y, m.radius * (m.isBoss ? 3.2 : 1.5), 'rgba(120,20,30,0.5)');
   burst(m.pos.x, m.pos.y, m.isBoss ? 90 : 18, { color: '#a8202a', speed: m.isBoss ? 320 : 190, life: 0.75, size: 3.2 });
@@ -296,13 +293,12 @@ export function useSkill(game, id) {
   if (r <= 0) return false;
   if ((p.cooldowns[id] ?? 0) > 0) return false;
   if (p.whirl || p.dash) return false;
-  // Every skill draws its own resource: Frost costs mana, the rest stamina.
+  // Every skill draws on mana. The basic swing is free; what costs is choosing
+  // to do something better than swinging.
   if (def.mana && p.mana < def.mana) { game.alert('Not enough mana.'); p.manaFlash = 0.45; return false; }
-  if (def.stamina && p.stamina < def.stamina) { game.alert('Not enough stamina.'); p.staminaFlash = 0.45; return false; }
 
   const { synergy } = skillPower(p, id);
-  if (def.stamina) { p.stamina -= def.stamina; p.combatT = 1.5; }
-  if (def.mana) p.mana -= def.mana;
+  if (def.mana) { p.mana -= def.mana; p.combatT = 1.5; }
   p.cooldowns[id] = def.cooldown ?? 0;
 
   switch (id) {

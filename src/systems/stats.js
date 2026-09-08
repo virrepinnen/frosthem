@@ -7,14 +7,8 @@ import { T } from './tuning.js';
 /** @typedef {import('./loot.js').Item} Item */
 /** @typedef {import('../entities/player.js').Player} Player */
 
-/** Stamina cost of a basic swing at normal weapon speed. */
-export const ATTACK_COST_BASE = 8;
-/** How much of the regeneration is left while you are in combat. */
-export const COMBAT_REGEN = 0.4;
 /** How long an attack counts as "in combat". */
 export const COMBAT_WINDOW = 1.5;
-/** Stamina returned when an enemy falls. */
-export const KILL_STAMINA = 8;
 
 /** Base resistance cap — as in D2, the cap means you never become immune.
  *  Ice Blood can raise it, one of the few ways to get noticeably tougher late. */
@@ -88,18 +82,14 @@ export function recalc(p) {
   p.maxHp = Math.round(128 + L * 10 + m('life') + rSecond * 9);
   p.lifeRegen = 0.35 + m('lifeRegen') + rSecond * 0.5;
 
-  // Two separate resources, like D2's vitality/energy:
-  //   Stamina = the body. Swings and rolls drain it.
-  //   Mana = the will. Only magic draws on it, so a melee build barely cares.
-  p.maxStamina = Math.round(82 + L * 1.5 + m('stamina') + rSecond * 6);
-  p.staminaRegen = 11 + L * 0.15 + m('staminaRegen');
-  p.maxMana = Math.round(70 + L * 3 + m('mana'));
-  p.manaRegen = 6 + L * 0.2;
+  // One resource. Stamina used to sit alongside this and meter your swings, but
+  // a bar that stops you attacking mid-fight reads as the game taking the
+  // controls away, so it is gone: the basic swing is free and every skill draws
+  // on mana instead.
+  p.maxMana = Math.round(70 + L * 3 + m('mana') + rSecond * 6);
+  p.manaRegen = 6 + L * 0.2 + m('manaRegen');
 
-  // Every basic attack costs stamina. Heavy weapons swing slower but take more
-  // per swing, so a big weapon is never free.
   const wSpeed = w?.base.speed ?? 1.15;
-  p.attackCost = Math.max(3.5, ATTACK_COST_BASE / wSpeed);
 
   // armour: base from equipment, scaled by percentage mods and Tough Hide
   let baseArmor = 0;
@@ -146,7 +136,6 @@ export function recalc(p) {
   };
 
   p.hp = Math.min(p.hp, p.maxHp);
-  p.stamina = Math.min(p.stamina, p.maxStamina);
   p.mana = Math.min(p.mana ?? p.maxMana, p.maxMana);
 }
 

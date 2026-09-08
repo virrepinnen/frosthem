@@ -1,6 +1,5 @@
 // @ts-check
 import { rng } from '../core/rng.js';
-import { angleDiff } from '../core/math.js';
 import { resolveCollision, lineBlocked } from './world.js';
 import { damagePlayer, hitMonster, applySlow } from './combat.js';
 import { burst, floatText } from '../render/fx.js';
@@ -11,13 +10,11 @@ import { T } from './tuning.js';
 /** @typedef {import('../entities/monster.js').Monster} Monster */
 
 const AGGRO_FAR_MULT = 1.9;
-/**
- * How wide a melee swing is, in radians. The telegraph draws exactly this and
- * the hit tests exactly this, so what you saw is what decided the hit.
- */
-const MELEE_ARC = 1.5;
-/** One colour for every tell, so the eye only has to learn one signal. */
-const TELL = '#e2626f';
+/** A little slack on the touch test, so contact is generous rather than fussy. */
+const CONTACT_PAD = 2;
+
+/** How close a monster has to be to be *touching* you. @param {Monster} m @param {any} p */
+const contactDist = (m, p) => m.radius + p.radius + CONTACT_PAD;
 
 // Aggro is a feel knob: how much room you get to choose your fight.
 const aggro = () => T.aggro;
@@ -103,33 +100,12 @@ export function updateMonsters(game, dt) {
     }
 
     m.cd -= dt;
-    // Freezing or stunning something mid-swing has to actually stop the swing.
-    // A blow that lands out of a monster you just froze is the game's fault,
-    // and this whole round is about it never being the game's fault.
+    // Only the archers draw back now. Freezing or stunning one mid-draw stops
+    // it: a shot that comes out of something you just froze is the game's
+    // fault, and it should never be the game's fault.
     if (m.windup > 0 && !frozen) {
       m.windup -= dt;
-      // The tell fills as the wind-up runs down, so the moment of the blow is
-      // something you read off the ground instead of guessing at. It follows the
-      // monster, but its direction was locked when the wind-up started.
-      if (m.telegraph) {
-        m.telegraph.x = m.pos.x; m.telegraph.y = m.pos.y;
-        m.telegraph.t = 1 - m.windup / Math.max(0.01, m.windupDur);
-      }
-      if (m.windup <= 0) { m.telegraph = null; resolveMonsterAttack(game, m, dist); }
-    }
-
-    // A charge that has announced itself is committed: it plants, shows the
-    // line, and only then runs. Standing still is what makes the warning worth
-    // anything — a warning you cannot walk out of is just a hit with a delay.
-    if (m.lungeTell > 0) {
-      if (!frozen) m.lungeTell -= dt;
-      if (m.telegraph) {
-        m.telegraph.x = m.pos.x; m.telegraph.y = m.pos.y;
-        m.telegraph.t = 1 - m.lungeTell / Math.max(0.01, T.lungeWindup);
-      }
-      if (m.lungeTell <= 0) { m.telegraph = null; m.lungeT = 0.45; }
-      resolveCollision(zone, m.pos, m.radius);
-      continue;
+      if (m.windup <= 0) fireShot(game, m);
     }
 
     let mx = 0, my = 0;
@@ -140,39 +116,30 @@ export function updateMonsters(game, dt) {
       mx = Math.cos(m.wanderDir) * 0.28; my = Math.sin(m.wanderDir) * 0.28;
     } else if (m.windup <= 0) {
       if (m.ai === 'ranged') {
-        // Keep your distance: close in if too far, back off if too close
+        // Closes until the shot is on and then holds. It never gives ground:
+        // walking at an archer has to be worth something, and an enemy that
+        // backs away while you advance turns every fight into a chase.
         const want = m.attackRange * 0.72;
-        const k = dist < want * 0.6 ? -1 : dist > want ? 1 : 0;
-        mx = (dx / dist) * k; my = (dy / dist) * k;
+        if (dist > want) { mx = dx / dist; my = dy / dist; }
         if (m.cd <= 0 && dist < m.attackRange
             && !lineBlocked(zone, m.pos.x, m.pos.y, p.pos.x, p.pos.y)) {
-          // The aim is locked here, not at the shot. That is what makes moving
-          // sideways work: the arrow goes where you *were*.
-          m.windup = m.windupDur = T.rangedWindup;
+          // The aim is locked at the draw, not at the shot, so stepping sideways
+          // works: the arrow goes where you *were*.
+          m.windup = T.rangedWindup;
           m.facing = Math.atan2(dy, dx);
-          m.telegraph = { kind: 'line', t: 0, x: m.pos.x, y: m.pos.y,
-            r: dist + 40, dir: m.facing, width: 24, color: TELL };
         }
       } else {
-        if (dist > m.attackRange + m.radius * 0.4) {
+        // Everything else simply walks into you and stays there. It has no
+        // swing to time and nothing to step out of — being in contact with it
+        // is the danger, so the answer is to not be.
+        if (dist > contactDist(m, p)) {
           mx = dx / dist; my = dy / dist;
           // Charger: short lunges that make them dangerous in open ground
           if (m.ai === 'charger') {
             m.lungeCd -= dt;
             if (m.lungeT > 0) { m.lungeT -= dt; mx *= 2.5; my *= 2.5; }
-            else if (m.lungeCd <= 0 && dist < 300 && dist > 90) {
-              m.lungeCd = rng.range(2.5, 5);
-              m.lungeTell = T.lungeWindup;
-              m.facing = Math.atan2(dy, dx);
-              m.telegraph = { kind: 'line', t: 0, x: m.pos.x, y: m.pos.y,
-                r: dist + 70, dir: m.facing, width: m.radius * 2.2, color: TELL };
-            }
+            else if (m.lungeCd <= 0 && dist < 300 && dist > 90) { m.lungeT = 0.45; m.lungeCd = rng.range(2.5, 5); }
           }
-        } else if (m.cd <= 0) {
-          m.windup = m.windupDur = T.meleeWindup;
-          m.facing = Math.atan2(dy, dx);
-          m.telegraph = { kind: 'arc', t: 0, x: m.pos.x, y: m.pos.y,
-            r: meleeReach(m, p), dir: m.facing, arc: MELEE_ARC, color: TELL };
         }
       }
     }
@@ -212,48 +179,44 @@ export function updateMonsters(game, dt) {
     m.vel.x *= Math.pow(0.0005, dt); m.vel.y *= Math.pow(0.0005, dt);
 
     resolveCollision(zone, m.pos, m.radius);
+
+    // Touching hurts. Measured after the move, so what is on screen is what is
+    // tested, and the cooldown means a monster in contact wears you down at a
+    // readable pace rather than melting you in a frame.
+    if (m.ai !== 'ranged' && !frozen && !p.dead && m.cd <= 0
+        && Math.hypot(p.pos.x - m.pos.x, p.pos.y - m.pos.y) <= contactDist(m, p)) {
+      touchPlayer(game, m);
+    }
   }
 }
 
 /**
- * How far a melee blow lands, drawn and tested from one place.
- * @param {Monster} m @param {any} p
+ * The archer's shot, fired along the direction locked when it drew.
+ * @param {any} game @param {Monster} m
  */
-function meleeReach(m, p) { return m.attackRange + p.radius + 14; }
+function fireShot(game, m) {
+  m.cd = m.attackCd;
+  if (game.player.dead) return;
+  const a = m.facing;
+  game.projectiles.push({
+    x: m.pos.x + Math.cos(a) * m.radius, y: m.pos.y + Math.sin(a) * m.radius,
+    vx: Math.cos(a) * 430, vy: Math.sin(a) * 430, life: 1.6, r: 5,
+    dmg: rng.range(m.dmgMin, m.dmgMax) * T.dmgMult, src: m,
+  });
+}
 
-/** @param {any} game @param {Monster} m @param {number} dist */
-function resolveMonsterAttack(game, m, dist) {
+/**
+ * Running into something is the whole attack.
+ * @param {any} game @param {Monster} m
+ */
+function touchPlayer(game, m) {
   const p = game.player;
   m.cd = m.attackCd;
-  if (p.dead) return;
-
-  if (m.ai === 'ranged') {
-    // The direction the tell showed, not a fresh look at where you are now.
-    const a = m.facing;
-    game.projectiles.push({
-      x: m.pos.x + Math.cos(a) * m.radius, y: m.pos.y + Math.sin(a) * m.radius,
-      vx: Math.cos(a) * 430, vy: Math.sin(a) * 430, life: 1.6, r: 5,
-      dmg: rng.range(m.dmgMin, m.dmgMax) * T.dmgMult, src: m,
-    });
-    return;
-  }
-
-  // Distance alone was never enough to make stepping aside a real answer: you
-  // could walk out of a swing sideways and still be hit by it. Now the arc that
-  // was drawn on the ground is the arc that decides.
-  if (dist > meleeReach(m, p)) return; // out of range
-  const toPlayer = Math.atan2(p.pos.y - m.pos.y, p.pos.x - m.pos.x);
-  if (angleDiff(toPlayer, m.facing) > MELEE_ARC / 2) return; // out of the arc
-  const dmg = rng.range(m.dmgMin, m.dmgMax) * T.dmgMult;
   const before = p.hp;
-  damagePlayer(game, dmg, m);
+  damagePlayer(game, rng.range(m.dmgMin, m.dmgMax) * T.dmgMult, m);
   if (m.lifeSteal) {
     const healed = Math.min(m.maxHp - m.hp, (before - p.hp) * m.lifeSteal);
     if (healed > 0) { m.hp += healed; floatText(m.pos.x, m.pos.y - m.radius, `+${Math.round(healed)}`, '#7ce39a', 11); }
-  }
-  if (m.isBoss) {
-    // The boss strikes in an arc and catches those dodging backwards too
-    game.novas.push({ x: m.pos.x, y: m.pos.y, t: 0, dur: 0.35, r: m.attackRange + 20, color: '#7fd4f0' });
   }
 }
 

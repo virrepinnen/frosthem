@@ -53,7 +53,7 @@ function skillNode(game, s, shop, onChange) {
     `<div class="ico">${glyph(s.icon)}</div>` +
     `<div class="t"><b>${escape(s.name)}</b><i>${!avail.ok ? escape(avail.reason)
       : s.type === 'passive' ? 'Passive'
-      : `${s.mana ? s.mana + ' mana' : (s.stamina ?? 0) + ' sta'} · ${s.cooldown ?? 0}s`}</i></div>` +
+      : `${s.mana ?? 0} mana · ${s.cooldown ?? 0}s`}</i></div>` +
     `<div class="rk"><b>${r}</b><span class="rk-max">/${s.maxRank}</span></div>` +
     (shop ? `<div class="sk-buy${buy.ok ? '' : ' off'}">${maxed ? '—' : buy.price + 'g'}</div>` : '') +
     (slot >= 0 ? `<div class="hk">${slot + 1}</div>` : '');
@@ -69,7 +69,7 @@ function skillNode(game, s, shop, onChange) {
     showTextTooltip(
       `<div class="tt-name" style="color:#d8b26a">${escape(s.name)}</div>` +
       `<div class="tt-base">${TREES[s.tree]} · tier ${s.tier} · ${s.type === 'passive' ? 'passive'
-        : s.mana ? `${s.mana} mana` : `${s.stamina ?? 0} stamina`} · rank ${r}/${s.maxRank}</div>` +
+        : `${s.mana ?? 0} mana`} · rank ${r}/${s.maxRank}</div>` +
       (r > 0 ? `<div class="tt-core">${escape(s.desc(r, synergy)).replace(/\n/g, '<br>')}</div><hr>` : '') +
       (maxed ? '' :
         `<div class="tt-mod"><b>${r > 0 ? 'Next rank' : 'Rank 1'}:</b><br>` +

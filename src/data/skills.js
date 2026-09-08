@@ -23,7 +23,6 @@
  * @property {number} reqLevel
  * @property {number} maxRank
  * @property {string[]} requires   Skill ids that must have at least rank 1
- * @property {number} [stamina]
  * @property {number} [mana]
  * @property {number} [cooldown]
  * @property {{skill:string, pct:number}} [synergy]
@@ -43,7 +42,7 @@ export const SKILLS = [
   /* ----------------------------------------------------------------- Steel */
   {
     id: 'cleave', tree: 'steel', tier: 1, name: 'Cleave', icon: 'cleave', type: 'active',
-    reqLevel: 1, maxRank: 10, requires: [], stamina: 4, cooldown: 0,
+    reqLevel: 1, maxRank: 10, requires: [], mana: 5, cooldown: 0,
     synergy: { skill: 'rend', pct: 6 },
     desc: (r, syn) => `A wide sweep that hits everything in front of you.
 ${Math.round(115 + r * 14 + syn)}% weapon damage · 130° arc.
@@ -51,13 +50,13 @@ Synergy: +6% damage per rank in Rend.`,
   },
   {
     id: 'rend', tree: 'steel', tier: 1, name: 'Rend', icon: 'rend', type: 'active',
-    reqLevel: 1, maxRank: 10, requires: [], stamina: 8, cooldown: 4,
+    reqLevel: 1, maxRank: 10, requires: [], mana: 9, cooldown: 4,
     desc: (r) => `A tearing wound that bleeds over time — ignores armour.
 ${Math.round(40 + r * 10)}% weapon damage up front, then ${(3 + r * 1.6).toFixed(1)} damage/s for 6 s.`,
   },
   {
     id: 'crush', tree: 'steel', tier: 2, name: 'Crushing Blow', icon: 'crush', type: 'active',
-    reqLevel: 6, maxRank: 10, requires: ['cleave'], stamina: 12, cooldown: 5,
+    reqLevel: 6, maxRank: 10, requires: ['cleave'], mana: 13, cooldown: 5,
     synergy: { skill: 'cleave', pct: 4 },
     desc: (r, syn) => `A heavy overhead strike that breaks the legs of whatever stands closest.
 ${Math.round(175 + r * 24 + syn)}% weapon damage in a narrow arc.
@@ -72,7 +71,7 @@ Synergy: +4% damage per rank in Cleave.`,
   },
   {
     id: 'whirlwind', tree: 'steel', tier: 3, name: 'Whirlwind', icon: 'whirlwind', type: 'active',
-    reqLevel: 12, maxRank: 10, requires: ['crush', 'bloodthirst'], stamina: 22, cooldown: 9,
+    reqLevel: 12, maxRank: 10, requires: ['crush', 'bloodthirst'], mana: 24, cooldown: 9,
     synergy: { skill: 'cleave', pct: 5 },
     desc: (r, syn) => `Spin through the pack for 1.4 s, hitting everything around you.
 ${Math.round(55 + r * 8 + syn)}% weapon damage per hit, 4 hits/s.
@@ -129,11 +128,11 @@ Synergy: +7% damage per rank in Frostbite.`,
     id: 'secondwind', tree: 'endurance', tier: 1, name: 'Second Wind', icon: 'secondwind', type: 'passive',
     reqLevel: 1, maxRank: 10, requires: [],
     desc: (r) => `You recover faster than you have any right to.
-+${r * 9} max life · +${(r * 0.5).toFixed(1)} life/s · +${r * 6} stamina.`,
++${r * 9} max life · +${(r * 0.5).toFixed(1)} life/s · +${r * 6} mana.`,
   },
   {
     id: 'warcry', tree: 'endurance', tier: 2, name: 'War Cry', icon: 'warcry', type: 'active',
-    reqLevel: 6, maxRank: 10, requires: ['toughskin'], stamina: 18, cooldown: 14,
+    reqLevel: 6, maxRank: 10, requires: ['toughskin'], mana: 19, cooldown: 14,
     desc: (r) => `A roar that silences the wilderness.
 Stuns enemies within 220 px for ${(1.2 + r * 0.12).toFixed(1)} s and grants you +${10 + r * 4}% damage for 8 s.`,
   },
