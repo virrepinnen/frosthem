@@ -519,3 +519,34 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
   100%{opacity:0}
 }
 @media (max-height:640px){ #inscription{bottom:148px} }
+
+/* ---------- tuning panel (dev) ---------- */
+/* Deliberately plain and off-theme: it is a screwdriver, not part of the game.
+   Feel cannot be argued about in words, only dragged. */
+#tuner{position:fixed;top:0;right:0;bottom:0;width:340px;z-index:140;overflow-y:auto;
+  background:rgba(8,11,16,.97);border-left:1px solid #2a3345;padding:14px 16px 22px;
+  font-family:var(--mono);font-size:11px;color:#c6d2e2}
+.tn-head{display:flex;justify-content:space-between;align-items:baseline;
+  border-bottom:1px solid #2a3345;padding-bottom:8px;margin-bottom:10px}
+.tn-head b{font-size:13px;letter-spacing:.12em;color:var(--gold)}
+.tn-head span{font-size:9.5px;color:#5d6b82}
+.tn-grp{margin:14px 0 5px;font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:#5d6b82}
+.tn-row{display:grid;grid-template-columns:118px 1fr 62px;gap:7px;align-items:center;
+  padding:2px 0;cursor:pointer}
+.tn-lab{font-size:10.5px;color:#93a2b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tn-row.changed .tn-lab{color:var(--gold)}
+.tn-row input{width:100%;accent-color:#d8b26a;height:16px}
+.tn-val{text-align:right;font-size:10.5px;color:#e6eef8}
+.tn-jump{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:4px}
+.tn-jump button{background:#141c29;border:1px solid #2a3345;color:#a7b7cc;border-radius:3px;
+  font-family:var(--mono);font-size:9.5px;padding:3px 6px;cursor:pointer}
+.tn-jump button:hover{border-color:var(--gold);color:var(--gold)}
+.tn-actions{display:flex;gap:6px;margin-top:16px}
+.tn-actions button{flex:1;background:#141c29;border:1px solid #2a3345;color:#c6d2e2;
+  border-radius:4px;font-family:var(--mono);font-size:10.5px;padding:7px;cursor:pointer}
+.tn-actions button:hover{border-color:var(--gold);color:var(--gold)}
+.tn-out{margin-top:10px;font-size:10px;line-height:1.5;color:#7f8fa6;word-break:break-all;
+  user-select:text}
+#start-box button.ghost{background:none;border-color:#2a3345;color:#6f7f97;font-size:11px;
+  letter-spacing:.14em;padding:9px}
+#start-box button.ghost:hover{border-color:var(--gold);color:var(--gold)}

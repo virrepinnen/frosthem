@@ -18,9 +18,11 @@ import { pushAlert, showOverlay, showLevelUp, hideLevelUp, levelUpOpen,
 import { panels, togglePanel, closeAllPanels, anyPanelOpen } from './ui/panels.js';
 import { startRun, endRun, markDepth, newRunStats } from './systems/run.js';
 import { ZONE_LINE, npcLine, HRAVN } from './data/lore.js';
+import { T } from './systems/tuning.js';
 import { hideTooltip } from './ui/tooltip.js';
+import { toggleTuner } from './ui/tuner.js';
 import { saveGame } from './systems/save.js';
-import { COMBAT_REGEN, COMBAT_WINDOW } from './systems/stats.js';
+import { COMBAT_REGEN, COMBAT_WINDOW, recalc } from './systems/stats.js';
 import { rng } from './core/rng.js';
 import { clamp } from './core/math.js';
 
@@ -48,6 +50,9 @@ export function createGame(existing, progress) {
     runs: progress?.runs ?? 0,
     bestDepth: progress?.bestDepth ?? 0,
     runNo: 0,
+    /** True in the test session: nothing saves, death does not end anything. */
+    testMode: false,
+    tunerOpen: false,
     /** @type {ReturnType<typeof newRunStats>} */ run: newRunStats(),
     /** Maps whose arrival line has already played this run. @type {Set<number>} */
     seen: new Set(),
@@ -113,7 +118,12 @@ export function createGame(existing, progress) {
           known: game.waypoints.has(i), here: game.zone.index === i,
         }));
     },
-    save() { const ok = saveGame(game); if (ok) game.alert('Saved.'); return ok; },
+    save() {
+      if (game.testMode) { game.alert('Test session — nothing is saved.'); return false; }
+      const ok = saveGame(game); if (ok) game.alert('Saved.'); return ok;
+    },
+    /** The tuning panel changes stats live; this puts them into effect. */
+    recalcPlayer() { recalc(game.player); game.dirtyUI = true; },
     /** Starts a fresh run with the same character. Gear and gold stay. */
     beginRun() {
       startRun(game);
@@ -131,7 +141,7 @@ export function createGame(existing, progress) {
       if (pauseMenuOpen()) { hidePauseMenu(); game.paused = false; }
       else { game.paused = true; showPauseMenu(game); }
     },
-    autosave() { game.saveT = 0.6; },
+    autosave() { if (!game.testMode) game.saveT = 0.6; },
     update: (/** @type {number} */ dt) => update(game, dt),
   };
 
@@ -404,7 +414,7 @@ function update(game, dt) {
   // An open panel stops the world. The bag now covers half the screen, so
   // fighting behind it was never really an option — freezing makes that honest,
   // and it means reading a tooltip is never punished by something biting you.
-  if (game.paused || anyPanelOpen()) { updateFx(dt); return; }
+  if (game.paused || game.tunerOpen || anyPanelOpen()) { updateFx(dt); return; }
 
   game.time += dt;
 
@@ -477,6 +487,7 @@ function runSummary(game, s) {
 
 /** @param {Game} game */
 function handleUiKeys(game) {
+  if (keyPressed('f3')) toggleTuner(game);
   if (keyPressed('i')) togglePanel(game, 'inventory');
   if (keyPressed('c')) togglePanel(game, 'character');
   if (keyPressed('k')) togglePanel(game, 'skills');
@@ -503,6 +514,17 @@ function updatePlayer(game, dt) {
   if (p.dead) {
     p.deathT -= dt;
     if (p.deathT <= 0 && !game.paused) {
+      // A test session never ends: back on your feet where you stood, so you
+      // can look at the same fight twenty times without any ceremony.
+      if (game.testMode) {
+        p.dead = false; p.deathT = 0;
+        p.hp = p.maxHp; p.stamina = p.maxStamina; p.mana = p.maxMana;
+        p.potions = Math.max(p.potions, 3);
+        p.swing = null; p.dash = null; p.whirl = null; p.cast = null;
+        p.invuln = 1.5;
+        game.alert('Down. Back up — test session.');
+        return;
+      }
       game.paused = true;
       p.deaths++;
       const summary = endRun(game, 'death');
@@ -526,6 +548,7 @@ function updatePlayer(game, dt) {
   p.invuln = Math.max(0, p.invuln - dt);
   p.attackTimer = Math.max(0, p.attackTimer - dt);
   p.rollCd = Math.max(0, (p.rollCd ?? 0) - dt);
+  p.potionCd = Math.max(0, (p.potionCd ?? 0) - dt);
   for (const k in p.cooldowns) if (p.cooldowns[k] > 0) p.cooldowns[k] = Math.max(0, p.cooldowns[k] - dt);
   if (p.dmgBuffT > 0) { p.dmgBuffT -= dt; if (p.dmgBuffT <= 0) p.dmgBuff = 0; }
   if (p.slamSlowT > 0) { p.slamSlowT -= dt; game.playerSlow = Math.max(game.playerSlow, 0.45); }
@@ -574,9 +597,15 @@ function updatePlayer(game, dt) {
     p.roll.t -= dt;
     const k = 1 - p.roll.t / p.roll.dur;
     const ease = 1 - Math.pow(k, 2.2);
-    p.pos.x += Math.cos(p.roll.dir) * 940 * ease * dt;
-    p.pos.y += Math.sin(p.roll.dir) * 940 * ease * dt;
-    if (k > 0.12 && k < 0.82) p.invuln = Math.max(p.invuln, 0.05);
+    // The distance knob is the *total* travelled; the speed follows from it and
+    // the duration, so dragging one does not silently change the other.
+    const rollSpeed = (T.rollDist / Math.max(0.05, p.roll.dur)) * 2.2;
+    p.pos.x += Math.cos(p.roll.dir) * rollSpeed * ease * dt;
+    p.pos.y += Math.sin(p.roll.dir) * rollSpeed * ease * dt;
+    // The invulnerable window sits in the middle of the motion, so the roll
+    // rewards timing rather than being a button you hold.
+    const half = T.rollIframes / 2;
+    if (k > 0.5 - half && k < 0.5 + half) p.invuln = Math.max(p.invuln, 0.05);
     if (rng.chance(0.6)) burst(p.pos.x, p.pos.y + 8, 2, { color: '#e8f0fa', speed: 60, life: 0.4, size: 2.4, grav: -10 });
     resolveCollision(zone, p.pos, p.radius);
     if (p.roll.t <= 0) p.roll = null;
@@ -628,14 +657,14 @@ function updatePlayer(game, dt) {
     // Auto-attack never touches anything dormant: walking up to the jarl should
     // not start the fight for you. To wake him, you have to click.
     const inReach = t && !t.dead && !t.dormant
-      && Math.hypot(t.pos.x - p.pos.x, t.pos.y - p.pos.y) <= 66 + t.radius;
+      && Math.hypot(t.pos.x - p.pos.x, t.pos.y - p.pos.y) <= T.reach + t.radius;
     const wants = input.mouse.down || (game.settings.autoAttack && inReach);
     if (wants) {
       if (p.stamina >= p.attackCost) {
         p.stamina -= p.attackCost;
         p.combatT = COMBAT_WINDOW;
         p.attackTimer = 1 / (1.5 * p.attackSpeed);
-        performSwing(game, { arc: 1.5, reach: 66, mult: 1, kind: 'basic' });
+        performSwing(game, { arc: 1.5, reach: T.reach, mult: 1, kind: 'basic' });
       } else {
         // Exhausted: does not bother spamming warnings, but marks it clearly.
         p.attackTimer = 0.3;
@@ -794,8 +823,8 @@ function dodgeRoll(game) {
   if (keyDown('arrowright')) mx += 1;
   const dir = (mx || my) ? Math.atan2(my, mx) : p.facing;
   p.stamina -= 16;
-  p.rollCd = 0.85;
-  p.roll = { t: 0.28, dur: 0.28, dir };
+  p.rollCd = T.rollCd;
+  p.roll = { t: T.rollTime, dur: T.rollTime, dir };
   p.swing = null;
   burst(p.pos.x, p.pos.y + 6, 14, { color: '#e8f0fa', speed: 150, life: 0.5, size: 2.6, dir: dir + Math.PI, spread: 1.6 });
 }
@@ -869,11 +898,6 @@ export function findInteract(game) {
       return { kind: 'chest', obj: c, x: c.x, y: c.y - 60, label: 'Open' };
     }
   }
-  for (const rn of game.zone.runes ?? []) {
-    if (near(rn, rn.r + 44)) {
-      return { kind: 'rune', obj: rn, x: rn.x, y: rn.y - 76, label: rn.read ? 'Read again' : 'Read' };
-    }
-  }
   for (const n of game.zone.npcs) {
     if (near(n, 115)) {
       return { kind: 'npc', obj: n, x: n.x, y: n.y - 64,
@@ -902,10 +926,6 @@ function interact(game) {
       game.dirtyUI = true;
       break;
     case 'chest': openChest(game, hit.obj); break;
-    case 'rune':
-      hit.obj.read = true;
-      showInscription(hit.obj.text);
-      break;
     case 'hearth':
       game.atHearth = true;
       panels.skills = true;

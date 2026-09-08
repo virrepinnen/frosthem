@@ -5,11 +5,14 @@ import { damagePlayer, hitMonster, applySlow } from './combat.js';
 import { burst, floatText } from '../render/fx.js';
 import { rank } from './stats.js';
 import { updateBoss } from './boss.js';
+import { T } from './tuning.js';
 
 /** @typedef {import('../entities/monster.js').Monster} Monster */
 
-const AGGRO = 470;
-const AGGRO_FAR = 900; // once angered they follow much further
+const AGGRO_FAR_MULT = 1.9;
+// Aggro is a feel knob: how much room you get to choose your fight.
+const aggro = () => T.aggro;
+const aggroFar = () => T.aggro * AGGRO_FAR_MULT;
 
 /**
  * @param {any} game @param {number} dt
@@ -62,7 +65,7 @@ export function updateMonsters(game, dt) {
     if (m.auraSlow && dist < 190) game.playerSlow = Math.max(game.playerSlow, m.auraSlow);
 
     const frozen = m.freezeT > 0 || m.stunT > 0;
-    const speedMult = (1 - m.slowAmt) * (frozen ? 0 : 1);
+    const speedMult = (1 - m.slowAmt) * (frozen ? 0 : 1) * T.monSpeed;
 
     // The boss runs its own loop and stands outside separation — otherwise the
     // bodyguards could shove it away from the player forever.
@@ -84,8 +87,8 @@ export function updateMonsters(game, dt) {
 
     // ---- aggro ----------------------------------------------------------
     if (m.state === 'idle') {
-      if (dist < AGGRO && !p.dead) m.state = 'chase';
-    } else if (dist > AGGRO_FAR || p.dead) {
+      if (dist < aggro() && !p.dead) m.state = 'chase';
+    } else if (dist > aggroFar() || p.dead) {
       m.state = 'idle';
     }
 
@@ -109,7 +112,7 @@ export function updateMonsters(game, dt) {
         mx = (dx / dist) * k; my = (dy / dist) * k;
         if (m.cd <= 0 && dist < m.attackRange
             && !lineBlocked(zone, m.pos.x, m.pos.y, p.pos.x, p.pos.y)) {
-          m.windup = 0.45; m.facing = Math.atan2(dy, dx);
+          m.windup = T.rangedWindup; m.facing = Math.atan2(dy, dx);
         }
       } else {
         if (dist > m.attackRange + m.radius * 0.4) {
@@ -121,7 +124,7 @@ export function updateMonsters(game, dt) {
             else if (m.lungeCd <= 0 && dist < 300 && dist > 90) { m.lungeT = 0.45; m.lungeCd = rng.range(2.5, 5); }
           }
         } else if (m.cd <= 0) {
-          m.windup = m.isBoss ? 0.5 : 0.35;
+          m.windup = m.isBoss ? 0.5 : T.meleeWindup;
           m.facing = Math.atan2(dy, dx);
         }
       }
@@ -174,13 +177,13 @@ function resolveMonsterAttack(game, m, dist) {
     game.projectiles.push({
       x: m.pos.x + Math.cos(a) * m.radius, y: m.pos.y + Math.sin(a) * m.radius,
       vx: Math.cos(a) * 430, vy: Math.sin(a) * 430, life: 1.6, r: 5,
-      dmg: rng.range(m.dmgMin, m.dmgMax), src: m,
+      dmg: rng.range(m.dmgMin, m.dmgMax) * T.dmgMult, src: m,
     });
     return;
   }
 
   if (dist > m.attackRange + p.radius + 14) return; // spelaren hann undan
-  const dmg = rng.range(m.dmgMin, m.dmgMax);
+  const dmg = rng.range(m.dmgMin, m.dmgMax) * T.dmgMult;
   const before = p.hp;
   damagePlayer(game, dmg, m);
   if (m.lifeSteal) {

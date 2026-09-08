@@ -2,6 +2,7 @@
 import { clamp } from '../core/math.js';
 import { SKILL_BY_ID } from '../data/skills.js';
 import { boonMods } from './boons.js';
+import { T } from './tuning.js';
 
 /** @typedef {import('./loot.js').Item} Item */
 /** @typedef {import('../entities/player.js').Player} Player */
@@ -127,7 +128,7 @@ export function recalc(p) {
   p.dmgReduction = Math.min(0.25, rUnbreak * 0.025);
   p.stunImmune = rUnbreak >= 5;
   p.magicFind = m('magicFind');
-  p.moveSpeed = 168 * (1 + m('moveSpeed') / 100);
+  p.moveSpeed = T.moveSpeed * (1 + m('moveSpeed') / 100);
 
   // Boon-only stats. They have no gear equivalent, but go through the same map
   // so a future affix could grant them without touching anything here.

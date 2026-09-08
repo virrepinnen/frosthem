@@ -1,11 +1,14 @@
 // @ts-check
 import { createGame } from './game.js';
-import { createPlayer } from './entities/player.js';
+import { createPlayer, bindToHotbar } from './entities/player.js';
 import { initInput, endFrameInput, keyPressed, setInputEnabled } from './core/input.js';
 import { camera, PROJ } from './render/camera.js';
 import { initRenderer, render, renderMinimap } from './render/renderer.js';
 import { updateHud, rebuildSkillbar, initNav, showTutorial, openHelp } from './ui/hud.js';
 import { glyph } from './ui/glyphs.js';
+import { T, loadKnobs } from './systems/tuning.js';
+import { rollItem } from './systems/loot.js';
+import { recalc, xpToNext } from './systems/stats.js';
 import { renderPanels, anyPanelOpen, closeAllPanels } from './ui/panels.js';
 import { moveTooltip, hideTooltip } from './ui/tooltip.js';
 import { listSaves, deleteSave, playerFromSave, describeSave, saveGame } from './systems/save.js';
@@ -20,10 +23,11 @@ const mctx = /** @type {CanvasRenderingContext2D} */ (mini.getContext('2d'));
 function resize() {
   const dpr = Math.min(devicePixelRatio || 1, 2);
   // The zoom lives in the base transform: the world is drawn in world
-  // coordinates, and the view in world units shrinks accordingly. We aim for
-  // ~820 world units of width regardless of window size, so the figures keep the
-  // same readable size on a small laptop as on a large screen.
-  camera.zoom = Math.max(1, Math.min(2.4, innerWidth / 820));
+  // coordinates, and the view in world units shrinks accordingly. We aim for a
+  // fixed number of world units across the screen regardless of window size, so
+  // the figures keep the same readable size on a small laptop as on a large
+  // one. The number itself is a feel knob — see systems/tuning.js.
+  camera.zoom = Math.max(0.7, Math.min(2.4, innerWidth / T.viewWidth));
   camera.w = innerWidth / camera.zoom;
   // The ground is squashed, so the same screen height holds more world in depth.
   camera.h = innerHeight / camera.zoom / PROJ;
@@ -33,6 +37,8 @@ function resize() {
   ctx.imageSmoothingEnabled = true;
   initRenderer(camera.w, camera.h);
 }
+// Feel knobs are read at resize, so they have to be loaded before the first one.
+loadKnobs();
 addEventListener('resize', resize);
 resize();
 initInput(canvas);
@@ -162,6 +168,8 @@ function startNew() {
   const name = nameInput.value.trim() || 'Barbaren';
   begin(createPlayer(name), undefined, true);
 }
+
+$('btn-test').onclick = () => beginTest();
 
 // With no characters the list is just an empty room — go straight to creation.
 if (listSaves().length) showList(); else showCreate();
@@ -302,12 +310,45 @@ function menuStorm(now) {
 requestAnimationFrame(menuStorm);
 
 /**
+ * The test session.
+ *
+ * Drops you straight into the wilderness with a character that can already
+ * fight, skipping the menu, the walkthrough and the walk out of the village.
+ * It saves nothing and touches none of your real characters — the whole point
+ * is to be able to look at one thing twenty times in a row without any of the
+ * game's ceremony in the way.
+ *
+ * Dying here puts you back on your feet where you stood. A test session never
+ * ends.
+ */
+function beginTest() {
+  const p = createPlayer('Testarn');
+  p.level = 8;
+  p.xpNext = xpToNext(8);
+  p.skills = { cleave: 3, rend: 2, crush: 1, toughskin: 2, secondwind: 1 };
+  for (const id of ['cleave', 'rend', 'crush']) bindToHotbar(p, id, false);
+  for (const slot of /** @type {const} */ (['weapon', 'helm', 'chest', 'boots'])) {
+    const it = rollItem(10, { mf: 0, boost: 2, slot });
+    if (it) p.equipment[slot] = it;
+  }
+  p.gold = 4000;
+  recalc(p);
+  p.hp = p.maxHp; p.stamina = p.maxStamina; p.mana = p.maxMana;
+
+  begin(p, { waypoints: [0, 1], bossDefeated: false }, false, undefined, true);
+  game.testMode = true;
+  game.travel(1);
+  game.alert('Test session — F3 for the knobs. Nothing here is saved.');
+}
+
+/**
  * @param {ReturnType<typeof createPlayer>} player
  * @param {{waypoints?:number[], bossDefeated?:boolean, runs?:number, bestDepth?:number}} [progress]
  * @param {boolean} isNew
  * @param {string} [charId]
+ * @param {boolean} [test]
  */
-function begin(player, progress, isNew, charId) {
+function begin(player, progress, isNew, charId, test) {
   if (starting) return;   // a double click, or Enter on top of a click
   starting = true;
   $('start').classList.add('hidden');
@@ -329,7 +370,9 @@ function begin(player, progress, isNew, charId) {
   setInputEnabled(true);
 
   const resume = () => { if (game) game.paused = false; };
-  if (isNew) {
+  if (test) {
+    resume();
+  } else if (isNew) {
     // Every new character gets the walkthrough. It used to sit behind a flag in
     // localStorage and only showed for the very first character ever — but a new
     // character is a new beginning, and five clicks are cheaper than missing it.

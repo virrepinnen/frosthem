@@ -1,6 +1,7 @@
 // @ts-check
 import { xpToNext, recalc } from './stats.js';
 import { ZONE_DEFS } from './world.js';
+import { T } from './tuning.js';
 
 /**
  * Runs.
@@ -43,7 +44,7 @@ export function startRun(game) {
   p.boonPicks = 0;
   p.dead = false;
   p.deathT = 0;
-  p.potions = Math.max(p.potions ?? 0, 3);
+  p.potions = Math.max(p.potions ?? 0, T.potions);
   recalc(p);
   p.hp = p.maxHp; p.stamina = p.maxStamina; p.mana = p.maxMana;
   game.run = newRunStats();

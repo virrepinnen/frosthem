@@ -1,6 +1,7 @@
 // @ts-check
 import { BASES } from '../data/items.js';
 import { recalc, xpToNext } from '../systems/stats.js';
+import { T } from '../systems/tuning.js';
 
 /** @typedef {import('../systems/loot.js').Item} Item */
 /** @typedef {import('../data/items.js').Slot} Slot */
@@ -86,7 +87,7 @@ export function createPlayer(name) {
       boots: null, belt: null, ring1: null, ring2: null, amulet: null,
     },
     /** @type {Item[]} */ inventory: [],
-    gold: 0, potions: 3,
+    gold: 0, potions: T.potions,
 
     /** @type {Record<string, number>} */ skills: { cleave: 1 },
     /** @type {Record<string, number>} */ cooldowns: {},
@@ -104,7 +105,7 @@ export function createPlayer(name) {
      * @type {{t:number, x:number, y:number}|null}
      */
     cast: null,
-    rollCd: 0,
+    rollCd: 0, potionCd: 0,
     /** Actual velocity, measured from the movement — covers walking, dashing and rolling. */
     velX: 0, velY: 0,
     /** Movement input this frame (-1..1). The zone border reads it. */

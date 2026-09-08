@@ -59,8 +59,8 @@ export function updateHud(game) {
 }
 
 /**
- * The inscription band: what a runestone says, what a villager says, what a
- * place says about itself when you walk into it.
+ * The inscription band: what a villager says, and what a place says about
+ * itself when you walk into it.
  *
  * Deliberately not a window. Lore that stops the game and asks to be dismissed
  * gets clicked away unread; lore that appears low on the screen and fades on

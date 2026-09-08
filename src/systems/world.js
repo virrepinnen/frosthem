@@ -1,7 +1,6 @@
 // @ts-check
 import { Rng } from '../core/rng.js';
 import { clamp, smoothNoise, wrapAngle } from '../core/math.js';
-import { RUNES } from '../data/lore.js';
 
 /**
  * Procedural zone generation.
@@ -37,7 +36,6 @@ import { RUNES } from '../data/lore.js';
  * @property {{x:number,y:number,r:number,id:string,name:string,line:string}[]} npcs
  * @property {{pts:{x:number,y:number}[], width:number, main:boolean}[]} roads
  * @property {{x:number,y:number,r:number,kind:string,name:string}|null} poi
- * @property {{x:number,y:number,r:number,text:string,read:boolean}[]} runes
  * @property {{x:number,y:number,r:number}|null} waypoint
  * @property {{x:number,y:number}} [portalPad] Var stadsportalen dyker upp i byn
  * @property {{x:number,y:number,r:number,opened:boolean,tier:number}[]} chests
@@ -323,7 +321,7 @@ function village(index, seed, d) {
     // waypoint the two ways to travel sat on top of each other and [E] became a
     // guessing game.
     portalPad: { x: cx - 175, y: cy + 135 },
-    chests: [], runes: [],
+    chests: [],
     npcs: [
       { x: cx - 130, y: cy + 60, r: 22, id: 'gerd', name: 'Gerd Askhand',
         line: 'Buy, sell, or leave me be. The snow does not care.' },
@@ -447,31 +445,6 @@ function wilderness(index, seed, d) {
   shrines.push({ x: poiPos.x + 90, y: poiPos.y + 60, r: 30, kind: r.pick(['dmg', 'armor', 'speed', 'xp']), used: false });
   anchors.push({ x: poiPos.x, y: poiPos.y + 10, n: params.pack[1] + 2, elite: true });
 
-  // ---- runestones ---------------------------------------------------------
-  // The act's story is carved on these and nowhere else. They stand a little
-  // off the road, close enough that you pass them on the way and far enough
-  // that reading one is a choice.
-  /** @type {Zone['runes']} */
-  const runes = [];
-  const texts = RUNES[index] ?? [];
-  texts.forEach((text, i) => {
-    const at = pointAlong(main, 0.34 + i * 0.33);
-    const off = (i % 2 ? 1 : -1) * r.range(86, 132);
-    runes.push({
-      x: clamp(at.x + at.nx * off, 120, d.w - 120),
-      y: clamp(at.y + at.ny * off, 120, d.h - 120),
-      r: 24, text, read: false,
-    });
-  });
-  for (const rn of runes) {
-    for (let i = obstacles.length - 1; i >= 0; i--) {
-      const o = obstacles[i];
-      const ox = o.kind === 'circle' ? o.x : o.x + o.w / 2;
-      const oy = o.kind === 'circle' ? o.y : o.y + o.h / 2;
-      if (Math.hypot(ox - rn.x, oy - rn.y) < 70) obstacles.splice(i, 1);
-    }
-  }
-
   // ---- waystone -----------------------------------------------------------
   // Only the first map of an area gets one, as in D2. Nine rows in the travel
   // list would be a table of contents rather than a choice, and a waystone in
@@ -564,7 +537,7 @@ function wilderness(index, seed, d) {
   const zone = {
     index, name: d.name, area: d.area, theme: d.theme, level: d.level, seed, w: d.w, h: d.h, isTown: false,
     entry, obstacles, decor, exits, shrines, anchors, npcs: [],
-    roads, poi: { ...poiPos, r: 210, kind: poiDef.kind, name: poiDef.name }, runes,
+    roads, poi: { ...poiPos, r: 210, kind: poiDef.kind, name: poiDef.name },
     waypoint, chests,
   };
 

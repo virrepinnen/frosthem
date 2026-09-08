@@ -5,6 +5,7 @@ import { armorReduction, skillPower, rank, KILL_STAMINA } from './stats.js';
 import { rollItem } from './loot.js';
 import { RARITY_COLOR } from '../data/items.js';
 import { HRAVN } from '../data/lore.js';
+import { T } from './tuning.js';
 import { showInscription } from '../ui/hud.js';
 import { burst, floatText, decal, shake, screenFlash } from '../render/fx.js';
 import { lineBlocked } from './world.js';
@@ -437,6 +438,10 @@ export function drinkPotion(game) {
   const p = game.player;
   if (p.potions <= 0 || p.dead) return false;
   if (p.hp >= p.maxHp) { game.alert('You are unhurt.'); return false; }
+  // A cooldown stops the potion being the answer to everything. At zero it
+  // behaves exactly as it always did.
+  if ((p.potionCd ?? 0) > 0) { game.alert('Not yet.'); return false; }
+  p.potionCd = T.potionCd;
   p.potions--;
   const heal = Math.round(p.maxHp * 0.45 + 20);
   p.hp = Math.min(p.maxHp, p.hp + heal);

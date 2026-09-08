@@ -101,7 +101,6 @@ export function render(ctx, game, dt) {
 
   // From here on everything stands up out of the ground, in unsquashed pixels.
   drawShrines(ctx, game);
-  drawRunes(ctx, game);
   drawExits(ctx, game);
   drawWaypoint(ctx, game);
   drawPortal(ctx, game);
@@ -676,47 +675,6 @@ function drawShrines(ctx, game) {
       ctx.globalAlpha = 1; ctx.fillStyle = col;
       ctx.beginPath(); ctx.arc(0, -22 + Math.sin(t * 2) * 3, 5, 0, Math.PI * 2); ctx.fill();
     }
-    ctx.restore();
-  }
-}
-
-/**
- * Runestones. A narrow slab with carved marks, leaning a little with age.
- *
- * An unread one carries a faint warm glow in its carving, which is the only
- * thing in the snow that colour — enough to make you walk over and look without
- * a marker shouting about it. Once read, the glow goes out.
- * @param {CanvasRenderingContext2D} ctx @param {any} game
- */
-function drawRunes(ctx, game) {
-  const t = performance.now() / 1000;
-  for (const rn of game.zone.runes ?? []) {
-    ctx.save();
-    ctx.translate(rn.x, PY(rn.y));
-    ctx.fillStyle = 'rgba(4,7,12,0.36)';
-    ctx.beginPath(); ctx.ellipse(0, 2, 16, 7, 0, 0, Math.PI * 2); ctx.fill();
-
-    const h = 54;
-    ctx.rotate(0.06);
-    const g = ctx.createLinearGradient(-10, -h, 10, 0);
-    g.addColorStop(0, '#46546a'); g.addColorStop(0.55, '#2c3849'); g.addColorStop(1, '#18202d');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.moveTo(-9, 0); ctx.lineTo(-7.5, -h + 6);
-    ctx.quadraticCurveTo(0, -h - 6, 7.5, -h + 6);
-    ctx.lineTo(9, 0);
-    ctx.closePath(); ctx.fill();
-
-    // The carving: three short strokes, warm while unread.
-    const lit = rn.read ? 0.16 : 0.5 + Math.sin(t * 1.6 + rn.x) * 0.12;
-    ctx.strokeStyle = `rgba(216,178,106,${lit})`;
-    ctx.lineWidth = 1.6; ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(-3.5, -h + 14); ctx.lineTo(3.5, -h + 22);
-    ctx.moveTo(3.5, -h + 14); ctx.lineTo(-3.5, -h + 22);
-    ctx.moveTo(0, -h + 27); ctx.lineTo(0, -h + 38);
-    ctx.moveTo(-3.5, -h + 31); ctx.lineTo(3.5, -h + 31);
-    ctx.stroke();
     ctx.restore();
   }
 }

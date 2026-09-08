@@ -15,12 +15,13 @@
  * drowned walking up out of the tarns. He asked winter to spare his people. He
  * never said for how long.
  *
- * None of that is ever said out loud. It is carved on stones along the road,
- * muttered by two people in a village, and written on the walls of a place
- * nobody was meant to walk back out of. The player assembles it or does not.
+ * None of that is ever said out loud. It lives in the names of the places, in
+ * what two people in a village will admit to, and in what Hravn himself says
+ * when he finally moves. The player assembles it or does not.
  *
- * Three beats: something is wrong with the animals → people came here and
- * stayed → this was a burial ground, and it has been opened.
+ * The readable stones that used to carry the thread are gone: there were far
+ * too many of them, and a world that explains itself at every turn has no
+ * mystery left. Whatever replaces them comes after the combat feels right.
  */
 
 /** The line that fades in under the banner when you arrive, per map index. */
@@ -34,46 +35,6 @@ export const ZONE_LINE = [
   'Mounds in rows — more than a village this size ever had people.',
   'The ground opens. Steps, cut long before anyone here was born.',
   'It is warm down here. That is the worst of it.',
-];
-
-/**
- * Inscriptions, by map index. Two per map, in the order they are placed along
- * the road, so the pair reads as a small scene rather than two loose facts.
- * @type {string[][]}
- */
-export const RUNES = [
-  [],
-  [
-    'Ingrid raised this for her father, who went north and did not come back.\nThe wolves would not touch him.',
-    'We drove the flock south.\nThe flock would not go.',
-  ],
-  [
-    "Cut for the jarl's hall. Twelve blocks.\nHe asked for a door that would not open from the inside.",
-    'Sixth winter without a thaw. We quarry because he pays.\nHe pays in grain nobody can grow any more.',
-  ],
-  [
-    "Toll post. All travellers north to be turned back, by order of the jarl.\n— the last line is struck through, hard enough to split the stone —",
-    'Whoever reads this: the turning-back was for our sake.\nI know that now.',
-  ],
-  [
-    'We came to take what the cold left behind.\nWe are still here. It is not so bad, once you stop shivering.',
-    'Halvard has not eaten in nine days and says he is not hungry.\nNone of us are hungry.',
-  ],
-  [
-    'Cairn raised to the old powers under the hill.\nThey were owed a gift. He gave them a promise instead.',
-    'He asked the winter to spare his people.\nHe did not say for how long.',
-  ],
-  [
-    'Here lie the ones who could still be buried.',
-    'The mounds were opened from the inside.\nNote the earth: thrown outward.',
-  ],
-  [
-    'This stair was cut for carrying the dead down.\nIt has been used for carrying them up.',
-    'Do not say his name below.\nHe answers.',
-  ],
-  [
-    'Hravn Ingesson, jarl.\nHe gave the winter a mouth, and it has not closed since.',
-  ],
 ];
 
 /**

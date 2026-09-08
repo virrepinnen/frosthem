@@ -52,7 +52,8 @@ export function initInput(canvas) {
   addEventListener('keydown', (e) => {
     if (!input.enabled || typingInField()) return;
     const k = e.key.toLowerCase();
-    if (['tab', ' ', 'arrowup', 'arrowdown'].includes(k)) e.preventDefault();
+    // F1 opens the browser's help and F3 its find bar; the game wants both.
+    if (['tab', ' ', 'arrowup', 'arrowdown', 'f1', 'f2', 'f3'].includes(k)) e.preventDefault();
     if (!input.down.has(k)) input.pressed.add(k);
     input.down.add(k);
   });
