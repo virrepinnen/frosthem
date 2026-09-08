@@ -124,7 +124,6 @@ export function saveGame(game) {
     skills: p.skills, hotbar: p.hotbar,
     potions: p.potions, gold: p.gold, kills: p.kills, deaths: p.deaths,
     equipment, inventory: p.inventory.map(packItem),
-    waypoints: [...game.waypoints],
     zoneIndex: game.zone?.isTown ? 0 : (game.zone?.index ?? 0),
     bossDefeated: game.bossDefeated,
     runs: game.runs ?? 0,

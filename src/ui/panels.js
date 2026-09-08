@@ -13,13 +13,13 @@ import { showItemTooltip, showTextTooltip, hideTooltip, escape } from './tooltip
 /** @typedef {import('../systems/loot.js').Item} Item */
 
 export const panels = {
-  inventory: false, character: false, skills: false, vendor: false, waypoint: false,
+  inventory: false, character: false, skills: false, vendor: false,
   /** @type {'steel'|'frost'|'endurance'} */
   skillTab: 'steel',
 };
 
 export function anyPanelOpen() {
-  return panels.inventory || panels.character || panels.skills || panels.vendor || panels.waypoint;
+  return panels.inventory || panels.character || panels.skills || panels.vendor;
 }
 
 /**
@@ -29,7 +29,7 @@ export function anyPanelOpen() {
  * other — and stacking half-screen windows was never readable anyway.
  */
 const SIDE = /** @type {Record<string,'left'|'right'>} */ ({
-  character: 'left', skills: 'left', vendor: 'left', waypoint: 'left',
+  character: 'left', skills: 'left', vendor: 'left',
   inventory: 'right',
 });
 
@@ -48,7 +48,7 @@ export function togglePanel(game, name) {
 
 /** @param {any} game */
 export function closeAllPanels(game) {
-  panels.inventory = panels.character = panels.skills = panels.vendor = panels.waypoint = false;
+  panels.inventory = panels.character = panels.skills = panels.vendor = false;
   hideTooltip();
   game.dirtyUI = true;
 }
@@ -62,7 +62,6 @@ export function renderPanels(game) {
   if (panels.character) root.appendChild(characterPanel(game));
   if (panels.skills) root.appendChild(skillsPanel(game));
   if (panels.vendor) root.appendChild(vendorPanel(game));
-  if (panels.waypoint) root.appendChild(waypointPanel(game));
   if (panels.inventory) root.appendChild(inventoryPanel(game));
 }
 
@@ -289,33 +288,9 @@ function skillsPanel(game) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Waystones                                                           */
+/* Vendor                                                              */
 /* ------------------------------------------------------------------ */
 
-/** @param {any} game */
-function waypointPanel(game) {
-  const d = shell('Waystones', 'left', () => { panels.waypoint = false; game.dirtyUI = true; });
-
-  const intro = document.createElement('div');
-  intro.className = 'tt-base';
-  intro.style.marginBottom = '10px';
-  intro.textContent = 'Travel to a place you have already found.';
-  d.appendChild(intro);
-
-  for (const z of game.waypointList()) {
-    const row = document.createElement('div');
-    row.className = 'node' + (z.known ? '' : ' locked');
-    row.innerHTML = `<div class="ico">${glyph(z.index === 0 ? 'hearth' : 'waystone')}</div>` +
-      `<div class="t"><b>${escape(z.name)}</b><i>${z.known
-        ? (z.index === 0 ? 'The village' : `${escape(z.area)} · monster level ${z.level}`)
-        : 'Not discovered'}</i></div>` +
-      `<div class="rk">${z.here ? 'here' : z.known ? '→' : glyph('lock')}</div>`;
-    row.style.marginBottom = '6px';
-    if (z.known && !z.here) row.onclick = () => { game.travelToWaypoint(z.index); closeAllPanels(game); };
-    d.appendChild(row);
-  }
-  return d;
-}
 
 /* ------------------------------------------------------------------ */
 /* Handlare                                                            */

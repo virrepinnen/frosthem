@@ -411,8 +411,8 @@ const TUTORIAL = [
     body: '<b>Q</b> drinks a health potion. Skills sit on <b>1–6</b>.<br>Loot is picked up automatically as you walk over it — but it drops rarely, so what falls is worth a look.' },
   { ico: 'spark', title: 'One card per level',
     body: 'Every level offers <b>three blessings</b>. Click one and you are back in the fight — no points to split, nothing to confirm.<br>Skills are separate: you buy their ranks with <b>gold</b>, at the hearth in Frosthem.' },
-  { ico: 'waystone', title: 'Find your way home',
-    body: 'Touch the <b>waystone</b> in every area — then you can travel back there.<br><b>T</b> opens a portal to the village and back to the same spot.<br><br>Press <b>?</b> in the top right to read this again.' },
+  { ico: 'hearth', title: 'Find your way home',
+    body: 'The road north is one long walk — you cross a border by walking out of the picture, and the next place begins where this one ended.<br><b>T</b> opens a portal to the village and back to the same spot.<br><br>Press <b>?</b> in the top right to read this again.' },
 ];
 
 /**

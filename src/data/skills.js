@@ -42,7 +42,7 @@ export const SKILLS = [
   /* ----------------------------------------------------------------- Steel */
   {
     id: 'cleave', tree: 'steel', tier: 1, name: 'Cleave', icon: 'cleave', type: 'active',
-    reqLevel: 1, maxRank: 10, requires: [], mana: 5, cooldown: 0,
+    reqLevel: 1, maxRank: 10, requires: [], mana: 20, cooldown: 0,
     synergy: { skill: 'rend', pct: 6 },
     desc: (r, syn) => `A wide sweep that hits everything in front of you.
 ${Math.round(115 + r * 14 + syn)}% weapon damage · 130° arc.
@@ -50,13 +50,13 @@ Synergy: +6% damage per rank in Rend.`,
   },
   {
     id: 'rend', tree: 'steel', tier: 1, name: 'Rend', icon: 'rend', type: 'active',
-    reqLevel: 1, maxRank: 10, requires: [], mana: 9, cooldown: 4,
+    reqLevel: 1, maxRank: 10, requires: [], mana: 24, cooldown: 4,
     desc: (r) => `A tearing wound that bleeds over time — ignores armour.
 ${Math.round(40 + r * 10)}% weapon damage up front, then ${(3 + r * 1.6).toFixed(1)} damage/s for 6 s.`,
   },
   {
     id: 'crush', tree: 'steel', tier: 2, name: 'Crushing Blow', icon: 'crush', type: 'active',
-    reqLevel: 6, maxRank: 10, requires: ['cleave'], mana: 13, cooldown: 5,
+    reqLevel: 6, maxRank: 10, requires: ['cleave'], mana: 28, cooldown: 5,
     synergy: { skill: 'cleave', pct: 4 },
     desc: (r, syn) => `A heavy overhead strike that breaks the legs of whatever stands closest.
 ${Math.round(175 + r * 24 + syn)}% weapon damage in a narrow arc.
@@ -71,7 +71,7 @@ Synergy: +4% damage per rank in Cleave.`,
   },
   {
     id: 'whirlwind', tree: 'steel', tier: 3, name: 'Whirlwind', icon: 'whirlwind', type: 'active',
-    reqLevel: 12, maxRank: 10, requires: ['crush', 'bloodthirst'], mana: 24, cooldown: 9,
+    reqLevel: 12, maxRank: 10, requires: ['crush', 'bloodthirst'], mana: 38, cooldown: 9,
     synergy: { skill: 'cleave', pct: 5 },
     desc: (r, syn) => `Spin through the pack for 1.4 s, hitting everything around you.
 ${Math.round(55 + r * 8 + syn)}% weapon damage per hit, 4 hits/s.
@@ -82,7 +82,7 @@ Synergy: +5% damage per rank in Cleave.`,
   /* ----------------------------------------------------------------- Frost */
   {
     id: 'icenova', tree: 'frost', tier: 1, name: 'Ice Nova', icon: 'icenova', type: 'active',
-    reqLevel: 1, maxRank: 10, requires: [], mana: 14, cooldown: 6,
+    reqLevel: 1, maxRank: 10, requires: [], mana: 28, cooldown: 6,
     synergy: { skill: 'rimeaura', pct: 9 },
     desc: (r, syn) => `A wave of cold bursts out from you.
 ${Math.round(14 + r * 9 + syn)} cold damage in a 175 px radius, slowing for 3 s.
@@ -96,7 +96,7 @@ Synergy: +9% damage per rank in Rime Aura.`,
   },
   {
     id: 'shatter', tree: 'frost', tier: 2, name: 'Shatter Strike', icon: 'shatter', type: 'active',
-    reqLevel: 6, maxRank: 10, requires: ['icenova'], mana: 12, cooldown: 3.5,
+    reqLevel: 6, maxRank: 10, requires: ['icenova'], mana: 24, cooldown: 3.5,
     desc: (r) => `Rush forward and shatter the first enemy you reach.
 ${Math.round(130 + r * 20)}% weapon damage + ${Math.round(8 + r * 6)} cold damage.
 ${Math.min(15 + r * 5, 65)}% chance to freeze the target for 2 s.`,
@@ -110,7 +110,7 @@ You gain +${r * 4}% cold resistance.`,
   },
   {
     id: 'wintergrasp', tree: 'frost', tier: 3, name: "Winter's Grasp", icon: 'wintergrasp', type: 'active',
-    reqLevel: 12, maxRank: 10, requires: ['shatter', 'rimeaura'], mana: 30, cooldown: 20,
+    reqLevel: 12, maxRank: 10, requires: ['shatter', 'rimeaura'], mana: 46, cooldown: 20,
     synergy: { skill: 'frostbite', pct: 7 },
     desc: (r, syn) => `The ground freezes everything within 300 px in place.
 ${Math.round(30 + r * 16 + syn)} cold damage and a freeze lasting ${(2.4 + r * 0.2).toFixed(1)} s.
@@ -132,7 +132,7 @@ Synergy: +7% damage per rank in Frostbite.`,
   },
   {
     id: 'warcry', tree: 'endurance', tier: 2, name: 'War Cry', icon: 'warcry', type: 'active',
-    reqLevel: 6, maxRank: 10, requires: ['toughskin'], mana: 19, cooldown: 14,
+    reqLevel: 6, maxRank: 10, requires: ['toughskin'], mana: 34, cooldown: 14,
     desc: (r) => `A roar that silences the wilderness.
 Stuns enemies within 220 px for ${(1.2 + r * 0.12).toFixed(1)} s and grants you +${10 + r * 4}% damage for 8 s.`,
   },

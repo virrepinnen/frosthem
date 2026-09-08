@@ -90,10 +90,11 @@ export function recalc(p) {
   // controls away, so it is gone: the basic swing is free and every skill draws
   // on mana instead.
   p.maxMana = Math.round(70 + L * 3 + m('mana') + rSecond * 6);
-  // One a second, and it no longer grows with level. Mana is the only thing
-  // metering your skills now, so it has to actually run out — at six a second
-  // the pool refilled faster than the cooldowns did, and nothing bound.
-  p.manaRegen = 1 + m('manaRegen');
+  // Three a second, and it does not grow with level. The pace this sets is the
+  // point: what stops you is the *pool*, not the trickle. You can afford a
+  // skill regularly, but four of them back to back empties you, and then you
+  // are swinging until it fills again.
+  p.manaRegen = 3 + m('manaRegen');
 
   const wSpeed = w?.base.speed ?? 1.15;
 

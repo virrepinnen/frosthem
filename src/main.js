@@ -112,7 +112,6 @@ function renderCharList() {
       '<div class="char-del" title="Delete">✕</div>';
     row.onclick = () => {
       begin(playerFromSave(rec), {
-        waypoints: rec.waypoints ?? [0],
         bossDefeated: rec.bossDefeated ?? false,
         runs: rec.runs ?? 0,
         bestDepth: rec.bestDepth ?? 0,
@@ -335,7 +334,7 @@ function beginTest() {
   recalc(p);
   p.hp = p.maxHp; p.mana = p.maxMana;
 
-  begin(p, { waypoints: [0, 1], bossDefeated: false }, false, undefined, true);
+  begin(p, { bossDefeated: false }, false, undefined, true);
   game.testMode = true;
   game.travel(1);
   game.alert('Test session — F3 for the knobs. Nothing here is saved.');
@@ -343,7 +342,7 @@ function beginTest() {
 
 /**
  * @param {ReturnType<typeof createPlayer>} player
- * @param {{waypoints?:number[], bossDefeated?:boolean, runs?:number, bestDepth?:number}} [progress]
+ * @param {{bossDefeated?:boolean, runs?:number, bestDepth?:number}} [progress]
  * @param {boolean} isNew
  * @param {string} [charId]
  * @param {boolean} [test]

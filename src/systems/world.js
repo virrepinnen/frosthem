@@ -36,7 +36,6 @@ import { clamp, smoothNoise, wrapAngle } from '../core/math.js';
  * @property {{x:number,y:number,r:number,id:string,name:string,line:string}[]} npcs
  * @property {{pts:{x:number,y:number}[], width:number, main:boolean}[]} roads
  * @property {{x:number,y:number,r:number,kind:string,name:string}|null} poi
- * @property {{x:number,y:number,r:number}|null} waypoint
  * @property {{x:number,y:number}} [portalPad] Var stadsportalen dyker upp i byn
  * @property {{x:number,y:number,r:number,opened:boolean,tier:number}[]} chests
  * @property {Obstacle[]} [_walls] Cache: obstacles that block line of sight
@@ -55,28 +54,24 @@ import { clamp, smoothNoise, wrapAngle } from '../core/math.js';
  * have a shape — somewhere the wolves are wrong, somewhere people camped and
  * stayed, somewhere the ground is full of graves — and every map is a place
  * rather than a stretch.
- *
- * `waypoint: true` marks the first map of an area. Waystones sit there and
- * nowhere else, exactly as D2 does it; nine rows in the travel list would be a
- * table of contents, not a choice.
  */
 export const ZONE_DEFS = [
-  { name: 'Frosthem', area: 'Frosthem', theme: 'town', level: 1, w: 1500, h: 1500, waypoint: true },
+  { name: 'Frosthem', area: 'Frosthem', theme: 'town', level: 1, w: 1500, h: 1500 },
 
   { name: 'Utmarkerna',      area: 'Bleka hedarna', theme: 'moor', level: 1, w: 2600, h: 2100,
-    waypoint: true, poi: { kind: 'quarry', name: 'The Deserted Croft' } },
+    poi: { kind: 'quarry', name: 'The Deserted Croft' } },
   { name: 'Stenbrottet',     area: 'Bleka hedarna', theme: 'moor', level: 3, w: 2700, h: 2200,
     poi: { kind: 'quarry', name: 'The Quarry' } },
 
   { name: 'Nedre passet',    area: 'Vargpasset', theme: 'pass', level: 5, w: 2800, h: 2300,
-    waypoint: true, poi: { kind: 'camp', name: 'The Toll Post' } },
+    poi: { kind: 'camp', name: 'The Toll Post' } },
   { name: 'Lägret',          area: 'Vargpasset', theme: 'pass', level: 7, w: 2700, h: 2200,
     poi: { kind: 'camp', name: 'The Abandoned Camp' } },
   { name: 'Vindbrynet',      area: 'Vargpasset', theme: 'pass', level: 9, w: 2900, h: 2200,
     poi: { kind: 'offering', name: 'The Wind Cairn' } },
 
   { name: 'Gravfältet',      area: 'Den frusna graven', theme: 'barrow', level: 11, w: 2600, h: 2200,
-    waypoint: true, poi: { kind: 'offering', name: 'The Offering Ground' } },
+    poi: { kind: 'offering', name: 'The Offering Ground' } },
   { name: 'Nedstigningen',   area: 'Den frusna graven', theme: 'barrow', level: 13, w: 2500, h: 2100,
     poi: { kind: 'offering', name: 'The Sunken Stair' } },
   { name: 'Hravns hall',     area: 'Den frusna graven', theme: 'barrow', level: 15, w: 2400, h: 2000,
@@ -314,12 +309,6 @@ function village(index, seed, d) {
       { x: cx + 112, y: cy - 250 }, { x: cx + 70, y: cy - 420 },
       { x: cx - 20, y: cy - fenceR - 30 }], width: 54, main: true }],
     poi: null,
-    // Clear of the hearth: the two interaction circles used to overlap, and
-    // [E] next to the fire opened the waystone instead of the skill trees.
-    waypoint: { x: cx + 165, y: cy + 145, r: 34 },
-    // The portal gets its own spot on the far side of the hearth. Next to the
-    // waypoint the two ways to travel sat on top of each other and [E] became a
-    // guessing game.
     portalPad: { x: cx - 175, y: cy + 135 },
     chests: [],
     npcs: [
@@ -445,23 +434,6 @@ function wilderness(index, seed, d) {
   shrines.push({ x: poiPos.x + 90, y: poiPos.y + 60, r: 30, kind: r.pick(['dmg', 'armor', 'speed', 'xp']), used: false });
   anchors.push({ x: poiPos.x, y: poiPos.y + 10, n: params.pack[1] + 2, elite: true });
 
-  // ---- waystone -----------------------------------------------------------
-  // Only the first map of an area gets one, as in D2. Nine rows in the travel
-  // list would be a table of contents rather than a choice, and a waystone in
-  // every map would make the chain pointless — you would never walk it twice.
-  const wpAt = pointAlong(main, 0.2);
-  const waypoint = d.waypoint
-    ? { x: wpAt.x + wpAt.nx * 70, y: wpAt.y + wpAt.ny * 70, r: 34 }
-    : null;
-  // Keep the ground around the waystone clear — you must always be able to reach it.
-  if (waypoint) {
-    for (let i = obstacles.length - 1; i >= 0; i--) {
-      const o = obstacles[i];
-      const ox = o.kind === 'circle' ? o.x : o.x + o.w / 2;
-      const oy = o.kind === 'circle' ? o.y : o.y + o.h / 2;
-      if (Math.hypot(ox - waypoint.x, oy - waypoint.y) < 96) obstacles.splice(i, 1);
-    }
-  }
 
   // ---- monster groups along the path --------------------------------------
   // The groups sit tightly and close to the road, so you meet them on the way
@@ -538,7 +510,7 @@ function wilderness(index, seed, d) {
     index, name: d.name, area: d.area, theme: d.theme, level: d.level, seed, w: d.w, h: d.h, isTown: false,
     entry, obstacles, decor, exits, shrines, anchors, npcs: [],
     roads, poi: { ...poiPos, r: 210, kind: poiDef.kind, name: poiDef.name },
-    waypoint, chests,
+    chests,
   };
 
   if (isLast) {

@@ -102,7 +102,6 @@ export function render(ctx, game, dt) {
   // From here on everything stands up out of the ground, in unsquashed pixels.
   drawShrines(ctx, game);
   drawExits(ctx, game);
-  drawWaypoint(ctx, game);
   drawPortal(ctx, game);
   drawChests(ctx, game);
   drawGroundItems(ctx, game);
@@ -248,45 +247,6 @@ function drawTelegraphs(ctx, game) {
   }
 }
 
-/** @param {CanvasRenderingContext2D} ctx @param {any} game */
-function drawWaypoint(ctx, game) {
-  const w = game.zone.waypoint;
-  if (!w) return;
-  const known = game.waypoints.has(game.zone.index);
-  const t = performance.now() / 1000;
-  ctx.save();
-  ctx.translate(w.x, PY(w.y));
-  // ring i marken
-  ctx.strokeStyle = known ? 'rgba(143,216,244,0.55)' : 'rgba(150,165,185,0.30)';
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.ellipse(0, 6, w.r, w.r * 0.45, 0, 0, Math.PI * 2); ctx.stroke();
-  if (known) {
-    const g = ctx.createRadialGradient(0, -20, 3, 0, -20, 110);
-    g.addColorStop(0, `rgba(143,216,244,${0.22 + Math.sin(t * 1.7) * 0.07})`);
-    g.addColorStop(1, 'rgba(143,216,244,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -20, 110, 0, Math.PI * 2); ctx.fill();
-  }
-  shadow(ctx, 6, 8, w.r * 0.8, w.r * 0.34);
-  // two standing stones with a lintel — a gate, not just a stone
-  ctx.fillStyle = '#39445a';
-  ctx.fillRect(-24, -66, 13, 70);
-  ctx.fillRect(11, -66, 13, 70);
-  ctx.fillRect(-26, -78, 52, 15);
-  ctx.fillStyle = '#4a5772';
-  ctx.fillRect(-26, -78, 52, 5);
-  // runa
-  ctx.strokeStyle = known ? '#a8e4f8' : '#4c5a70';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(0, -60); ctx.lineTo(0, -22);
-  ctx.moveTo(0, -52); ctx.lineTo(9, -44);
-  ctx.moveTo(0, -38); ctx.lineTo(-9, -30);
-  ctx.stroke();
-
-  ctx.restore();
-  worldLabel(ctx, known ? 'Waystone' : 'Waystone (untouched)', w.x, PY(w.y) - 92,
-    known ? '#c8ecfb' : '#93a6c0', 13);
-}
 
 /** @param {CanvasRenderingContext2D} ctx @param {any} game */
 function drawPortal(ctx, game) {
@@ -1316,10 +1276,6 @@ export function renderMinimap(ctx, game) {
   for (const e of zone.exits) pip(e.x, e.y, '#7fd4f0', 3);
   for (const sh of zone.shrines) if (!sh.used) pip(sh.x, sh.y, '#e0a86a', 2.5);
   for (const c of zone.chests ?? []) if (!c.opened) pip(c.x, c.y, '#d8b26a', 2.8);
-  if (zone.waypoint) {
-    ctx.fillStyle = game.waypoints.has(zone.index) ? '#a8e4f8' : '#5a6a80';
-    ctx.fillRect(wx(zone.waypoint.x) - 2.5, wy(zone.waypoint.y) - 2.5, 5, 5);
-  }
 
   // ---- the fog: paint over what you have not seen -------------------------
   if (zone.fog) {

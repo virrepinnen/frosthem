@@ -30,7 +30,7 @@ import { clamp } from './core/math.js';
 /**
  * Central game state + update loop.
  * @param {ReturnType<typeof createPlayer>} [existing] A loaded character, otherwise new
- * @param {{waypoints?:number[], zoneIndex?:number, bossDefeated?:boolean, charId?:string}} [progress]
+ * @param {{zoneIndex?:number, bossDefeated?:boolean, charId?:string}} [progress]
  */
 export function createGame(existing, progress) {
   const game = {
@@ -59,8 +59,6 @@ export function createGame(existing, progress) {
     /** @type {string|undefined} The save slot's id; set on the first save. */
     charId: progress?.charId,
     victoryT: 3,
-    /** Discovered waystones. The village always counts as known. */
-    waypoints: new Set(progress?.waypoints ?? [0]),
     /** @type {null|{zoneIndex:number, zoneName:string, fromPos:{x:number,y:number}, townPos:{x:number,y:number}|null, stash:any}} */
     portal: null,
     skillDefs: SKILL_BY_ID,
@@ -68,7 +66,17 @@ export function createGame(existing, progress) {
     /** @type {any} */ aimTarget: null,
     /** @type {any} */ interact: null,
     /** @type {null|{t:number, to:number, from:number|undefined, done:boolean}} Zone change in progress. */
-    transit: null,
+    /**
+     * Maps generated ahead of time, keyed by index — the neighbours of wherever
+     * you are standing. Building one takes a few milliseconds, and doing it at
+     * the moment you cross is what made a border feel like a door rather than a
+     * step. Now it is already done before you get there.
+     * @type {Map<number, {zone:any, monsters:any[]}>}
+     */
+    ready: new Map(),
+    prefetchT: 0.5,
+    /** @type {null|{to:number, from:number}} */
+    pendingTravel: null,
     /** The screen's darkening 0..1 during a zone change. */
     veil: 0,
     time: 0,
@@ -105,19 +113,6 @@ export function createGame(existing, progress) {
     },
     /** @param {number} to @param {number} [from] */
     travel(to, from) { travel(game, to, from); },
-    /** @param {number} index */
-    travelToWaypoint(index) { travelToWaypoint(game, index); },
-    waypointList() {
-      // Only maps that actually hold a waystone. The rest of the chain is
-      // walked, which is the point of it being a chain.
-      return ZONE_DEFS
-        .map((z, i) => ({ z, i }))
-        .filter(({ z }) => z.waypoint)
-        .map(({ z, i }) => ({
-          index: i, name: z.name, area: z.area, level: z.level,
-          known: game.waypoints.has(i), here: game.zone.index === i,
-        }));
-    },
     save() {
       if (game.testMode) { game.alert('Test session — nothing is saved.'); return false; }
       const ok = saveGame(game); if (ok) game.alert('Saved.'); return ok;
@@ -178,13 +173,24 @@ function travel(game, to, from, opts = {}) {
     game.novas = opts.restore.novas;
     game.orbs = opts.restore.orbs ?? [];
   } else {
-    game.zone = generateZone(idx, (rng.next() * 0xffffffff) >>> 0);
-    game.monsters = populateZone(game.zone);
+    const prepared = game.ready.get(idx);
+    if (prepared) {
+      game.zone = prepared.zone;
+      game.monsters = prepared.monsters;
+    } else {
+      game.zone = generateZone(idx, (rng.next() * 0xffffffff) >>> 0);
+      game.monsters = populateZone(game.zone);
+    }
     game.ground = [];
     game.projectiles = [];
     game.novas = [];
     game.orbs = [];
   }
+  // Whatever was prepared for the map you just left is no use here. Keep only
+  // the neighbours of where you now stand, and start building those.
+  const adjacent = new Set((game.zone.exits ?? []).map((/** @type {any} */ e) => e.to));
+  for (const k of [...game.ready.keys()]) if (!adjacent.has(k) || k === idx) game.ready.delete(k);
+  game.prefetchT = 0.5;
   game.groundVersion++;
   game.victoryT = 3;
   markDepth(game, idx);
@@ -226,17 +232,26 @@ function travel(game, to, from, opts = {}) {
     const line = ZONE_LINE[idx];
     if (line) setTimeout(() => showInscription(line), 900);
   }
-  if (game.zone.isTown) {
-    p.hp = p.maxHp; p.mana = p.maxMana;
-    game.waypoints.add(0);
-  }
+  if (game.zone.isTown) { p.hp = p.maxHp; p.mana = p.maxMana; }
+  // A short dip, fading out from here. Nothing waits for it.
+  game.veil = CROSS_VEIL;
   game.dirtyUI = true;
   hideTooltip();
   game.autosave();
 }
 
-/** How long the screen darkens and brightens during a zone change. */
-const FADE_OUT = 0.3, FADE_IN = 0.55;
+/**
+ * How long the brief dip lasts when you cross a border.
+ *
+ * There used to be a third of a second of fading to black, the map being built
+ * while you waited, and then half a second of fading back — nearly a second of
+ * standing still, which read as a level load. The map is built in advance now,
+ * so all that is left is a short dip to cover the fact that every pixel on the
+ * screen changes at once. You never stop walking.
+ */
+const FADE_IN = 0.28;
+/** How dark that dip goes. Enough to hide the swap, not enough to be a curtain. */
+const CROSS_VEIL = 0.6;
 
 /**
  * The border between two zones. No portal and no button: the path leads out of
@@ -247,7 +262,7 @@ const FADE_OUT = 0.3, FADE_IN = 0.55;
  */
 function checkZoneEdge(game) {
   const p = game.player;
-  if (game.transit || p.dead) return;
+  if (game.pendingTravel || p.dead) return;
   for (const e of game.zone.exits) {
     // Measured along and across the border, so the same test works on all four
     // edges. `out` is how far past the trigger line you are; `along` how far
@@ -260,44 +275,30 @@ function checkZoneEdge(game) {
     // must not be able to throw you out of the map.
     const willing = p.inX * e.dirX + p.inY * e.dirY > 0.05;
     if (!willing) continue;
-    game.transit = { t: 0, to: e.to, from: game.zone.index, done: false };
+    // Handled at the top of the next frame rather than here: the rest of this
+    // one is still holding the old zone's monsters.
+    game.pendingTravel = { to: e.to, from: game.zone.index };
     return;
   }
 }
 
-/** @param {Game} game @param {number} dt */
-function updateTransit(game, dt) {
-  const tr = game.transit;
-  if (!tr) return;
-  tr.t += dt;
-  if (!tr.done && tr.t >= FADE_OUT) {
-    tr.done = true;
-    travel(game, tr.to, tr.from);
-  }
-  game.veil = tr.done ? 1 : Math.min(1, tr.t / FADE_OUT);
-  if (tr.done) { game.transit = null; game.veil = 1; }
+/**
+ * Builds the maps on the other side of this one's borders, one at a time and
+ * spaced out, so the work never lands on the frame where you walk through.
+ * @param {Game} game @param {number} dt
+ */
+function prefetchNeighbours(game, dt) {
+  game.prefetchT -= dt;
+  if (game.prefetchT > 0) return;
+  const next = (game.zone.exits ?? [])
+    .map((/** @type {any} */ e) => e.to)
+    .find((/** @type {number} */ i) => !game.ready.has(i));
+  if (next === undefined) return;
+  const zone = generateZone(next, (rng.next() * 0xffffffff) >>> 0);
+  game.ready.set(next, { zone, monsters: populateZone(zone) });
+  game.prefetchT = 0.35;
 }
 
-/** @param {Game} game @param {number} index */
-function travelToWaypoint(game, index) {
-  if (!game.waypoints.has(index)) { game.alert('You have not found that waystone yet.'); return; }
-  if (game.zone.index === index) { game.alert('You are already here.'); return; }
-  // Close the list on the way out: an open panel freezes the world, and
-  // arriving somewhere new into a frozen screen reads as a hang.
-  panels.waypoint = false;
-  game.dirtyUI = true;
-  game.portal = null;
-  travel(game, index);
-  const wp = game.zone.waypoint;
-  if (wp) {
-    game.player.pos.x = wp.x;
-    game.player.pos.y = wp.y + 60;
-    resolveCollision(game.zone, game.player.pos, game.player.radius);
-    camera.x = game.player.pos.x - camera.w / 2;
-    camera.y = game.player.pos.y - camera.h / 2;
-  }
-  burst(game.player.pos.x, game.player.pos.y, 40, { color: '#8fd8f4', speed: 220, life: 0.8, size: 3, grav: -40 });
-}
 
 /**
  * Town portal: a there-and-back shortcut that preserves the zone you left,
@@ -409,13 +410,18 @@ function update(game, dt) {
     if (game.saveT <= 0) saveGame(game);
   }
 
-  if (game.transit) { updateTransit(game, dt); updateFx(dt); updateCamera(game, dt); return; }
+  if (game.pendingTravel) {
+    const t = game.pendingTravel;
+    game.pendingTravel = null;
+    travel(game, t.to, t.from);
+  }
   if (game.veil > 0) game.veil = Math.max(0, game.veil - dt / FADE_IN);
   // An open panel stops the world. The bag now covers half the screen, so
   // fighting behind it was never really an option — freezing makes that honest,
   // and it means reading a tooltip is never punished by something biting you.
   if (game.paused || game.tunerOpen || anyPanelOpen()) { updateFx(dt); return; }
 
+  prefetchNeighbours(game, dt);
   game.time += dt;
 
   game.playerSlow = 0;
@@ -705,15 +711,6 @@ function updatePlayer(game, dt) {
 
   checkZoneEdge(game);
 
-  const wp = zone.waypoint;
-  if (wp && !game.waypoints.has(zone.index)
-      && Math.hypot(p.pos.x - wp.x, p.pos.y - wp.y) < wp.r + p.radius + 10) {
-    game.waypoints.add(zone.index);
-    game.alert(`Waystone discovered: ${zone.name}.`);
-    burst(wp.x, wp.y - 20, 40, { color: '#8fd8f4', speed: 180, life: 1, size: 3, grav: -50 });
-    game.dirtyUI = true;
-    game.autosave();
-  }
 }
 
 /**
@@ -893,10 +890,6 @@ export function findInteract(game) {
     return { kind: 'hearth', obj: hearth, x: /** @type {any} */ (hearth).x,
       y: /** @type {any} */ (hearth).y - 96, label: 'Train' };
   }
-  const wp = game.zone.waypoint;
-  if (wp && near(wp, wp.r + 46)) {
-    return { kind: 'waypoint', obj: wp, x: wp.x, y: wp.y - 108, label: 'Use' };
-  }
   for (const c of game.zone.chests) {
     if (!c.opened && near(c, c.r + 46)) {
       return { kind: 'chest', obj: c, x: c.x, y: c.y - 60, label: 'Open' };
@@ -923,11 +916,6 @@ function interact(game) {
         travel(game, 0, undefined, { keepPortal: true });
         if (game.portal) game.portal.townPos = townPortalPad(game);
       }
-      break;
-    case 'waypoint':
-      game.waypoints.add(game.zone.index);
-      panels.waypoint = true;
-      game.dirtyUI = true;
       break;
     case 'chest': openChest(game, hit.obj); break;
     case 'hearth':
