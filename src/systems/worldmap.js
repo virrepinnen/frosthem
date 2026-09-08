@@ -29,7 +29,7 @@ const WALL = 500;
 /** Spacing of the boulders in a ridge. Less than a diameter, so they overlap. */
 const RIDGE_STEP = 44;
 /** Half the width of the gap left where the road crosses a border. */
-const DOOR_HALF = 150;
+export const DOOR_HALF = 150;
 /** Cell size of the lookup that keeps ridge collision cheap. */
 const ROCK_CELL = 256;
 

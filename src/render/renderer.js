@@ -11,7 +11,7 @@ import { hashNoise, clamp } from '../core/math.js';
 import { RARITY_COLOR } from '../data/items.js';
 import { strokeGlyph, KIND_GLYPH } from '../ui/glyphs.js';
 import { FOG_CELL } from '../systems/world.js';
-import { zonesInRect } from '../systems/worldmap.js';
+import { zonesInRect, DOOR_HALF } from '../systems/worldmap.js';
 import { drawHero } from './hero.js';
 import { ORB_TIERS } from '../systems/orbs.js';
 import { PORTAL_CAST, PORTAL_STEP } from '../entities/player.js';
@@ -724,14 +724,30 @@ function drawExits(ctx, game) {
     // the border became a gap in a rock ridge it was a light with no source —
     // the stones and the path say it now.
 
-    // Two standing stones as a gate, one on each side of the path. They have
-    // height, so they are drawn upright in unsquashed pixels wherever they sit.
-    // On an east/west border the along-axis is y, which the projection squashes.
-    // Spacing the stones by the same world distance would make that gate look
-    // half as wide as a north/south one, so the offset is unsquashed first.
-    const spread = (e.edge === 'e' || e.edge === 'w') ? 78 / PROJ : 78;
-    for (const side of [-1, 1]) {
-      const base = at(6, side * spread);
+    // Two standing stones, one at each end of the wall, marking the mouth of
+    // the passage. There used to be four: both maps meet at the same border and
+    // each drew its own pair, so the gate stood twice, once on either side of a
+    // line neither of them owned. The map with the lower number draws it now.
+    //
+    // They sit on the seam itself, exactly `DOOR_HALF` out from the middle,
+    // which is where the boulders stop — so the stones are the ends of the wall
+    // rather than an ornament standing near it. No unsquashing of the offset
+    // either: the ridge is squashed by the projection like everything else on
+    // the ground, and the stones have to line up with it.
+    const owns = !game.world.zones.has(e.to) || z.index < e.to;
+    // Taken from the map's own edge, not from the exit marker. Out in the wild
+    // the two are 26 px apart and either would do, but the village's gate sits
+    // back at the palisade — reading the position off it put the stones in the
+    // middle of the village and left the actual border bare.
+    const gate = {
+      x: e.edge === 'w' ? z.ox : e.edge === 'e' ? z.ox + z.w : e.x,
+      y: e.edge === 'n' ? z.oy : e.edge === 's' ? z.oy + z.h : e.y,
+    };
+    for (const side of owns ? [-1, 1] : []) {
+      const base = {
+        x: gate.x + ax * side * DOOR_HALF,
+        y: PY(gate.y + ay * side * DOOR_HALF),
+      };
       const h = 88 + side * 6;
       ctx.save(); ctx.translate(base.x, base.y);
       ctx.fillStyle = 'rgba(4,7,12,0.34)';
