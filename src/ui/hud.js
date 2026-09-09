@@ -7,6 +7,7 @@ import { showTextTooltip, hideTooltip, escape } from './tooltip.js';
 import { panels, togglePanel, closeAllPanels } from './panels.js';
 import { drawBoons, drawMilestone, takeBoon, takeBoonMax, boonRank } from '../systems/boons.js';
 import { ROMAN } from '../data/boons.js';
+import { RELIC_DEFS } from '../data/relics.js';
 import { glyph } from './glyphs.js';
 import { saveGame } from '../systems/save.js';
 import { recalc } from '../systems/stats.js';
@@ -414,7 +415,7 @@ export function showLevelUp(game, levels) {
 export function showRelicChoice(game) {
   const p = game.player;
   const box = $('levelup');
-  const missing = RELIC_CHOICES.filter(c => !p.relics?.[c.id]);
+  const missing = RELIC_DEFS.filter(c => !p.relics?.[c.id]);
   // Nothing left to choose would open a window with no cards and no button to
   // leave by. The drop cannot produce this, but the development panel can.
   if (!missing.length) { game.paused = false; return; }
@@ -436,7 +437,7 @@ export function showRelicChoice(game) {
       `<div class="bc-ico">${glyph(c.icon, 1.4)}</div>` +
       `<div class="bc-name">${escape(c.name)}</div>` +
       `<div class="bc-rank">I</div>` +
-      `<div class="bc-line">${escape(c.line)}</div>`;
+      `<div class="bc-line">${escape(c.blurb)}</div>`;
     card.onclick = () => {
       p.relics ??= {};
       p.relics[c.id] = true;
@@ -456,16 +457,6 @@ export function showRelicChoice(game) {
   $('lvl-actions').innerHTML = '';
   box.classList.remove('hidden');
 }
-
-/** What a relic can become. */
-const RELIC_CHOICES = [
-  { id: 'axes', name: 'Whirling Axes', icon: 'axe',
-    line: 'Axes circle you and strike whatever they pass through. They reward walking into a pack.' },
-  { id: 'javelin', name: 'Hurled Javelins', icon: 'polearm',
-    line: 'You throw a javelin at whatever you can see, on your own. It reaches what your arm cannot.' },
-  { id: 'thunder', name: 'The Miller', icon: 'lightning',
-    line: 'Lightning falls somewhere in the fight. It is the one that hits a crowd rather than a body.' },
-];
 
 export function hideLevelUp() { $('levelup').classList.add('hidden'); }
 export function levelUpOpen() { return !$('levelup').classList.contains('hidden'); }

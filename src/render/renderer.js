@@ -107,6 +107,7 @@ export function render(ctx, game, dt) {
   for (const z of shown) drawRoads(ctx, z);
   for (const z of shown) drawDecor(ctx, z);
   drawDecals(ctx);
+  drawEmbers(ctx, game);
   drawTelegraphs(ctx, game);
   ctx.restore();
 
@@ -150,6 +151,8 @@ export function render(ctx, game, dt) {
   // behind you on its way round and in front on the way back. Drawn on top they
   // read as an overlay rather than as something turning about you.
   for (const ax of game.axes ?? []) list.push({ y: ax.y, f: () => drawAxe(ctx, ax) });
+  for (const b of game.boulders ?? []) list.push({ y: b.y, f: () => drawBoulder(ctx, b) });
+  for (const w of game.gales ?? []) list.push({ y: w.y, f: () => drawGale(ctx, w) });
   list.sort((a, b) => a.y - b.y);
   for (const e of list) e.f();
 
@@ -1482,4 +1485,74 @@ function drawBolts(ctx, game) {
     ctx.beginPath(); ctx.ellipse(0, 0, b.r * 1.1, b.r * 1.1 * PROJ, 0, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
+}
+
+/**
+ * The burning ground behind you. Drawn in the ground pass, squashed with it,
+ * because a fire lying on snow is part of the snow.
+ * @param {CanvasRenderingContext2D} ctx @param {any} game
+ */
+function drawEmbers(ctx, game) {
+  const now = performance.now() / 1000;
+  for (const e of game.embers ?? []) {
+    const k = e.t / e.dur;
+    const fade = 1 - k * k;
+    ctx.save();
+    ctx.globalAlpha = fade * 0.75;
+    const g = ctx.createRadialGradient(e.x, e.y, 2, e.x, e.y, e.r);
+    g.addColorStop(0, 'rgba(255,196,110,0.85)');
+    g.addColorStop(0.5, 'rgba(226,110,50,0.45)');
+    g.addColorStop(1, 'rgba(120,40,20,0)');
+    ctx.fillStyle = g;
+    const pulse = 1 + Math.sin(now * 6 + e.x * 0.05) * 0.06;
+    ctx.beginPath(); ctx.arc(e.x, e.y, e.r * pulse, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+}
+
+/** A boulder, turning as it goes. @param {CanvasRenderingContext2D} ctx @param {any} b */
+function drawBoulder(ctx, b) {
+  ctx.save();
+  ctx.translate(b.x, PY(b.y) - b.r * 0.55);
+  shadow(ctx, 3, b.r * 0.62, b.r * 1.05, b.r * 0.42);
+  ctx.rotate(b.spin);
+  ctx.beginPath();
+  const n = 8;
+  for (let i = 0; i <= n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    const rr = b.r * (0.82 + hashNoise(i, Math.round(b.a * 10), 3) * 0.3);
+    i ? ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+  }
+  ctx.closePath();
+  ctx.fillStyle = '#5c6879'; ctx.fill();
+  ctx.strokeStyle = '#3a4454'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.clip();
+  ctx.fillStyle = '#e4ecf5';
+  ctx.beginPath(); ctx.ellipse(-b.r * 0.2, -b.r * 0.55, b.r * 0.9, b.r * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+/** A wandering wind: arcs turning about an empty middle. */
+function drawGale(ctx, w) {
+  const fade = Math.min(1, (w.dur - w.t) * 1.6) * Math.min(1, w.t * 3);
+  ctx.save();
+  ctx.translate(w.x, PY(w.y));
+  ctx.globalAlpha = fade * 0.55;
+  ctx.scale(1, PROJ);
+  for (let i = 0; i < 4; i++) {
+    const rr = w.r * (0.32 + i * 0.22);
+    ctx.strokeStyle = i % 2 ? 'rgba(214,232,246,0.85)' : 'rgba(160,190,216,0.7)';
+    ctx.lineWidth = 3.2 - i * 0.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(0, 0, rr, w.spin * (1 + i * 0.35), w.spin * (1 + i * 0.35) + 2.3);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = fade * 0.16;
+  const g = ctx.createRadialGradient(0, 0, 4, 0, 0, w.r);
+  g.addColorStop(0, 'rgba(226,240,252,0.8)');
+  g.addColorStop(1, 'rgba(180,206,230,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(0, 0, w.r, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
 }

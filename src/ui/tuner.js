@@ -2,12 +2,11 @@
 import { KNOBS, T, DEFAULTS, setKnob, resetKnobs, isTuned, changedValues } from '../systems/tuning.js';
 import { ZONE_DEFS } from '../systems/world.js';
 import { escape } from './tooltip.js';
-import { RELICS } from '../systems/autoweapons.js';
+import { RELIC_DEFS } from '../data/relics.js';
 
-/** Short names for the panel's buttons. */
-const WEAPON_LABEL = /** @type {Record<string,string>} */ ({
-  axes: 'Axes', javelin: 'Javelins', thunder: 'Miller',
-});
+/** Short names for the panel's buttons — the last word of each relic's name. */
+const WEAPON_LABEL = /** @type {Record<string,string>} */ (
+  Object.fromEntries(RELIC_DEFS.map(d => [d.id, d.name.split(' ').pop()])));
 
 /**
  * The tuning panel, on `F3`.
@@ -85,7 +84,8 @@ function build(game) {
   // Taken from the relic list rather than written out here. The list was
   // written out, and the Miller was added to the game without appearing in this
   // panel — the one place you would go to try it.
-  for (const id of RELICS) {
+  for (const d of RELIC_DEFS) {
+    const id = d.id;
     const b = document.createElement('button');
     const paint = () => {
       const r = game.player.boons[id] ?? 0;

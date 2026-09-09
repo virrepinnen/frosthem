@@ -1,4 +1,5 @@
 // @ts-check
+import { RELIC_DEFS } from './relics.js';
 /**
  * Boons — the cards you pick when you level up.
  *
@@ -44,27 +45,12 @@ const RELIC_RANKS = [1, 1, 1, 1, 1];
 /** @type {BoonDef[]} */
 export const BOONS = [
   // ---- weapons that fight on their own -------------------------------------
-  {
-    id: 'axes', name: 'Whirling Axes', icon: 'axe', group: 'offence',
-    at: RELIC_RANKS, weight: 14, needs: 'axes', per: {},
-    line: (r) => r <= 1
-      ? 'An axe circles you, striking whatever it passes through.'
-      : `Faster, wider, heavier${r % 2 === 1 ? ' — and one axe more' : ''} (rank ${r}).`,
-  },
-  {
-    id: 'javelin', name: 'Hurled Javelins', icon: 'polearm', group: 'offence',
-    at: RELIC_RANKS, weight: 14, needs: 'javelin', per: {},
-    line: (r) => r <= 1
-      ? 'You throw a javelin at whatever you can see, on your own.'
-      : `Thrown harder and more often${r >= 4 ? ', and through two' : ''} (rank ${r}).`,
-  },
-  {
-    id: 'thunder', name: 'The Miller', icon: 'lightning', group: 'offence',
-    at: RELIC_RANKS, weight: 14, needs: 'thunder', per: {},
-    line: (r) => r <= 1
-      ? 'Lightning falls somewhere in the fight, and everything under it burns.'
-      : `Falls more often, wider, and further out (rank ${r}).`,
-  },
+  // Generated from the relic list rather than written out, so a relic added to
+  // the game cannot end up without a card to raise it.
+  ...RELIC_DEFS.map(d => (/** @type {BoonDef} */ ({
+    id: d.id, name: d.name, icon: d.icon, group: 'offence',
+    at: RELIC_RANKS, weight: 14, needs: d.id, per: {}, line: d.line,
+  }))),
 
   // ---- offence -------------------------------------------------------------
   {

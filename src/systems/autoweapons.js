@@ -1,241 +1,174 @@
 // @ts-check
 import { rng } from '../core/rng.js';
-import { hitMonster } from './combat.js';
+import { hitMonster, applySlow } from './combat.js';
 import { losBlocked } from './worldmap.js';
 import { burst } from '../render/fx.js';
 import { T } from './tuning.js';
+import { RELIC_IDS } from '../data/relics.js';
 
 /** @typedef {import('../entities/player.js').Player} Player */
 
 /**
  * Weapons that fight on their own.
  *
- * Axes that circle you, javelins that throw themselves. They exist for the
- * *rhythm* rather than the numbers: without them there is nothing happening
- * between your own swings, and a fight is a series of separate decisions with
- * dead air in between. With them the fight is always running and your swing is
- * the thing you add to it.
+ * They exist for the *rhythm* rather than the numbers: without them nothing
+ * happens between your own swings, and a fight becomes a row of separate
+ * decisions with dead air in between. With them the fight is always running and
+ * your swing is what you add to it. The benchmark is that they stay a modest
+ * share of your damage — enough to feel, not enough that standing still becomes
+ * a strategy.
  *
- * Which is exactly why they are kept small. The benchmark is about a fifth of
- * your damage — enough that you feel them working, not enough that standing
- * still becomes a strategy. Everything that matters still has to come from
- * where you put yourself and when you swing.
+ * What makes one different from another is not its element but what it asks of
+ * you. The axes want you inside a pack; the embers want you moving through one;
+ * the cairn wants you lined up with something; the gale wants you to herd. Every
+ * one of them is a reason to stand somewhere particular.
  *
- * They are not part of the character you build from scratch each run: a relic
- * from an elite or the jarl unlocks one for good, and after that its ranks turn
- * up among the level-up cards, more rarely than an ordinary blessing.
+ * Each has its own damage and rate knob in the tuning panel, on top of the two
+ * that move all of them at once — these are new and their numbers are guesses,
+ * so they are meant to be dragged rather than argued about.
  */
 
-/** Ids of the relics, and the boon each one unlocks. */
-export const RELICS = /** @type {const} */ (['axes', 'javelin', 'thunder']);
-
-/**
- * How hard one axe hits, as a share of a weapon swing.
- *
- * Small, and it does not grow with rank. Ranks buy more axes, turning faster,
- * over more ground — more of the fight covered, not a bigger number per hit.
- * Letting the per-hit damage climb too took the pair from a fifth of your
- * damage at rank one to half of it at rank five, which is the point at which
- * standing still becomes a strategy.
- */
-const AXE_MULT = 0.18;
-/** How long before the same monster can be caught by an axe again. */
-const AXE_RECOVER = 0.62;
-/** How hard a javelin hits, as a share of a weapon swing. Fixed, like the axe. */
-const JAV_MULT = 0.50;
-/**
- * How hard one bolt hits everything under it.
- *
- * A fraction of what the others do per hit, because it does not hit once. It
- * catches everything standing in a circle, so its worth scales with how crowded
- * the ground is — and the ground is now three times as crowded as it was. At a
- * third of a swing it was doing half of all the damage in the game on its own.
- */
-const BOLT_MULT = 0.075;
-/** How wide the strike is. */
-const BOLT_R = 62;
+export const RELICS = RELIC_IDS;
 
 /** @param {Player} p @param {string} id */
 export const hasRelic = (p, id) => !!p.relics?.[id];
-
 /** @param {Player} p @param {string} id */
 const rank = (p, id) => (hasRelic(p, id) ? (p.boons[id] || 0) : 0);
 
+/** Damage knob for one weapon, folded together with the master. @param {string} k */
+const dmgOf = (k) => T[k] * T.autoDmg;
+/** Rate knob for one weapon, folded together with the master. @param {string} k */
+const rateOf = (k) => Math.max(0.05, T[k] * T.autoRate);
+
 /**
- * Sets up the state these weapons keep between frames. Safe to call on a
- * character that has neither — it just leaves empty lists behind.
- * @param {any} game
+ * One hit from an automatic weapon. They all crit off your own numbers and all
+ * carry a fraction of your weapon damage, so gear and blessings lift them with
+ * you rather than leaving them behind.
+ * @param {any} game @param {any} m @param {number} mult @param {string} src
+ * @param {'phys'|'cold'|'fire'|'light'} [type]
  */
+function strike(game, m, mult, src, type = 'phys') {
+  const p = game.player;
+  const crit = rng.chance(p.critChance / 100);
+  const roll = rng.range(p.dmgMin, p.dmgMax) * mult * (1 + p.dmgBuff + (p.shrineDmg || 0));
+  const dmg = crit ? roll * (p.critMult / 100) : roll;
+  hitMonster(game, m, { [type]: dmg, crit, src });
+}
+
+/** @param {any} game */
 export function resetAutoWeapons(game) {
   game.axes = [];
   game.javelins = [];
   game.bolts = [];
+  game.embers = [];
+  game.rings = [];
+  game.boulders = [];
+  game.gales = [];
   game.autoSpin = 0;
-  game.javCd = 0;
-  game.boltCd = 0;
+  game.cd = { javelin: 0, thunder: 0, ember: 0, frost: 0, cairn: 0, gale: 0 };
 }
 
 /** @param {any} game @param {number} dt */
 export function updateAutoWeapons(game, dt) {
   const p = game.player;
-  if (!game.axes) resetAutoWeapons(game);
-  updateAxes(game, p, dt);
-  updateJavelins(game, p, dt);
-  updateThunder(game, p, dt);
+  if (!game.cd) resetAutoWeapons(game);
+  axes(game, p, dt);
+  javelins(game, p, dt);
+  thunder(game, p, dt);
+  ember(game, p, dt);
+  frost(game, p, dt);
+  cairn(game, p, dt);
+  gale(game, p, dt);
 }
 
 /**
- * The miller's relic: lightning out of the sky.
- *
- * It picks its own target and it does not care where you are facing or whether
- * anything is in reach — which is the point of it. The axes reward walking into
- * a pack and the javelin reaches what your arm cannot; this one simply keeps
- * happening, somewhere in the fight, and it is the only one of the three that
- * hits a group rather than a body.
- * @param {any} game @param {Player} p @param {number} dt
+ * Counts one weapon's cooldown down and reports when it comes due.
+ * @param {any} game @param {string} id @param {number} dt @param {number} period
  */
-function updateThunder(game, p, dt) {
-  const r = rank(p, 'thunder');
-  game.bolts ??= [];
+function due(game, id, dt, period) {
+  game.cd[id] -= dt;
+  if (game.cd[id] > 0) return false;
+  game.cd[id] = period;
+  return true;
+}
 
-  for (let i = game.bolts.length - 1; i >= 0; i--) {
-    const b = game.bolts[i];
-    b.t += dt;
-    if (b.t >= b.dur) game.bolts.splice(i, 1);
-  }
-
-  if (r <= 0) return;
-  game.boltCd -= dt;
-  if (game.boltCd > 0) return;
-
-  // Somewhere in the fight, not necessarily the nearest thing: a strike that
-  // always lands on whatever you are already hitting adds nothing you can see.
-  const range = 420 + r * 30;
+/** Live monsters within `r` of a point, nearest first is not guaranteed. */
+function near(game, x, y, r) {
   /** @type {any[]} */
-  const inRange = [];
+  const out = [];
   for (const m of game.monsters) {
     if (m.dead || m.dormant) continue;
-    if (Math.hypot(m.pos.x - p.pos.x, m.pos.y - p.pos.y) > range) continue;
-    inRange.push(m);
+    if (Math.abs(m.pos.x - x) > r || Math.abs(m.pos.y - y) > r) continue;
+    if (Math.hypot(m.pos.x - x, m.pos.y - y) > r) continue;
+    out.push(m);
   }
-  if (!inRange.length) return;
-
-  game.boltCd = Math.max(0.7, 2.8 - r * 0.32) / T.autoRate;
-  // Ranks buy how often it falls, not how much ground it swallows. A second
-  // bolt and a wider circle both multiply against a crowd, and the crowd is
-  // already three deep — letting all three grow together had one relic doing
-  // half the damage in the game.
-  const strikes = 1;
-  const radius = BOLT_R + r * 3;
-
-  for (let s = 0; s < strikes && inRange.length; s++) {
-    const at = inRange[Math.floor(rng.next() * inRange.length)];
-    const x = at.pos.x, y = at.pos.y;
-    game.bolts.push({ x, y, t: 0, dur: 0.42, r: radius });
-    game.novas.push({ x, y, t: 0, dur: 0.4, r: radius, color: '#d7c2ff' });
-    for (const m of game.monsters) {
-      if (m.dead || m.dormant) continue;
-      if (Math.hypot(m.pos.x - x, m.pos.y - y) > radius + m.radius) continue;
-      const crit = rng.chance(p.critChance / 100);
-      const roll = rng.range(p.dmgMin, p.dmgMax) * BOLT_MULT * T.autoDmg
-        * (1 + p.dmgBuff + (p.shrineDmg || 0));
-      hitMonster(game, m, {
-        light: crit ? roll * (p.critMult / 100) : roll,
-        phys: 0, crit, src: 'thunder',
-      });
-    }
-    burst(x, y, 12, { color: '#e2d4ff', speed: 210, life: 0.45, size: 2.6, grav: -40 });
-  }
+  return out;
 }
 
+/* ------------------------------------------------------------------ */
+/* Steel                                                               */
+/* ------------------------------------------------------------------ */
+
 /**
- * The axes: a ring that turns with you at its centre.
- *
- * They hit on contact rather than on a timer of their own, so where you stand
- * decides what they catch — walking through a pack is what makes them work, and
- * standing in the open makes them do nothing at all.
- * @param {any} game @param {Player} p @param {number} dt
+ * A ring that turns with you at its centre. It hits on contact rather than on a
+ * timer, so where you stand decides what it catches.
  */
-function updateAxes(game, p, dt) {
+function axes(game, p, dt) {
   const r = rank(p, 'axes');
   if (r <= 0) { game.axes = []; return; }
-
-  const count = 1 + Math.floor(r / 2);          // 1, 1, 2, 2, 3
-  // Tight enough to sweep what you are actually fighting. At the wider radius
-  // it tried they circled outside the melee entirely: the thing in front of you
-  // stood inside the ring and the axes swept empty snow around it.
+  const count = 1 + Math.floor(r / 2);
   const radius = T.axeRadius + r * 6;
-  const spin = (2.0 + r * 0.18) * T.autoRate;
-  game.autoSpin = (game.autoSpin + spin * dt) % (Math.PI * 2);
+  game.autoSpin = (game.autoSpin + (2.0 + r * 0.18) * rateOf('axesRate') * dt) % (Math.PI * 2);
 
   game.axes = [];
   for (let i = 0; i < count; i++) {
     const a = game.autoSpin + (i / count) * Math.PI * 2;
     game.axes.push({ x: p.pos.x + Math.cos(a) * radius, y: p.pos.y + Math.sin(a) * radius, a });
   }
-
-  const reach = 26;
-  for (const m of game.monsters) {
-    if (m.dead || m.dormant) continue;
+  for (const m of near(game, p.pos.x, p.pos.y, radius + 80)) {
     m.axeCd = Math.max(0, (m.axeCd ?? 0) - dt);
     if (m.axeCd > 0) continue;
-    if (Math.abs(m.pos.x - p.pos.x) > radius + 80 || Math.abs(m.pos.y - p.pos.y) > radius + 80) continue;
     for (const ax of game.axes) {
-      if (Math.hypot(m.pos.x - ax.x, m.pos.y - ax.y) > reach + m.radius) continue;
-      m.axeCd = AXE_RECOVER;
-      const mult = AXE_MULT * T.autoDmg;
-      const crit = rng.chance(p.critChance / 100);
-      const roll = rng.range(p.dmgMin, p.dmgMax) * mult * (1 + p.dmgBuff + (p.shrineDmg || 0));
-      hitMonster(game, m, {
-        phys: crit ? roll * (p.critMult / 100) : roll,
-        cold: p.coldDmg * 0.4, fire: p.fireDmg * 0.4, light: p.lightDmg * 0.4,
-        crit, src: 'axes',
-      });
+      if (Math.hypot(m.pos.x - ax.x, m.pos.y - ax.y) > 26 + m.radius) continue;
+      m.axeCd = 0.62;
+      strike(game, m, 0.18 * dmgOf('axesDmg'), 'axes');
       burst(ax.x, ax.y, 4, { color: '#d6e2f2', speed: 90, life: 0.25, size: 1.8 });
       break;
     }
   }
 }
 
-/**
- * The javelins: thrown on their own at whatever you can see.
- * @param {any} game @param {Player} p @param {number} dt
- */
-function updateJavelins(game, p, dt) {
+/** Thrown at whatever you can see, on its own. */
+function javelins(game, p, dt) {
   const r = rank(p, 'javelin');
   game.javelins ??= [];
-
-  if (r > 0) {
-    game.javCd -= dt;
-    if (game.javCd <= 0) {
-      const range = 380 + r * 24;
-      /** @type {any} */
-      let best = null; let bd = range;
-      for (const m of game.monsters) {
-        if (m.dead || m.dormant) continue;
-        const d = Math.hypot(m.pos.x - p.pos.x, m.pos.y - p.pos.y);
-        if (d >= bd) continue;
-        bd = d; best = m;
-      }
-      // One line-of-sight test, on the nearest, rather than one per candidate.
-      // Tracing a line is not cheap and there can be a hundred monsters loaded;
-      // doing it inside the search cost a 24 ms frame every time it threw.
-      if (best && losBlocked(game.world, p.pos.x, p.pos.y, best.pos.x, best.pos.y)) best = null;
-      // Nothing in sight costs nothing: the cooldown only starts once it throws.
-      if (best) {
-        game.javCd = Math.max(0.85, 2.5 - r * 0.28) / T.autoRate;
-        const a = Math.atan2(best.pos.y - p.pos.y, best.pos.x - p.pos.x);
-        const mult = JAV_MULT * T.autoDmg;
-        game.javelins.push({
-          x: p.pos.x, y: p.pos.y - 8, a,
-          vx: Math.cos(a) * 520, vy: Math.sin(a) * 520,
-          life: 1.1, mult, pierce: r >= 2 ? 2 : 1,
-          /** @type {any[]} */ hit: [],
-        });
-      }
+  if (r > 0 && due(game, 'javelin', dt, 0)) {
+    game.cd.javelin = 0;
+    if (game.cd.javelinT === undefined) game.cd.javelinT = 0;
+  }
+  // Its own timer, so an empty screen costs nothing: the cooldown only starts
+  // once it actually throws.
+  game.cd.javelin -= dt;
+  if (r > 0 && game.cd.javelin <= 0) {
+    const list = near(game, p.pos.x, p.pos.y, 380 + r * 24);
+    /** @type {any} */
+    let best = null; let bd = Infinity;
+    for (const m of list) {
+      const d = Math.hypot(m.pos.x - p.pos.x, m.pos.y - p.pos.y);
+      if (d < bd) { bd = d; best = m; }
+    }
+    // One line-of-sight test, on the nearest. Tracing a line is not cheap and
+    // there can be hundreds of monsters loaded.
+    if (best && !losBlocked(game.world, p.pos.x, p.pos.y, best.pos.x, best.pos.y)) {
+      game.cd.javelin = Math.max(0.85, 2.5 - r * 0.28) / rateOf('javRate');
+      const a = Math.atan2(best.pos.y - p.pos.y, best.pos.x - p.pos.x);
+      game.javelins.push({
+        x: p.pos.x, y: p.pos.y - 8, a,
+        vx: Math.cos(a) * 520, vy: Math.sin(a) * 520,
+        life: 1.1, pierce: r >= 2 ? 2 : 1, /** @type {any[]} */ hit: [],
+      });
     }
   }
-
   for (let i = game.javelins.length - 1; i >= 0; i--) {
     const j = game.javelins[i];
     const px = j.x, py = j.y;
@@ -250,14 +183,182 @@ function updateJavelins(game, p, dt) {
       if (m.dead || m.dormant || j.hit.includes(m)) continue;
       if (Math.hypot(m.pos.x - j.x, m.pos.y - j.y) > m.radius + 8) continue;
       j.hit.push(m);
-      const crit = rng.chance(p.critChance / 100);
-      const roll = rng.range(p.dmgMin, p.dmgMax) * j.mult * (1 + p.dmgBuff + (p.shrineDmg || 0));
-      hitMonster(game, m, {
-        phys: crit ? roll * (p.critMult / 100) : roll,
-        cold: p.coldDmg * 0.4, fire: p.fireDmg * 0.4, light: p.lightDmg * 0.4,
-        crit, src: 'javelin',
-      });
+      strike(game, m, 0.50 * dmgOf('javDmg'), 'javelin');
       if (j.hit.length >= j.pierce) { game.javelins.splice(i, 1); break; }
     }
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* The elements                                                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Lightning, out of the sky, on whatever it likes. The only one that hits a
+ * crowd rather than a body — which is why it hits so lightly per head.
+ */
+function thunder(game, p, dt) {
+  const r = rank(p, 'thunder');
+  game.bolts ??= [];
+  for (let i = game.bolts.length - 1; i >= 0; i--) {
+    game.bolts[i].t += dt;
+    if (game.bolts[i].t >= game.bolts[i].dur) game.bolts.splice(i, 1);
+  }
+  if (r <= 0) return;
+  if (!due(game, 'thunder', dt, Math.max(0.7, 2.8 - r * 0.32) / rateOf('boltRate'))) return;
+
+  const list = near(game, p.pos.x, p.pos.y, 420 + r * 30);
+  if (!list.length) { game.cd.thunder = 0.15; return; }
+  const at = list[Math.floor(rng.next() * list.length)];
+  const radius = 62 + r * 3;
+  game.bolts.push({ x: at.pos.x, y: at.pos.y, t: 0, dur: 0.42, r: radius });
+  game.novas.push({ x: at.pos.x, y: at.pos.y, t: 0, dur: 0.4, r: radius, color: '#d7c2ff' });
+  for (const m of near(game, at.pos.x, at.pos.y, radius + 24)) {
+    strike(game, m, 0.075 * dmgOf('boltDmg'), 'thunder', 'light');
+  }
+  burst(at.pos.x, at.pos.y, 12, { color: '#e2d4ff', speed: 210, life: 0.45, size: 2.6, grav: -40 });
+}
+
+/**
+ * Fire: the ground burns where you have walked.
+ *
+ * The only one that pays you for *moving*, which is the thing the rest of the
+ * combat already wants from you. Standing still lays one patch and then nothing.
+ */
+function ember(game, p, dt) {
+  const r = rank(p, 'ember');
+  game.embers ??= [];
+  for (let i = game.embers.length - 1; i >= 0; i--) {
+    const e = game.embers[i];
+    e.t += dt;
+    if (e.t >= e.dur) { game.embers.splice(i, 1); continue; }
+    for (const m of near(game, e.x, e.y, e.r + 20)) {
+      m.emberCd = Math.max(0, (m.emberCd ?? 0) - dt / Math.max(1, game.embers.length));
+      if (m.emberCd > 0) continue;
+      m.emberCd = 0.45;
+      strike(game, m, 0.055 * dmgOf('emberDmg'), 'ember', 'fire');
+    }
+  }
+  if (r <= 0) return;
+  if (!p.moving) return;
+  if (!due(game, 'ember', dt, 0.2 / rateOf('emberRate'))) return;
+  game.embers.push({
+    x: p.pos.x, y: p.pos.y, t: 0,
+    dur: 2.0 + r * 0.45, r: 34 + r * 4,
+  });
+  if (game.embers.length > 40) game.embers.shift();
+}
+
+/**
+ * Water, stopped: a ring of cold opening out of you.
+ *
+ * The defensive one. Its damage is small and its slow is the point — it buys
+ * you the step you need rather than killing anything.
+ */
+function frost(game, p, dt) {
+  const r = rank(p, 'frost');
+  game.rings ??= [];
+  for (let i = game.rings.length - 1; i >= 0; i--) {
+    const g = game.rings[i];
+    const was = g.at;
+    g.t += dt;
+    g.at = (g.t / g.dur) * g.r;
+    // The wave catches what it sweeps past, once each.
+    for (const m of near(game, g.x, g.y, g.at + 30)) {
+      if (g.hit.includes(m)) continue;
+      const d = Math.hypot(m.pos.x - g.x, m.pos.y - g.y);
+      if (d < was - 20 || d > g.at + m.radius) continue;
+      g.hit.push(m);
+      strike(game, m, 0.09 * dmgOf('frostDmg'), 'frost', 'cold');
+      applySlow(m, Math.min(0.55, 0.22 + g.rank * 0.05), 1.2 + g.rank * 0.25);
+    }
+    if (g.t >= g.dur) game.rings.splice(i, 1);
+  }
+  if (r <= 0) return;
+  if (!due(game, 'frost', dt, Math.max(1.1, 3.4 - r * 0.38) / rateOf('frostRate'))) return;
+  const radius = 150 + r * 26;
+  game.rings.push({ x: p.pos.x, y: p.pos.y, t: 0, dur: 0.5, r: radius, at: 0, rank: r, hit: [] });
+  game.novas.push({ x: p.pos.x, y: p.pos.y, t: 0, dur: 0.5, r: radius, color: '#8fd8f4' });
+}
+
+/**
+ * Earth: a boulder that rolls away from you and ploughs a line.
+ *
+ * The only one whose worth depends on where you are *facing*, so it is the one
+ * that rewards lining a pack up before you let it go.
+ */
+function cairn(game, p, dt) {
+  const r = rank(p, 'cairn');
+  game.boulders ??= [];
+  for (let i = game.boulders.length - 1; i >= 0; i--) {
+    const b = game.boulders[i];
+    const px = b.x, py = b.y;
+    b.x += Math.cos(b.a) * b.speed * dt;
+    b.y += Math.sin(b.a) * b.speed * dt;
+    b.spin += dt * 6;
+    b.life -= dt;
+    if (b.life <= 0 || losBlocked(game.world, px, py, b.x, b.y)) {
+      burst(b.x, b.y, 14, { color: '#8b93a4', speed: 150, life: 0.5, size: 2.6 });
+      game.boulders.splice(i, 1);
+      continue;
+    }
+    for (const m of near(game, b.x, b.y, b.r + 28)) {
+      if (b.hit.includes(m)) continue;
+      b.hit.push(m);
+      // A boulder sweeps a whole line and never hits the same body twice, so it
+      // is worth far more per point than anything that strikes once. At 0.42 it
+      // was doing half of all the damage on its own.
+      strike(game, m, 0.15 * dmgOf('cairnDmg'), 'cairn');
+      // Shoved aside as it goes past, so a line of them scatters.
+      m.vel.x += Math.cos(b.a) * 180;
+      m.vel.y += Math.sin(b.a) * 180;
+    }
+  }
+  if (r <= 0) return;
+  if (!due(game, 'cairn', dt, Math.max(1.2, 3.6 - r * 0.4) / rateOf('cairnRate'))) return;
+  const n = r >= 3 ? 2 : 1;
+  for (let i = 0; i < n; i++) {
+    const spread = n === 1 ? 0 : (i - 0.5) * 0.5;
+    game.boulders.push({
+      x: p.pos.x, y: p.pos.y, a: p.facing + spread, spin: 0,
+      speed: 300, life: 1.5 + r * 0.12, r: 22 + r * 2, /** @type {any[]} */ hit: [],
+    });
+  }
+}
+
+/**
+ * Air: a wind that wanders off and drags what it passes into itself.
+ *
+ * It gathers a pack rather than killing one, which is what makes it worth
+ * having next to anything that hits a crowd.
+ */
+function gale(game, p, dt) {
+  const r = rank(p, 'gale');
+  game.gales ??= [];
+  for (let i = game.gales.length - 1; i >= 0; i--) {
+    const w = game.gales[i];
+    w.t += dt;
+    w.a += w.turn * dt;
+    w.x += Math.cos(w.a) * w.speed * dt;
+    w.y += Math.sin(w.a) * w.speed * dt;
+    w.spin += dt * 5;
+    if (w.t >= w.dur) { game.gales.splice(i, 1); continue; }
+    for (const m of near(game, w.x, w.y, w.r)) {
+      const dx = w.x - m.pos.x, dy = w.y - m.pos.y;
+      const d = Math.hypot(dx, dy) || 1;
+      m.pos.x += (dx / d) * w.pull * dt;
+      m.pos.y += (dy / d) * w.pull * dt;
+      m.galeCd = Math.max(0, (m.galeCd ?? 0) - dt);
+      if (m.galeCd > 0) continue;
+      m.galeCd = 0.5;
+      strike(game, m, 0.10 * dmgOf('galeDmg'), 'gale');
+    }
+  }
+  if (r <= 0) return;
+  if (!due(game, 'gale', dt, Math.max(2.2, 6.5 - r * 0.7) / rateOf('galeRate'))) return;
+  game.gales.push({
+    x: p.pos.x, y: p.pos.y, a: p.facing + rng.range(-0.5, 0.5), spin: 0,
+    turn: rng.range(-0.7, 0.7), speed: 110, pull: 55 + r * 8,
+    t: 0, dur: 3.5 + r * 0.5, r: 92 + r * 9,
+  });
 }
