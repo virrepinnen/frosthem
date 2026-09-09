@@ -29,21 +29,21 @@ export const RELIC_DEFS = [
     blurb: 'Axes circle you and strike whatever they pass through. They reward walking into a pack.',
     line: (r) => r <= 1
       ? 'An axe circles you, striking whatever it passes through.'
-      : `Faster, wider, heavier${r % 2 === 1 ? ' — and one axe more' : ''} (rank ${r}).`,
+      : `Faster and wider${r % 2 === 0 ? ` — ${1 + Math.floor(r / 2)} axes now` : ''} (rank ${r}).`,
   },
   {
     id: 'javelin', name: 'Hurled Javelins', icon: 'polearm',
     blurb: 'You throw a javelin at whatever you can see, on your own. It reaches what your arm cannot.',
     line: (r) => r <= 1
       ? 'You throw a javelin at whatever you can see, on your own.'
-      : `Thrown harder and more often${r >= 2 ? ', and through two' : ''} (rank ${r}).`,
+      : `Thrown harder and more often, through ${1 + Math.floor(r / 3)} (rank ${r}).`,
   },
   {
     id: 'thunder', name: 'The Miller', icon: 'lightning',
     blurb: 'Lightning falls somewhere in the fight. It is the one that hits a crowd rather than a body.',
     line: (r) => r <= 1
       ? 'Lightning falls somewhere in the fight, and everything under it burns.'
-      : `Falls more often, wider, and further out (rank ${r}).`,
+      : `Falls more often, wider and further${r >= 7 ? ' — two bolts now' : ''} (rank ${r}).`,
   },
   {
     id: 'ember', name: 'Ember Wake', icon: 'flame',
@@ -64,7 +64,7 @@ export const RELIC_DEFS = [
     blurb: 'Earth. A boulder rolls away from you and ploughs through everything in its line.',
     line: (r) => r <= 1
       ? 'A boulder rolls out ahead of you, through everything in its way.'
-      : `Rolls further and more often${r >= 3 ? ', two at a time' : ''} (rank ${r}).`,
+      : `Rolls further and more often${r >= 4 ? `, ${1 + Math.floor(r / 4)} at a time` : ''} (rank ${r}).`,
   },
   {
     id: 'gale', name: 'The Gale', icon: 'whirlwind',
@@ -79,27 +79,6 @@ export const RELIC_DEFS = [
     line: (r) => r <= 1
       ? 'Ravens settle on the thickest of the fight and tear at it.'
       : `They stay longer, cover more ground and bite harder (rank ${r}).`,
-  },
-  {
-    id: 'wolf', name: 'The Pack', icon: 'wolf',
-    blurb: 'Wolves come out of the trees, take one throat each, and are gone. They pick their own, spread across a crowd.',
-    line: (r) => r <= 1
-      ? 'Wolves come out of the trees and take a throat each, then are gone.'
-      : `${2 + r} of them now, over more ground (rank ${r}).`,
-  },
-  {
-    id: 'bear', name: "The Bear's Weight", icon: 'bear',
-    blurb: 'It comes down once, in the middle of them. Everything standing is knocked flat and left reeling.',
-    line: (r) => r <= 1
-      ? 'It comes down once, hard, and everything standing is knocked flat.'
-      : `Wider, heavier, and they stay down longer (rank ${r}).`,
-  },
-  {
-    id: 'elk', name: 'The White Elk', icon: 'elk',
-    blurb: 'It crosses the field without stopping, straight through them, and is gone into the snow on the far side.',
-    line: (r) => r <= 1
-      ? 'It crosses the field straight through them and is gone.'
-      : `Broader in the shoulder and harder to stand against (rank ${r}).`,
   },
 ];
 

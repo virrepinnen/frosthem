@@ -93,7 +93,7 @@ function build(game) {
     };
     b.onclick = () => {
       const p = game.player;
-      const next = { 0: 1, 1: 3, 3: 5, 5: 0 }[p.boons[id] ?? 0] ?? 0;
+      const next = { 0: 1, 1: 3, 3: 5, 5: 10, 10: 0 }[p.boons[id] ?? 0] ?? 0;
       p.relics ??= {};
       if (next) { p.relics[id] = true; p.boons[id] = next; }
       else { p.boons[id] = 0; delete p.relics[id]; }

@@ -1,6 +1,6 @@
 // @ts-check
 import { rng } from '../core/rng.js';
-import { hitMonster, applySlow, applyStun } from './combat.js';
+import { hitMonster, applySlow } from './combat.js';
 import { losBlocked } from './worldmap.js';
 import { burst } from '../render/fx.js';
 import { T } from './tuning.js';
@@ -65,14 +65,8 @@ export function resetAutoWeapons(game) {
   game.boulders = [];
   game.gales = [];
   game.flocks = [];
-  game.pounces = [];
-  game.slams = [];
-  game.charges = [];
   game.autoSpin = 0;
-  game.cd = {
-    javelin: 0, thunder: 0, ember: 0, frost: 0, cairn: 0, gale: 0,
-    raven: 0, wolf: 0, bear: 0, elk: 0,
-  };
+  game.cd = { javelin: 0, thunder: 0, ember: 0, frost: 0, cairn: 0, gale: 0, raven: 0 };
 }
 
 /** @param {any} game @param {number} dt */
@@ -87,22 +81,14 @@ export function updateAutoWeapons(game, dt) {
   cairn(game, p, dt);
   gale(game, p, dt);
   raven(game, p, dt);
-  wolf(game, p, dt);
-  bear(game, p, dt);
-  elk(game, p, dt);
 }
 
 /**
- * The four that come when called.
+ * The wait between the called things.
  *
- * They share a shape: a long wait, then something arrives somewhere out in the
- * fight and lands on a crowd. That is the point of them — the other weapons are
- * a constant hum you stop noticing, and these are events. Ten seconds is long
- * enough that you look up when one happens.
- *
- * Because the wait is fixed, their ranks buy reach and weight rather than
- * frequency. Every one of them aims itself at the thickest part of the fight
- * rather than at what is nearest, so where the crowd is decides where they go.
+ * The other weapons are a constant hum you stop noticing; this one is an event.
+ * Ten seconds is long enough that you look up when it happens, and because the
+ * wait is fixed its ranks buy reach and weight rather than frequency.
  */
 const ANIMAL_CD = 10;
 
@@ -155,105 +141,6 @@ function raven(game, p, dt) {
   const at = thickest(game, p, 560, radius);
   if (!at) { game.cd.raven = 0.4; return; }
   game.flocks.push({ x: at.x, y: at.y, t: 0, tick: 0, dur: T.ravenLife + r * 0.35, r: radius });
-}
-
-/**
- * Wolves out of the trees: one throat each, spread across the crowd rather than
- * piled onto whatever is nearest. It is the one that reaches several at once
- * without needing them bunched.
- */
-function wolf(game, p, dt) {
-  const r = rank(p, 'wolf');
-  game.pounces ??= [];
-  for (let i = game.pounces.length - 1; i >= 0; i--) {
-    game.pounces[i].t += dt;
-    if (game.pounces[i].t >= game.pounces[i].dur) game.pounces.splice(i, 1);
-  }
-  if (r <= 0) return;
-  if (!due(game, 'wolf', dt, ANIMAL_CD / rateOf('wolfRate'))) return;
-  const spread = T.wolfSpread + r * 12;
-  const at = thickest(game, p, 560, spread);
-  if (!at) { game.cd.wolf = 0.4; return; }
-  const list = rng.shuffle(near(game, at.x, at.y, spread));
-  const count = Math.min(list.length, Math.max(1, Math.round((2 + r) * T.wolfCount)));
-  for (let i = 0; i < count; i++) {
-    const m = list[i];
-    const a = rng.range(0, Math.PI * 2);
-    game.pounces.push({ x: m.pos.x, y: m.pos.y, a, t: 0, dur: 0.35 });
-    // Heavy per bite, because there are only a handful of bites: the others
-    // sweep a circle and are paid by how crowded it is, and this one is paid
-    // by nothing at all — it takes the same five throats in a crowd of fifty.
-    strike(game, m, 2.2 * dmgOf('wolfDmg'), 'wolf');
-    // Hamstrung: the bite is worth as much for what it stops as what it takes.
-    applySlow(m, 0.4, 1.6);
-  }
-}
-
-/**
- * One blow, in the middle of them. Everything standing is thrown outward and
- * left reeling — the only one of the four that buys you room rather than kills.
- */
-function bear(game, p, dt) {
-  const r = rank(p, 'bear');
-  game.slams ??= [];
-  for (let i = game.slams.length - 1; i >= 0; i--) {
-    game.slams[i].t += dt;
-    if (game.slams[i].t >= game.slams[i].dur) game.slams.splice(i, 1);
-  }
-  if (r <= 0) return;
-  if (!due(game, 'bear', dt, ANIMAL_CD / rateOf('bearRate'))) return;
-  const radius = T.bearSize + r * 14;
-  const at = thickest(game, p, 520, radius);
-  if (!at) { game.cd.bear = 0.4; return; }
-  game.slams.push({ x: at.x, y: at.y, t: 0, dur: 0.5, r: radius });
-  game.novas.push({ x: at.x, y: at.y, t: 0, dur: 0.45, r: radius, color: '#c9a882' });
-  for (const m of near(game, at.x, at.y, radius)) {
-    strike(game, m, 0.75 * dmgOf('bearDmg'), 'bear');
-    const dx = m.pos.x - at.x, dy = m.pos.y - at.y;
-    const d = Math.hypot(dx, dy) || 1;
-    m.vel.x += (dx / d) * T.bearKnock;
-    m.vel.y += (dy / d) * T.bearKnock;
-    applyStun(m, 0.5 + r * 0.08);
-  }
-  burst(at.x, at.y, 26, { color: '#b9a288', speed: 260, life: 0.6, size: 3 });
-}
-
-/**
- * It crosses the whole field without stopping. Aimed through the crowd rather
- * than at it, so it is worth the most when they are strung out in a line.
- */
-function elk(game, p, dt) {
-  const r = rank(p, 'elk');
-  game.charges ??= [];
-  for (let i = game.charges.length - 1; i >= 0; i--) {
-    const c = game.charges[i];
-    c.x += Math.cos(c.a) * c.speed * dt;
-    c.y += Math.sin(c.a) * c.speed * dt;
-    c.t += dt;
-    if (c.t >= c.dur) { game.charges.splice(i, 1); continue; }
-    for (const m of near(game, c.x, c.y, c.r)) {
-      if (c.hit.includes(m)) continue;
-      c.hit.push(m);
-      strike(game, m, 0.6 * dmgOf('elkDmg'), 'elk');
-      // Shouldered aside rather than run down: it is going somewhere.
-      const side = Math.sign((m.pos.x - c.x) * -Math.sin(c.a) + (m.pos.y - c.y) * Math.cos(c.a)) || 1;
-      m.vel.x += -Math.sin(c.a) * side * 260;
-      m.vel.y += Math.cos(c.a) * side * 260;
-    }
-  }
-  if (r <= 0) return;
-  if (!due(game, 'elk', dt, ANIMAL_CD / rateOf('elkRate'))) return;
-  const at = thickest(game, p, 560, 120);
-  if (!at) { game.cd.elk = 0.4; return; }
-  // Enters from off screen, passes through the crowd, and leaves on the far side.
-  const a = rng.range(0, Math.PI * 2);
-  const lead = 780;
-  const speed = T.elkSpeed;
-  game.charges.push({
-    x: at.x - Math.cos(a) * lead, y: at.y - Math.sin(a) * lead,
-    a, speed, t: 0, dur: (lead * 2) / speed, r: T.elkSize + r * 6,
-    /** @type {any[]} */ hit: [],
-  });
 }
 
 /**
@@ -340,7 +227,7 @@ function javelins(game, p, dt) {
       game.javelins.push({
         x: p.pos.x, y: p.pos.y - 8, a,
         vx: Math.cos(a) * T.javSpeed, vy: Math.sin(a) * T.javSpeed,
-        life: 1.1, pierce: r >= 2 ? 2 : 1, /** @type {any[]} */ hit: [],
+        life: 1.1, pierce: 1 + Math.floor(r / 3), /** @type {any[]} */ hit: [],
       });
     }
   }
@@ -384,14 +271,19 @@ function thunder(game, p, dt) {
 
   const list = near(game, p.pos.x, p.pos.y, T.boltRange + r * 30);
   if (!list.length) { game.cd.thunder = 0.15; return; }
-  const at = list[Math.floor(rng.next() * list.length)];
   const radius = T.boltSize + r * 3;
-  game.bolts.push({ x: at.pos.x, y: at.pos.y, t: 0, dur: 0.42, r: radius });
-  game.novas.push({ x: at.pos.x, y: at.pos.y, t: 0, dur: 0.4, r: radius, color: '#d7c2ff' });
-  for (const m of near(game, at.pos.x, at.pos.y, radius + 24)) {
-    strike(game, m, 0.075 * dmgOf('boltDmg'), 'thunder', 'light');
+  // A second bolt is the late payoff. It doubles what the weapon does against a
+  // crowd, so it waits until rank seven rather than arriving halfway.
+  const strikes = 1 + Math.floor(r / 7);
+  for (let s = 0; s < strikes; s++) {
+    const at = list[Math.floor(rng.next() * list.length)];
+    game.bolts.push({ x: at.pos.x, y: at.pos.y, t: 0, dur: 0.42, r: radius });
+    game.novas.push({ x: at.pos.x, y: at.pos.y, t: 0, dur: 0.4, r: radius, color: '#d7c2ff' });
+    for (const m of near(game, at.pos.x, at.pos.y, radius + 24)) {
+      strike(game, m, 0.075 * dmgOf('boltDmg'), 'thunder', 'light');
+    }
+    burst(at.pos.x, at.pos.y, 12, { color: '#e2d4ff', speed: 210, life: 0.45, size: 2.6, grav: -40 });
   }
-  burst(at.pos.x, at.pos.y, 12, { color: '#e2d4ff', speed: 210, life: 0.45, size: 2.6, grav: -40 });
 }
 
 /**
@@ -491,7 +383,7 @@ function cairn(game, p, dt) {
   }
   if (r <= 0) return;
   if (!due(game, 'cairn', dt, Math.max(1.2, 3.6 - r * 0.4) / rateOf('cairnRate'))) return;
-  const n = r >= 3 ? 2 : 1;
+  const n = 1 + Math.floor(r / 4);
   for (let i = 0; i < n; i++) {
     const spread = n === 1 ? 0 : (i - 0.5) * 0.5;
     game.boulders.push({

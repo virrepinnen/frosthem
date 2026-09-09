@@ -39,8 +39,14 @@ const HIGH = [10, 16, 24];
  * do its ranks turn up among the cards. They are weighted *above* an ordinary
  * blessing: a relic is a rare thing to find, and once found it should be the
  * thing the run is about rather than a card you see twice an act.
+ *
+ * Ten ranks rather than five, and none of them gated behind a level, so a long
+ * run can actually be poured into one weapon and the far end of that can be
+ * seen. The interesting ranks are the ones that add a *thing* rather than a
+ * number — a fourth axe, a second bolt, a third boulder — and those are spaced
+ * out along the ten.
  */
-const RELIC_RANKS = [1, 1, 1, 1, 1];
+const RELIC_RANKS = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 
 /** @type {BoonDef[]} */
 export const BOONS = [

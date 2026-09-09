@@ -108,7 +108,6 @@ export function render(ctx, game, dt) {
   for (const z of shown) drawDecor(ctx, z);
   drawDecals(ctx);
   drawEmbers(ctx, game);
-  drawSlams(ctx, game);
   drawTelegraphs(ctx, game);
   ctx.restore();
 
@@ -155,8 +154,6 @@ export function render(ctx, game, dt) {
   for (const b of game.boulders ?? []) list.push({ y: b.y, f: () => drawBoulder(ctx, b) });
   for (const w of game.gales ?? []) list.push({ y: w.y, f: () => drawGale(ctx, w) });
   for (const f of game.flocks ?? []) list.push({ y: f.y, f: () => drawFlock(ctx, f) });
-  for (const w of game.pounces ?? []) list.push({ y: w.y, f: () => drawPounce(ctx, w) });
-  for (const c of game.charges ?? []) list.push({ y: c.y, f: () => drawCharge(ctx, c) });
   list.sort((a, b) => a.y - b.y);
   for (const e of list) e.f();
 
@@ -1561,21 +1558,6 @@ function drawGale(ctx, w) {
   ctx.restore();
 }
 
-/** The ring the bear leaves in the snow. Lies in the ground plane. */
-function drawSlams(ctx, game) {
-  for (const s of game.slams ?? []) {
-    const k = s.t / s.dur;
-    ctx.save();
-    ctx.globalAlpha = (1 - k) * 0.5;
-    const g = ctx.createRadialGradient(s.x, s.y, s.r * 0.2, s.x, s.y, s.r);
-    g.addColorStop(0, 'rgba(201,168,130,0.55)');
-    g.addColorStop(1, 'rgba(140,116,88,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-  }
-}
-
 /** Ravens turning over the spot they have settled on. */
 function drawFlock(ctx, f) {
   const t = performance.now() / 1000;
@@ -1599,60 +1581,3 @@ function drawFlock(ctx, f) {
   ctx.restore();
 }
 
-/** One wolf, mid-leap, for as long as the bite lasts. */
-function drawPounce(ctx, w) {
-  const k = w.t / w.dur;
-  ctx.save();
-  ctx.translate(w.x, PY(w.y));
-  ctx.globalAlpha = 1 - k;
-  ctx.rotate(Math.sin(w.a) * 0.15);
-  const lunge = 26 * (1 - k) - 8;
-  ctx.translate(Math.cos(w.a) * lunge, -18 - k * 10);
-  ctx.fillStyle = '#2c3543';
-  ctx.beginPath();
-  ctx.ellipse(0, 0, 17, 8, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(12, -3); ctx.lineTo(23, -6); ctx.lineTo(22, 1); ctx.lineTo(12, 4);
-  ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(9, -6); ctx.lineTo(11, -13); ctx.lineTo(14, -6); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = '#2c3543'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(-24, -6); ctx.stroke();
-  ctx.restore();
-}
-
-/** The elk, crossing. Pale, and big enough to read from across the field. */
-function drawCharge(ctx, c) {
-  const fade = Math.min(1, c.t * 5) * Math.min(1, (c.dur - c.t) * 5);
-  ctx.save();
-  ctx.translate(c.x, PY(c.y));
-  ctx.globalAlpha = fade;
-  shadow(ctx, 4, 10, c.r * 0.9, c.r * 0.34);
-  const face = Math.cos(c.a) < 0 ? -1 : 1;
-  ctx.scale(face, 1);
-  const h = c.r * 0.95;
-  ctx.fillStyle = '#e6ecf4';
-  ctx.beginPath(); ctx.ellipse(0, -h * 0.75, c.r * 0.82, h * 0.42, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#e6ecf4'; ctx.lineWidth = c.r * 0.14; ctx.lineCap = 'round';
-  for (const lx of [-0.5, -0.2, 0.25, 0.55]) {
-    ctx.beginPath();
-    ctx.moveTo(c.r * lx, -h * 0.5);
-    ctx.lineTo(c.r * lx + Math.sin(c.t * 22 + lx * 9) * c.r * 0.18, 4);
-    ctx.stroke();
-  }
-  // neck, head and the antlers it is carrying
-  ctx.beginPath();
-  ctx.moveTo(c.r * 0.6, -h * 0.85); ctx.lineTo(c.r * 1.05, -h * 1.35);
-  ctx.lineWidth = c.r * 0.26; ctx.stroke();
-  ctx.beginPath(); ctx.ellipse(c.r * 1.18, -h * 1.42, c.r * 0.3, c.r * 0.17, -0.5, 0, Math.PI * 2); ctx.fill();
-  ctx.lineWidth = c.r * 0.1;
-  for (const s of [-1, 1]) {
-    ctx.beginPath();
-    ctx.moveTo(c.r * 1.05, -h * 1.5);
-    ctx.lineTo(c.r * (1.05 + s * 0.05), -h * 1.95);
-    ctx.lineTo(c.r * (1.05 + s * 0.42), -h * 2.15);
-    ctx.moveTo(c.r * (1.05 + s * 0.03), -h * 1.82);
-    ctx.lineTo(c.r * (1.05 + s * 0.34), -h * 1.86);
-    ctx.stroke();
-  }
-  ctx.restore();
-}
