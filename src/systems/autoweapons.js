@@ -1,6 +1,6 @@
 // @ts-check
 import { rng } from '../core/rng.js';
-import { hitMonster, applySlow } from './combat.js';
+import { hitMonster, applySlow, applyStun } from './combat.js';
 import { losBlocked } from './worldmap.js';
 import { burst } from '../render/fx.js';
 import { T } from './tuning.js';
@@ -64,8 +64,15 @@ export function resetAutoWeapons(game) {
   game.rings = [];
   game.boulders = [];
   game.gales = [];
+  game.flocks = [];
+  game.pounces = [];
+  game.slams = [];
+  game.charges = [];
   game.autoSpin = 0;
-  game.cd = { javelin: 0, thunder: 0, ember: 0, frost: 0, cairn: 0, gale: 0 };
+  game.cd = {
+    javelin: 0, thunder: 0, ember: 0, frost: 0, cairn: 0, gale: 0,
+    raven: 0, wolf: 0, bear: 0, elk: 0,
+  };
 }
 
 /** @param {any} game @param {number} dt */
@@ -79,6 +86,172 @@ export function updateAutoWeapons(game, dt) {
   frost(game, p, dt);
   cairn(game, p, dt);
   gale(game, p, dt);
+  raven(game, p, dt);
+  wolf(game, p, dt);
+  bear(game, p, dt);
+  elk(game, p, dt);
+}
+
+/**
+ * The four that come when called.
+ *
+ * They share a shape: a long wait, then something arrives somewhere out in the
+ * fight and lands on a crowd. That is the point of them — the other weapons are
+ * a constant hum you stop noticing, and these are events. Ten seconds is long
+ * enough that you look up when one happens.
+ *
+ * Because the wait is fixed, their ranks buy reach and weight rather than
+ * frequency. Every one of them aims itself at the thickest part of the fight
+ * rather than at what is nearest, so where the crowd is decides where they go.
+ */
+const ANIMAL_CD = 10;
+
+/**
+ * The spot with the most bodies around it, within `range`.
+ *
+ * Sampled from the monsters themselves rather than a grid: they *are* the
+ * interesting points, and there are never more of them than there are of them.
+ * The candidate list is capped because this runs on a fight, not on a map.
+ * @param {any} game @param {any} p @param {number} range @param {number} radius
+ */
+function thickest(game, p, range, radius) {
+  const list = near(game, p.pos.x, p.pos.y, range);
+  if (!list.length) return null;
+  const pool = list.length > 40 ? rng.shuffle(list.slice()).slice(0, 40) : list;
+  let best = null, bestN = -1;
+  for (const c of pool) {
+    let n = 0;
+    for (const m of list) {
+      if (Math.abs(m.pos.x - c.pos.x) > radius || Math.abs(m.pos.y - c.pos.y) > radius) continue;
+      n++;
+    }
+    if (n > bestN) { bestN = n; best = c; }
+  }
+  return best ? { x: best.pos.x, y: best.pos.y, n: bestN } : null;
+}
+
+/**
+ * The raven on your shoulder calls the wood down. A circle that stays put and
+ * keeps working, so it is the one that punishes a crowd for not moving.
+ */
+function raven(game, p, dt) {
+  const r = rank(p, 'raven');
+  game.flocks ??= [];
+  for (let i = game.flocks.length - 1; i >= 0; i--) {
+    const f = game.flocks[i];
+    f.t += dt;
+    f.tick -= dt;
+    if (f.tick <= 0) {
+      f.tick = 0.35;
+      for (const m of near(game, f.x, f.y, f.r)) strike(game, m, 0.10 * dmgOf('ravenDmg'), 'raven');
+      burst(f.x + rng.range(-f.r, f.r), f.y + rng.range(-f.r, f.r), 4,
+        { color: '#1d2432', speed: 70, life: 0.5, size: 2.4, grav: -30 });
+    }
+    if (f.t >= f.dur) game.flocks.splice(i, 1);
+  }
+  if (r <= 0) return;
+  if (!due(game, 'raven', dt, ANIMAL_CD / rateOf('ravenRate'))) return;
+  const at = thickest(game, p, 560, 90 + r * 8);
+  if (!at) { game.cd.raven = 0.4; return; }
+  game.flocks.push({ x: at.x, y: at.y, t: 0, tick: 0, dur: 2.0 + r * 0.35, r: 90 + r * 8 });
+}
+
+/**
+ * Wolves out of the trees: one throat each, spread across the crowd rather than
+ * piled onto whatever is nearest. It is the one that reaches several at once
+ * without needing them bunched.
+ */
+function wolf(game, p, dt) {
+  const r = rank(p, 'wolf');
+  game.pounces ??= [];
+  for (let i = game.pounces.length - 1; i >= 0; i--) {
+    game.pounces[i].t += dt;
+    if (game.pounces[i].t >= game.pounces[i].dur) game.pounces.splice(i, 1);
+  }
+  if (r <= 0) return;
+  if (!due(game, 'wolf', dt, ANIMAL_CD / rateOf('wolfRate'))) return;
+  const spread = 150 + r * 12;
+  const at = thickest(game, p, 560, spread);
+  if (!at) { game.cd.wolf = 0.4; return; }
+  const list = rng.shuffle(near(game, at.x, at.y, spread));
+  const count = Math.min(list.length, 2 + r);
+  for (let i = 0; i < count; i++) {
+    const m = list[i];
+    const a = rng.range(0, Math.PI * 2);
+    game.pounces.push({ x: m.pos.x, y: m.pos.y, a, t: 0, dur: 0.35 });
+    // Heavy per bite, because there are only a handful of bites: the others
+    // sweep a circle and are paid by how crowded it is, and this one is paid
+    // by nothing at all — it takes the same five throats in a crowd of fifty.
+    strike(game, m, 2.2 * dmgOf('wolfDmg'), 'wolf');
+    // Hamstrung: the bite is worth as much for what it stops as what it takes.
+    applySlow(m, 0.4, 1.6);
+  }
+}
+
+/**
+ * One blow, in the middle of them. Everything standing is thrown outward and
+ * left reeling — the only one of the four that buys you room rather than kills.
+ */
+function bear(game, p, dt) {
+  const r = rank(p, 'bear');
+  game.slams ??= [];
+  for (let i = game.slams.length - 1; i >= 0; i--) {
+    game.slams[i].t += dt;
+    if (game.slams[i].t >= game.slams[i].dur) game.slams.splice(i, 1);
+  }
+  if (r <= 0) return;
+  if (!due(game, 'bear', dt, ANIMAL_CD / rateOf('bearRate'))) return;
+  const radius = 150 + r * 14;
+  const at = thickest(game, p, 520, radius);
+  if (!at) { game.cd.bear = 0.4; return; }
+  game.slams.push({ x: at.x, y: at.y, t: 0, dur: 0.5, r: radius });
+  game.novas.push({ x: at.x, y: at.y, t: 0, dur: 0.45, r: radius, color: '#c9a882' });
+  for (const m of near(game, at.x, at.y, radius)) {
+    strike(game, m, 0.75 * dmgOf('bearDmg'), 'bear');
+    const dx = m.pos.x - at.x, dy = m.pos.y - at.y;
+    const d = Math.hypot(dx, dy) || 1;
+    m.vel.x += (dx / d) * 320;
+    m.vel.y += (dy / d) * 320;
+    applyStun(m, 0.5 + r * 0.08);
+  }
+  burst(at.x, at.y, 26, { color: '#b9a288', speed: 260, life: 0.6, size: 3 });
+}
+
+/**
+ * It crosses the whole field without stopping. Aimed through the crowd rather
+ * than at it, so it is worth the most when they are strung out in a line.
+ */
+function elk(game, p, dt) {
+  const r = rank(p, 'elk');
+  game.charges ??= [];
+  for (let i = game.charges.length - 1; i >= 0; i--) {
+    const c = game.charges[i];
+    c.x += Math.cos(c.a) * c.speed * dt;
+    c.y += Math.sin(c.a) * c.speed * dt;
+    c.t += dt;
+    if (c.t >= c.dur) { game.charges.splice(i, 1); continue; }
+    for (const m of near(game, c.x, c.y, c.r)) {
+      if (c.hit.includes(m)) continue;
+      c.hit.push(m);
+      strike(game, m, 0.6 * dmgOf('elkDmg'), 'elk');
+      // Shouldered aside rather than run down: it is going somewhere.
+      const side = Math.sign((m.pos.x - c.x) * -Math.sin(c.a) + (m.pos.y - c.y) * Math.cos(c.a)) || 1;
+      m.vel.x += -Math.sin(c.a) * side * 260;
+      m.vel.y += Math.cos(c.a) * side * 260;
+    }
+  }
+  if (r <= 0) return;
+  if (!due(game, 'elk', dt, ANIMAL_CD / rateOf('elkRate'))) return;
+  const at = thickest(game, p, 560, 120);
+  if (!at) { game.cd.elk = 0.4; return; }
+  // Enters from off screen, passes through the crowd, and leaves on the far side.
+  const a = rng.range(0, Math.PI * 2);
+  const lead = 780;
+  game.charges.push({
+    x: at.x - Math.cos(a) * lead, y: at.y - Math.sin(a) * lead,
+    a, speed: 620, t: 0, dur: (lead * 2) / 620, r: 52 + r * 6,
+    /** @type {any[]} */ hit: [],
+  });
 }
 
 /**

@@ -73,6 +73,34 @@ export const RELIC_DEFS = [
       ? 'A wandering wind drags what it passes towards its middle, and cuts.'
       : `Larger, longer-lived and hungrier (rank ${r}).`,
   },
+  {
+    id: 'raven', name: "Hravn's Flock", icon: 'raven',
+    blurb: 'The bird on your shoulder calls, and the wood answers. They settle on the thickest of them and do not leave.',
+    line: (r) => r <= 1
+      ? 'Ravens settle on the thickest of the fight and tear at it.'
+      : `They stay longer, cover more ground and bite harder (rank ${r}).`,
+  },
+  {
+    id: 'wolf', name: 'The Pack', icon: 'wolf',
+    blurb: 'Wolves come out of the trees, take one throat each, and are gone. They pick their own, spread across a crowd.',
+    line: (r) => r <= 1
+      ? 'Wolves come out of the trees and take a throat each, then are gone.'
+      : `${2 + r} of them now, over more ground (rank ${r}).`,
+  },
+  {
+    id: 'bear', name: "The Bear's Weight", icon: 'bear',
+    blurb: 'It comes down once, in the middle of them. Everything standing is knocked flat and left reeling.',
+    line: (r) => r <= 1
+      ? 'It comes down once, hard, and everything standing is knocked flat.'
+      : `Wider, heavier, and they stay down longer (rank ${r}).`,
+  },
+  {
+    id: 'elk', name: 'The White Elk', icon: 'elk',
+    blurb: 'It crosses the field without stopping, straight through them, and is gone into the snow on the far side.',
+    line: (r) => r <= 1
+      ? 'It crosses the field straight through them and is gone.'
+      : `Broader in the shoulder and harder to stand against (rank ${r}).`,
+  },
 ];
 
 /** Ids only, in order. */
