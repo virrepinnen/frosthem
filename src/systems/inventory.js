@@ -169,11 +169,12 @@ export function pickup(game, g) {
     return true;
   }
   if (g.kind === 'relic') {
-    p.relics ??= {};
-    p.relics[g.relic] = true;
-    floatText(p.pos.x, p.pos.y - 30, g.name, '#cfa6ff', 16);
+    // Picking it up only marks it. The choice of what it becomes is put to you
+    // on the next frame, from the loop, so the window opens with the world
+    // already stopped rather than from inside a pickup.
+    floatText(p.pos.x, p.pos.y - 30, 'A relic', '#cfa6ff', 16);
     burst(p.pos.x, p.pos.y - 8, 30, { color: '#cfa6ff', speed: 190, life: 0.9, size: 3, grav: -60 });
-    game.alert(`${g.name} — its ranks will start appearing when you level.`);
+    game.relicPick = true;
     game.dirtyUI = true;
     return true;
   }

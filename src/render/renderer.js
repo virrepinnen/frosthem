@@ -833,7 +833,7 @@ function drawGroundItems(ctx, game) {
     ctx.translate(0, bob);
     const name = g.kind === 'gold' ? 'gold'
       : g.kind === 'potion' ? 'potion'
-      : g.kind === 'relic' ? (g.relic === 'axes' ? 'axe' : 'polearm')
+      : g.kind === 'relic' ? 'axe'
       : (KIND_GLYPH[g.item.base.kind] ?? 'ring');
     strokeGlyph(ctx, name, big ? 26 : 21, col, big ? 1.9 : 1.7);
     ctx.restore();

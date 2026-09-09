@@ -70,6 +70,31 @@ function build(game) {
     jump.appendChild(b);
   });
 
+  // Turning a weapon on without hunting an elite for it. Testing how the axes
+  // feel should not depend on a drop.
+  const relics = document.createElement('div');
+  relics.className = 'tn-jump';
+  relics.innerHTML = '<span class="tn-lab">Weapons</span>';
+  for (const id of ['axes', 'javelin']) {
+    const b = document.createElement('button');
+    const paint = () => {
+      const r = game.player.boons[id] ?? 0;
+      b.textContent = `${id === 'axes' ? 'Axes' : 'Javelins'} ${r || 'off'}`;
+    };
+    b.onclick = () => {
+      const p = game.player;
+      const next = { 0: 1, 1: 3, 3: 5, 5: 0 }[p.boons[id] ?? 0] ?? 0;
+      p.relics ??= {};
+      if (next) { p.relics[id] = true; p.boons[id] = next; }
+      else { p.boons[id] = 0; delete p.relics[id]; }
+      game.recalcPlayer?.();
+      paint();
+    };
+    paint();
+    relics.appendChild(b);
+  }
+  el.insertBefore(relics, el.children[2]);
+
   for (const row of /** @type {HTMLElement[]} */ ([...el.querySelectorAll('.tn-row')])) {
     const id = row.dataset.knob ?? '';
     const input = /** @type {HTMLInputElement} */ (row.querySelector('input'));

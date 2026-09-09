@@ -9,6 +9,7 @@ import { drawBoons, takeBoon, boonRank } from '../systems/boons.js';
 import { ROMAN } from '../data/boons.js';
 import { glyph } from './glyphs.js';
 import { saveGame } from '../systems/save.js';
+import { recalc } from '../systems/stats.js';
 import { ZONE_DEFS } from '../systems/world.js';
 
 const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (document.getElementById(id));
@@ -392,6 +393,73 @@ export function showLevelUp(game, levels) {
   render();
   box.classList.remove('hidden');
 }
+
+/**
+ * The relic: which weapon do you want it to be?
+ *
+ * It borrows the level-up window because it is the same kind of moment — the
+ * world stops, you pick one thing, you carry on. What it is not is a card among
+ * others: a relic decides how the character fights for the rest of its life,
+ * and the run hands you at most a couple of them.
+ *
+ * The weapon starts working the instant you choose. Unlocking it and then
+ * making you wait for a level-up card to actually switch it on was two rewards
+ * where there should be one, and it read as the relic having done nothing.
+ * @param {any} game
+ */
+export function showRelicChoice(game) {
+  const p = game.player;
+  const box = $('levelup');
+  const missing = RELIC_CHOICES.filter(c => !p.relics?.[c.id]);
+  // Nothing left to choose would open a window with no cards and no button to
+  // leave by. The drop cannot produce this, but the development panel can.
+  if (!missing.length) { game.paused = false; return; }
+
+  $('lvl-badge').textContent = 'A relic';
+  $('lvl-sub').textContent = missing.length > 1
+    ? 'It can be either. Choose one — it starts working at once.'
+    : 'It takes one shape only.';
+
+  const host = $('lvl-stats');
+  host.innerHTML = '';
+  const row = document.createElement('div');
+  row.className = 'boon-row';
+
+  for (const c of missing) {
+    const card = document.createElement('div');
+    card.className = 'boon-card offence';
+    card.innerHTML =
+      `<div class="bc-ico">${glyph(c.icon, 1.4)}</div>` +
+      `<div class="bc-name">${escape(c.name)}</div>` +
+      `<div class="bc-rank">I</div>` +
+      `<div class="bc-line">${escape(c.line)}</div>`;
+    card.onclick = () => {
+      p.relics ??= {};
+      p.relics[c.id] = true;
+      // Rank one, now. Its later ranks are what the level-up cards offer.
+      p.boons[c.id] = Math.max(1, p.boons[c.id] ?? 0);
+      recalc(p);
+      game.alert(`${c.name} — it fights for you now.`);
+      game.dirtyUI = true;
+      hideLevelUp();
+      closeAllPanels(game);
+      game.paused = false;
+      saveGame(game);
+    };
+    row.appendChild(card);
+  }
+  host.appendChild(row);
+  $('lvl-actions').innerHTML = '';
+  box.classList.remove('hidden');
+}
+
+/** What a relic can become. */
+const RELIC_CHOICES = [
+  { id: 'axes', name: 'Whirling Axes', icon: 'axe',
+    line: 'Axes circle you and strike whatever they pass through. They reward walking into a pack.' },
+  { id: 'javelin', name: 'Hurled Javelins', icon: 'polearm',
+    line: 'You throw a javelin at whatever you can see, on your own. It reaches what your arm cannot.' },
+];
 
 export function hideLevelUp() { $('levelup').classList.add('hidden'); }
 export function levelUpOpen() { return !$('levelup').classList.contains('hidden'); }

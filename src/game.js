@@ -14,7 +14,7 @@ import { SKILL_BY_ID } from './data/skills.js';
 import { input, keyPressed, keyDown } from './core/input.js';
 import { camera, updateCamera, toWorld } from './render/camera.js';
 import { updateFx, clearFx, burst, floatText, screenFlash, shake } from './render/fx.js';
-import { pushAlert, showOverlay, showLevelUp, hideLevelUp, levelUpOpen,
+import { pushAlert, showOverlay, showLevelUp, hideLevelUp, levelUpOpen, showRelicChoice,
          showPauseMenu, hidePauseMenu, pauseMenuOpen, showZoneBanner,
          showInscription } from './ui/hud.js';
 import { panels, togglePanel, closeAllPanels, anyPanelOpen } from './ui/panels.js';
@@ -417,6 +417,15 @@ function update(game, dt) {
 
   // A card is owed whenever a level was gained. The window deals a fresh hand
   // per pick, so several levels at once still resolve in a click each.
+  // A relic asks which weapon you want before anything else happens: it is the
+  // only choice in the game that changes how the character fights, so it should
+  // not be something you might walk past.
+  if (game.relicPick && !game.paused && !levelUpOpen()) {
+    game.relicPick = false;
+    game.paused = true;
+    showRelicChoice(game);
+  }
+
   if (game.player.boonPicks > 0 && !game.paused && !levelUpOpen()) {
     game.paused = true;
     saveGame(game);
@@ -612,13 +621,16 @@ function updatePlayer(game, dt) {
   // The lean into a swing. Applied after the walk and before the world gets a
   // say, so a rock still stops you.
   if (p.step) {
-    p.step.t -= dt;
+    // Eased by position rather than by speed, so the whole distance is actually
+    // travelled. Integrating a decaying speed dropped the last partial frame and
+    // came up about a tenth short — a knob that says 26 has to move you 26.
+    p.step.t = Math.max(0, p.step.t - dt);
+    const u = 1 - p.step.t / p.step.dur;
+    const eased = (1 - (1 - u) * (1 - u)) * p.step.dist;
+    p.pos.x += Math.cos(p.step.dir) * (eased - p.step.done);
+    p.pos.y += Math.sin(p.step.dir) * (eased - p.step.done);
+    p.step.done = eased;
     if (p.step.t <= 0) p.step = null;
-    else {
-      const k = (dt / p.step.dur) * (p.step.t / p.step.dur) * 2;
-      p.pos.x += Math.cos(p.step.dir) * p.step.dist * k;
-      p.pos.y += Math.sin(p.step.dir) * p.step.dist * k;
-    }
   }
   collide(game.world, p.pos, p.radius);
 
@@ -645,15 +657,13 @@ function updatePlayer(game, dt) {
   // Auto-attack: if an enemy stands within reach you strike on your own. The
   // mouse is not needed at all — but it still works as a manual trigger.
   if (!anyPanelOpen() && !casting && !p.whirl && !p.dash && !p.roll && p.attackTimer <= 0) {
-    const t = game.aimTarget;
-    // Auto-attack never touches anything dormant: walking up to the jarl should
-    // not start the fight for you. To wake him, you have to click.
-    const inReach = t && !t.dead && !t.dormant
-      && Math.hypot(t.pos.x - p.pos.x, t.pos.y - p.pos.y) <= T.reach + t.radius;
-    // And it holds entirely when the screen is empty. Swinging at nothing on
-    // the walk between packs makes the character look like it is malfunctioning.
-    const wants = input.mouse.down
-      || (game.settings.autoAttack && inReach && enemyOnScreen(game));
+    // What is on screen decides, not what is in reach. Stopping the moment a
+    // target stepped out of range made the character look like it kept giving
+    // up mid-fight; now it keeps swinging as long as there is a fight to be in,
+    // and holds only when the screen is empty — which is the walk between packs.
+    // Anything dormant is not a fight: walking up to the jarl must not start it
+    // for you. To wake him, you have to click.
+    const wants = input.mouse.down || (game.settings.autoAttack && enemyOnScreen(game));
     if (wants) {
       p.combatT = COMBAT_WINDOW;
       p.attackTimer = 1 / (1.5 * p.attackSpeed);
@@ -662,7 +672,7 @@ function updatePlayer(game, dt) {
       // two. It is short and it decays, so it reads as leaning in rather than as
       // being moved — and it never fights the arrow keys, because it is added to
       // wherever you were already going.
-      if (T.swingStep > 0) p.step = { t: 0.16, dur: 0.16, dir: p.facing, dist: T.swingStep };
+      if (T.swingStep > 0) p.step = { t: 0.16, dur: 0.16, dir: p.facing, dist: T.swingStep, done: 0 };
     }
   }
   for (let i = 0; i < HOTBAR_SIZE; i++) {

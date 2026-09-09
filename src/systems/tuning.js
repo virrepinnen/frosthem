@@ -62,7 +62,7 @@ export const DEFAULTS = /** @type {Record<string, number>} */ ({
   viewWidth: 1350,
   moveSpeed: 168,
   reach: 100,
-  swingStep: 26,
+  swingStep: 2,
   rollDist: 120,
   rollTime: 0.32,
   rollCd: 0.85,

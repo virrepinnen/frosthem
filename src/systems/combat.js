@@ -194,11 +194,12 @@ function dropLoot(game, m) {
   // you rather than the half you assemble.
   if (m.isBoss || m.elite) {
     const missing = RELICS.filter(id => !p.relics?.[id]);
-    if (missing.length && rng.chance(m.isBoss ? 1 : 0.16)) {
-      const id = rng.pick(missing);
-      const name = id === 'axes' ? 'Whirling Axes' : 'Hurled Javelins';
-      spawnGround(game, m.pos.x, m.pos.y, { kind: 'relic', relic: id, name: `Relic: ${name}` });
-      announceDrop(game, /** @type {any} */ ({ name, rarity: 'unique' }), m.pos.x, m.pos.y);
+    // The drop is a relic, not a particular weapon. Which one it becomes is
+    // yours to decide when you pick it up — a thing that changes how you fight
+    // should not be handed to you at random.
+    if (missing.length && rng.chance(m.isBoss ? 1 : 0.22)) {
+      spawnGround(game, m.pos.x, m.pos.y, { kind: 'relic', name: 'A relic of the restless arm' });
+      announceDrop(game, /** @type {any} */ ({ name: 'Relic', rarity: 'unique' }), m.pos.x, m.pos.y);
     }
   }
 }
