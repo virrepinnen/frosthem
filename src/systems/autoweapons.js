@@ -3,6 +3,7 @@ import { rng } from '../core/rng.js';
 import { hitMonster } from './combat.js';
 import { losBlocked } from './worldmap.js';
 import { burst } from '../render/fx.js';
+import { T } from './tuning.js';
 
 /** @typedef {import('../entities/player.js').Player} Player */
 
@@ -85,8 +86,8 @@ function updateAxes(game, p, dt) {
   // Tight enough to sweep what you are actually fighting. At the wider radius
   // it tried they circled outside the melee entirely: the thing in front of you
   // stood inside the ring and the axes swept empty snow around it.
-  const radius = 58 + r * 6;
-  const spin = 2.0 + r * 0.18;
+  const radius = T.axeRadius + r * 6;
+  const spin = (2.0 + r * 0.18) * T.autoRate;
   game.autoSpin = (game.autoSpin + spin * dt) % (Math.PI * 2);
 
   game.axes = [];
@@ -104,7 +105,7 @@ function updateAxes(game, p, dt) {
     for (const ax of game.axes) {
       if (Math.hypot(m.pos.x - ax.x, m.pos.y - ax.y) > reach + m.radius) continue;
       m.axeCd = AXE_RECOVER;
-      const mult = AXE_MULT;
+      const mult = AXE_MULT * T.autoDmg;
       const crit = rng.chance(p.critChance / 100);
       const roll = rng.range(p.dmgMin, p.dmgMax) * mult * (1 + p.dmgBuff + (p.shrineDmg || 0));
       hitMonster(game, m, {
@@ -144,9 +145,9 @@ function updateJavelins(game, p, dt) {
       if (best && losBlocked(game.world, p.pos.x, p.pos.y, best.pos.x, best.pos.y)) best = null;
       // Nothing in sight costs nothing: the cooldown only starts once it throws.
       if (best) {
-        game.javCd = Math.max(0.85, 2.5 - r * 0.28);
+        game.javCd = Math.max(0.85, 2.5 - r * 0.28) / T.autoRate;
         const a = Math.atan2(best.pos.y - p.pos.y, best.pos.x - p.pos.x);
-        const mult = JAV_MULT;
+        const mult = JAV_MULT * T.autoDmg;
         game.javelins.push({
           x: p.pos.x, y: p.pos.y - 8, a,
           vx: Math.cos(a) * 520, vy: Math.sin(a) * 520,

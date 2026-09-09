@@ -464,7 +464,7 @@ export function drinkPotion(game) {
   if ((p.potionCd ?? 0) > 0) { game.alert('Not yet.'); return false; }
   p.potionCd = T.potionCd;
   p.potions--;
-  const heal = Math.round(p.maxHp * 0.45 + 20);
+  const heal = Math.round((p.maxHp * 0.45 + 20) * T.potionHeal);
   p.hp = Math.min(p.maxHp, p.hp + heal);
   floatText(p.pos.x, p.pos.y - 34, `+${heal}`, '#7ce39a', 15);
   burst(p.pos.x, p.pos.y, 16, { color: '#7ce39a', speed: 110, life: 0.6, size: 2.4, grav: -40 });

@@ -10,11 +10,8 @@ import { T } from './tuning.js';
 /** @typedef {import('../entities/monster.js').Monster} Monster */
 
 const AGGRO_FAR_MULT = 1.9;
-/** A little slack on the touch test, so contact is generous rather than fussy. */
-const CONTACT_PAD = 2;
-
 /** How close a monster has to be to be *touching* you. @param {Monster} m @param {any} p */
-const contactDist = (m, p) => m.radius + p.radius + CONTACT_PAD;
+const contactDist = (m, p) => m.radius + p.radius + T.contactPad;
 
 // Aggro is a feel knob: how much room you get to choose your fight.
 const aggro = () => T.aggro;
@@ -129,7 +126,7 @@ export function updateMonsters(game, dt) {
       if (m.windup <= 0) fireShot(game, m);
     }
 
-    let mx = 0, my = 0;
+    let mx = 0, my = 0, lunge = 1;
     if (m.state === 'idle') {
       // Wander slowly — makes the world feel alive without drawing attention
       m.wanderT -= dt;
@@ -155,10 +152,14 @@ export function updateMonsters(game, dt) {
         // is the danger, so the answer is to not be.
         if (dist > contactDist(m, p)) {
           mx = dx / dist; my = dy / dist;
-          // Charger: short lunges that make them dangerous in open ground
+          // Charger: short lunges that make them dangerous in open ground.
+          //
+          // The multiplier used to be applied to the direction vector, which is
+          // normalised a few lines below — so it divided straight back out and
+          // a charge was never any faster than a walk. It goes on the speed.
           if (m.ai === 'charger') {
             m.lungeCd -= dt;
-            if (m.lungeT > 0) { m.lungeT -= dt; mx *= 2.5; my *= 2.5; }
+            if (m.lungeT > 0) { m.lungeT -= dt; lunge = T.lungeSpeed; }
             else if (m.lungeCd <= 0 && dist < 300 && dist > 90) { m.lungeT = 0.45; m.lungeCd = rng.range(2.5, 5); }
           }
         }
@@ -187,7 +188,7 @@ export function updateMonsters(game, dt) {
 
     const len = Math.hypot(mx, my);
     if (len > 0.001) {
-      const sp = m.speed * speedMult;
+      const sp = m.speed * speedMult * lunge;
       m.pos.x += (mx / len) * sp * dt;
       m.pos.y += (my / len) * sp * dt;
       // Not while a blow is on its way: the tell showed a direction, and a
@@ -216,12 +217,12 @@ export function updateMonsters(game, dt) {
  * @param {any} game @param {Monster} m
  */
 function fireShot(game, m) {
-  m.cd = m.attackCd;
+  m.cd = m.attackCd / T.monCd;
   if (game.player.dead) return;
   const a = m.facing;
   game.projectiles.push({
     x: m.pos.x + Math.cos(a) * m.radius, y: m.pos.y + Math.sin(a) * m.radius,
-    vx: Math.cos(a) * 430, vy: Math.sin(a) * 430, life: 1.6, r: 5,
+    vx: Math.cos(a) * T.projSpeed, vy: Math.sin(a) * T.projSpeed, life: 1.6, r: 5,
     dmg: rng.range(m.dmgMin, m.dmgMax) * T.dmgMult, src: m,
   });
 }
@@ -232,7 +233,7 @@ function fireShot(game, m) {
  */
 function touchPlayer(game, m) {
   const p = game.player;
-  m.cd = m.attackCd;
+  m.cd = m.attackCd / T.monCd;
   const before = p.hp;
   damagePlayer(game, rng.range(m.dmgMin, m.dmgMax) * T.dmgMult, m);
   if (m.lifeSteal) {

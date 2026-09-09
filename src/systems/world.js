@@ -1,6 +1,7 @@
 // @ts-check
 import { Rng } from '../core/rng.js';
 import { clamp, smoothNoise, wrapAngle } from '../core/math.js';
+import { T } from './tuning.js';
 
 /**
  * Procedural zone generation.
@@ -468,9 +469,14 @@ function wilderness(index, seed, d) {
   // Spread out, not stacked. They used to be the last few anchors made, which
   // were the two on the side path — so the map's elites stood next to each other
   // and you met all of them in one fight or none of them at all.
-  for (let i = 0; i < params.elites; i++) {
+  // Ask for more of them and they are allowed to stand closer, or the spacing
+  // rule runs out of room and quietly caps the count — a knob that stops doing
+  // anything past two is worse than no knob.
+  const wanted = Math.round(params.elites * T.eliteRate);
+  const apart = 900 / Math.max(1, T.eliteRate);
+  for (let i = 0; i < wanted; i++) {
     const far = anchors.filter(a => !a.elite
-      && anchors.every(b => !b.elite || Math.hypot(a.x - b.x, a.y - b.y) > 900));
+      && anchors.every(b => !b.elite || Math.hypot(a.x - b.x, a.y - b.y) > apart));
     if (!far.length) break;
     r.pick(far).elite = true;
   }

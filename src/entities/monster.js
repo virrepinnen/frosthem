@@ -1,6 +1,7 @@
 // @ts-check
 import { ELITE_MODS } from '../data/monsters.js';
 import { rng } from '../core/rng.js';
+import { T } from '../systems/tuning.js';
 
 /** @typedef {import('../data/monsters.js').MonsterDef} MonsterDef */
 
@@ -20,7 +21,7 @@ export function createMonster(def, level, x, y, opts = {}) {
     def, name: def.name, shape: def.shape, ai: def.ai,
     pos: { x, y }, vel: { x: 0, y: 0 }, facing: rng.range(-Math.PI, Math.PI),
     radius: def.radius, level: L,
-    maxHp: def.hp + def.hpPerLvl * (L - 1),
+    maxHp: (def.hp + def.hpPerLvl * (L - 1)) * T.monHp,
     hp: 0,
     dmgMin: (def.dmg + def.dmgPerLvl * (L - 1)) * 0.8,
     dmgMax: (def.dmg + def.dmgPerLvl * (L - 1)) * 1.3,

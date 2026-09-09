@@ -666,7 +666,7 @@ function updatePlayer(game, dt) {
     const wants = input.mouse.down || (game.settings.autoAttack && enemyOnScreen(game));
     if (wants) {
       p.combatT = COMBAT_WINDOW;
-      p.attackTimer = 1 / (1.5 * p.attackSpeed);
+      p.attackTimer = 1 / (1.5 * p.attackSpeed * T.attackRate);
       performSwing(game, { arc: 1.5, reach: T.reach, mult: 1, kind: 'basic' });
       // A step into the blow, so striking and closing are one motion instead of
       // two. It is short and it decays, so it reads as leaning in rather than as

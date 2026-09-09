@@ -56,6 +56,7 @@ function build(game) {
     ).join('') +
     '<div class="tn-actions">' +
     '<button data-act="copy">Copy values</button>' +
+    '<button data-act="rebuild">Rebuild map</button>' +
     '<button data-act="reset">Reset</button>' +
     '</div><div class="tn-out"></div>';
 
@@ -108,6 +109,13 @@ function build(game) {
   }
 
   /** @type {HTMLElement} */ (el.querySelector('[data-act="copy"]')).onclick = () => copy(el);
+  // Health, pack size and elite count are decided when a map is built, so they
+  // do nothing until you enter one. This builds the map you are standing in
+  // again, so you can see the change without walking somewhere and back.
+  /** @type {HTMLElement} */ (el.querySelector('[data-act="rebuild"]')).onclick = () => {
+    game.travel(game.zoneIndex ?? game.zone.index);
+    closeTuner(game);
+  };
   /** @type {HTMLElement} */ (el.querySelector('[data-act="reset"]')).onclick = () => {
     resetKnobs(); refresh(); dispatchEvent(new Event('resize')); game.recalcPlayer?.();
   };

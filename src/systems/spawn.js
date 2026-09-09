@@ -2,6 +2,7 @@
 import { MONSTERS, BOSS } from '../data/monsters.js';
 import { createMonster } from '../entities/monster.js';
 import { Rng } from '../core/rng.js';
+import { T } from './tuning.js';
 
 /** @typedef {import('./world.js').Zone} Zone */
 
@@ -51,7 +52,7 @@ export function populateZone(zone) {
     const level = zone.level + r.int(0, 2);
     // Archetypes that normally travel in big packs get more members than the heavy ones.
     const scale = ((def.pack[0] + def.pack[1]) / 2) / 5;
-    const count = Math.max(1, Math.round(a.n * scale * thin));
+    const count = Math.max(1, Math.round(a.n * scale * thin * T.packSize));
 
     if (a.elite) {
       // One yellow, with its own pack around it. Never two of them together.
