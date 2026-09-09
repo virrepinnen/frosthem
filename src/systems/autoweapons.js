@@ -93,6 +93,12 @@ export function updateAutoWeapons(game, dt) {
 const ANIMAL_CD = 10;
 
 /**
+ * How many bodies a far clump has to beat a near one by, across the whole range.
+ * Two: worth crossing the field for a crowd twice the size, not for one more.
+ */
+const NEARNESS = 2;
+
+/**
  * The spot with the most bodies around it, within `range`.
  *
  * Sampled from the monsters themselves rather than a grid: they *are* the
@@ -104,14 +110,20 @@ function thickest(game, p, range, radius) {
   const list = near(game, p.pos.x, p.pos.y, range);
   if (!list.length) return null;
   const pool = list.length > 40 ? rng.shuffle(list.slice()).slice(0, 40) : list;
-  let best = null, bestN = -1;
+  let best = null, bestScore = -Infinity, bestN = 0;
   for (const c of pool) {
     let n = 0;
     for (const m of list) {
       if (Math.abs(m.pos.x - c.pos.x) > radius || Math.abs(m.pos.y - c.pos.y) > radius) continue;
       n++;
     }
-    if (n > bestN) { bestN = n; best = c; }
+    // Density decides, but nearness breaks the tie. Picking purely by the count
+    // sent it to the far edge of its range whenever two clumps were the same
+    // size, and a thing that lands where you are not is a thing you watch
+    // rather than use.
+    const d = Math.hypot(c.pos.x - p.pos.x, c.pos.y - p.pos.y);
+    const score = n - (d / range) * NEARNESS;
+    if (score > bestScore) { bestScore = score; bestN = n; best = c; }
   }
   return best ? { x: best.pos.x, y: best.pos.y, n: bestN } : null;
 }
@@ -138,7 +150,7 @@ function raven(game, p, dt) {
   if (r <= 0) return;
   if (!due(game, 'raven', dt, ANIMAL_CD / rateOf('ravenRate'))) return;
   const radius = T.ravenSize + r * 8;
-  const at = thickest(game, p, 560, radius);
+  const at = thickest(game, p, T.ravenRange, radius);
   if (!at) { game.cd.raven = 0.4; return; }
   game.flocks.push({ x: at.x, y: at.y, t: 0, tick: 0, dur: T.ravenLife + r * 0.35, r: radius });
 }

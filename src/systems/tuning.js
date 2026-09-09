@@ -117,6 +117,8 @@ export const KNOBS = [
   { id: 'ravenRate', group: 'Raven flock', label: 'Rate', min: 0.2, max: 4, step: 0.05, unit: '×' },
   { id: 'ravenSize', group: 'Raven flock', label: 'Radius', min: 30, max: 320, step: 5, unit: 'px' },
   { id: 'ravenLife', group: 'Raven flock', label: 'Stays for', min: 0.5, max: 10, step: 0.25, unit: 's' },
+  { id: 'ravenRange', group: 'Raven flock', label: 'Reach', min: 80, max: 700, step: 20, unit: 'px',
+    note: 'How far from you it will settle.' },
 
   { id: 'potionCd', group: 'Other', label: 'Potion cooldown', min: 0, max: 12, step: 0.5, unit: 's' },
   { id: 'potions', group: 'Other', label: 'Potions carried', min: 0, max: 12, step: 1 },
@@ -173,6 +175,7 @@ export const DEFAULTS = /** @type {Record<string, number>} */ ({
   galePull: 55,
   ravenSize: 90,
   ravenLife: 2.0,
+  ravenRange: 300,
   ravenDmg: 1,
   ravenRate: 1,
   dmgMult: 1.1,
