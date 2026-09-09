@@ -4,6 +4,7 @@ import { RARITY_COLOR } from '../data/items.js';
 import { recalc, RES_CAP } from '../systems/stats.js';
 import { skillTreeEl } from './skill-ui.js';
 import { heldBoons } from '../systems/boons.js';
+import { STAT_ROWS } from './statrows.js';
 import { ROMAN } from '../data/boons.js';
 import { glyph, KIND_GLYPH } from './glyphs.js';
 import { equip, unequip, dropItem, sellItem, packBag, bagUsage } from '../systems/inventory.js';
@@ -41,7 +42,7 @@ export function togglePanel(game, name) {
     if (k !== name && SIDE[k] === SIDE[name]) panels[/** @type {'character'} */ (k)] = false;
   }
   panels[name] = !was;
-  if (name === 'inventory' && was) panels.vendor = false;
+  if (name === 'inventory' && was) { panels.vendor = false; game.statFlash = null; }
   hideTooltip();
   game.dirtyUI = true;
 }
@@ -49,6 +50,9 @@ export function togglePanel(game, name) {
 /** @param {any} game */
 export function closeAllPanels(game) {
   panels.inventory = panels.character = panels.skills = panels.vendor = false;
+  // The highlight belongs to one visit to the bag. Kept across visits it would
+  // be pointing at a decision you made ten minutes ago.
+  game.statFlash = null;
   hideTooltip();
   game.dirtyUI = true;
 }
@@ -62,6 +66,13 @@ export function renderPanels(game) {
   if (panels.character) root.appendChild(characterPanel(game));
   if (panels.skills) root.appendChild(skillsPanel(game));
   if (panels.vendor) root.appendChild(vendorPanel(game));
+  // The bag owns the right half; while it is open the left half would otherwise
+  // be an empty pause screen. Deciding whether to wear something is a comparison
+  // between what you are and what you would be, so what you are belongs next to
+  // the thing you are holding — not behind another keypress.
+  if (panels.inventory && !panels.character && !panels.skills && !panels.vendor) {
+    root.appendChild(equipStatsPanel(game));
+  }
   if (panels.inventory) root.appendChild(inventoryPanel(game));
 }
 
@@ -169,6 +180,49 @@ function shorten(s) { return s.length > 17 ? s.slice(0, 15) + '…' : s; }
 /* ------------------------------------------------------------------ */
 /* Character                                                           */
 /* ------------------------------------------------------------------ */
+
+/**
+ * The character's numbers, beside the bag, with whatever the last piece of gear
+ * changed lit up.
+ *
+ * The highlight stays until you put on or take off something else, rather than
+ * fading on a timer: the point of it is to be read, and it is read after the
+ * click, not during it.
+ * @param {any} game
+ */
+function equipStatsPanel(game) {
+  const p = game.player;
+  const d = shell('Your character', 'left',
+    () => { panels.inventory = false; panels.vendor = false; game.dirtyUI = true; });
+  d.classList.add('statsheet');
+
+  const flash = game.statFlash;
+  if (flash && Object.keys(flash.diff).length) {
+    const head = document.createElement('div');
+    head.className = 'stat-flash-head';
+    head.innerHTML = `<b>${escape(flash.of)}</b><i>${flash.off ? 'taken off' : 'put on'} — what it changed</i>`;
+    d.appendChild(head);
+  }
+
+  let group = '';
+  for (const r of STAT_ROWS) {
+    if (r.when && !r.when(p) && !(flash?.diff[r.key])) continue;
+    if (r.group && r.group !== group) {
+      group = r.group;
+      const g = document.createElement('div');
+      g.className = 'grp'; g.textContent = group;
+      d.appendChild(g);
+    }
+    const delta = flash?.diff[r.key];
+    const row = document.createElement('div');
+    row.className = 'row' + (delta === undefined ? '' : (delta > 0 ? ' up' : ' down'));
+    const chip = delta === undefined ? ''
+      : `<em class="dl">${escape((r.delta ?? (x => String(x)))(delta))}</em>`;
+    row.innerHTML = `<span>${escape(r.label)}</span><span>${chip}${escape(r.text(p))}</span>`;
+    d.appendChild(row);
+  }
+  return d;
+}
 
 /** @param {any} game */
 function characterPanel(game) {

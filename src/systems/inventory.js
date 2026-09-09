@@ -1,5 +1,6 @@
 // @ts-check
 import { recalc, canEquip } from './stats.js';
+import { snapshotStats, diffStats } from '../ui/statrows.js';
 import { itemValue } from './loot.js';
 import { slotsFor, BAG_COLS, BAG_ROWS } from '../entities/player.js';
 import { itemSize } from '../data/items.js';
@@ -74,6 +75,7 @@ export function bagUsage(items) {
 export function equip(game, item) {
   const p = game.player;
   if (!canEquip(p, item)) { game.alert('You lack the attributes to carry that.'); return false; }
+  const before = snapshotStats(p);
 
   const candidates = slotsFor(item.base.slot);
   let target = candidates.find(s => !p.equipment[s]) ?? candidates[0];
@@ -89,6 +91,10 @@ export function equip(game, item) {
   else p.inventory.splice(idx, 1);
 
   recalc(p);
+  // What the piece actually did to you, so the sheet beside the bag can light
+  // up exactly those rows. An item's own numbers tell you what it has; this
+  // tells you what it changed — which is the thing you are deciding about.
+  game.statFlash = { of: item.name, diff: diffStats(before, snapshotStats(p)) };
   game.dirtyUI = true;
   game.alert(`Equipped ${item.name}.`);
   return true;
@@ -100,9 +106,11 @@ export function unequip(game, slot) {
   const item = p.equipment[slot];
   if (!item) return false;
   if (!canAdd(p.inventory, item)) { game.alert('The bag is full.'); return false; }
+  const before = snapshotStats(p);
   p.equipment[slot] = null;
   p.inventory.push(item);
   recalc(p);
+  game.statFlash = { of: item.name, diff: diffStats(before, snapshotStats(p)), off: true };
   game.dirtyUI = true;
   return true;
 }
