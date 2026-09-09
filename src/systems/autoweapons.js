@@ -151,9 +151,10 @@ function raven(game, p, dt) {
   }
   if (r <= 0) return;
   if (!due(game, 'raven', dt, ANIMAL_CD / rateOf('ravenRate'))) return;
-  const at = thickest(game, p, 560, 90 + r * 8);
+  const radius = T.ravenSize + r * 8;
+  const at = thickest(game, p, 560, radius);
   if (!at) { game.cd.raven = 0.4; return; }
-  game.flocks.push({ x: at.x, y: at.y, t: 0, tick: 0, dur: 2.0 + r * 0.35, r: 90 + r * 8 });
+  game.flocks.push({ x: at.x, y: at.y, t: 0, tick: 0, dur: T.ravenLife + r * 0.35, r: radius });
 }
 
 /**
@@ -170,11 +171,11 @@ function wolf(game, p, dt) {
   }
   if (r <= 0) return;
   if (!due(game, 'wolf', dt, ANIMAL_CD / rateOf('wolfRate'))) return;
-  const spread = 150 + r * 12;
+  const spread = T.wolfSpread + r * 12;
   const at = thickest(game, p, 560, spread);
   if (!at) { game.cd.wolf = 0.4; return; }
   const list = rng.shuffle(near(game, at.x, at.y, spread));
-  const count = Math.min(list.length, 2 + r);
+  const count = Math.min(list.length, Math.max(1, Math.round((2 + r) * T.wolfCount)));
   for (let i = 0; i < count; i++) {
     const m = list[i];
     const a = rng.range(0, Math.PI * 2);
@@ -201,7 +202,7 @@ function bear(game, p, dt) {
   }
   if (r <= 0) return;
   if (!due(game, 'bear', dt, ANIMAL_CD / rateOf('bearRate'))) return;
-  const radius = 150 + r * 14;
+  const radius = T.bearSize + r * 14;
   const at = thickest(game, p, 520, radius);
   if (!at) { game.cd.bear = 0.4; return; }
   game.slams.push({ x: at.x, y: at.y, t: 0, dur: 0.5, r: radius });
@@ -210,8 +211,8 @@ function bear(game, p, dt) {
     strike(game, m, 0.75 * dmgOf('bearDmg'), 'bear');
     const dx = m.pos.x - at.x, dy = m.pos.y - at.y;
     const d = Math.hypot(dx, dy) || 1;
-    m.vel.x += (dx / d) * 320;
-    m.vel.y += (dy / d) * 320;
+    m.vel.x += (dx / d) * T.bearKnock;
+    m.vel.y += (dy / d) * T.bearKnock;
     applyStun(m, 0.5 + r * 0.08);
   }
   burst(at.x, at.y, 26, { color: '#b9a288', speed: 260, life: 0.6, size: 3 });
@@ -247,9 +248,10 @@ function elk(game, p, dt) {
   // Enters from off screen, passes through the crowd, and leaves on the far side.
   const a = rng.range(0, Math.PI * 2);
   const lead = 780;
+  const speed = T.elkSpeed;
   game.charges.push({
     x: at.x - Math.cos(a) * lead, y: at.y - Math.sin(a) * lead,
-    a, speed: 620, t: 0, dur: (lead * 2) / 620, r: 52 + r * 6,
+    a, speed, t: 0, dur: (lead * 2) / speed, r: T.elkSize + r * 6,
     /** @type {any[]} */ hit: [],
   });
 }
@@ -302,7 +304,7 @@ function axes(game, p, dt) {
     m.axeCd = Math.max(0, (m.axeCd ?? 0) - dt);
     if (m.axeCd > 0) continue;
     for (const ax of game.axes) {
-      if (Math.hypot(m.pos.x - ax.x, m.pos.y - ax.y) > 26 + m.radius) continue;
+      if (Math.hypot(m.pos.x - ax.x, m.pos.y - ax.y) > T.axesReach + m.radius) continue;
       m.axeCd = 0.62;
       strike(game, m, 0.18 * dmgOf('axesDmg'), 'axes');
       burst(ax.x, ax.y, 4, { color: '#d6e2f2', speed: 90, life: 0.25, size: 1.8 });
@@ -337,7 +339,7 @@ function javelins(game, p, dt) {
       const a = Math.atan2(best.pos.y - p.pos.y, best.pos.x - p.pos.x);
       game.javelins.push({
         x: p.pos.x, y: p.pos.y - 8, a,
-        vx: Math.cos(a) * 520, vy: Math.sin(a) * 520,
+        vx: Math.cos(a) * T.javSpeed, vy: Math.sin(a) * T.javSpeed,
         life: 1.1, pierce: r >= 2 ? 2 : 1, /** @type {any[]} */ hit: [],
       });
     }
@@ -380,10 +382,10 @@ function thunder(game, p, dt) {
   if (r <= 0) return;
   if (!due(game, 'thunder', dt, Math.max(0.7, 2.8 - r * 0.32) / rateOf('boltRate'))) return;
 
-  const list = near(game, p.pos.x, p.pos.y, 420 + r * 30);
+  const list = near(game, p.pos.x, p.pos.y, T.boltRange + r * 30);
   if (!list.length) { game.cd.thunder = 0.15; return; }
   const at = list[Math.floor(rng.next() * list.length)];
-  const radius = 62 + r * 3;
+  const radius = T.boltSize + r * 3;
   game.bolts.push({ x: at.pos.x, y: at.pos.y, t: 0, dur: 0.42, r: radius });
   game.novas.push({ x: at.pos.x, y: at.pos.y, t: 0, dur: 0.4, r: radius, color: '#d7c2ff' });
   for (const m of near(game, at.pos.x, at.pos.y, radius + 24)) {
@@ -417,7 +419,7 @@ function ember(game, p, dt) {
   if (!due(game, 'ember', dt, 0.2 / rateOf('emberRate'))) return;
   game.embers.push({
     x: p.pos.x, y: p.pos.y, t: 0,
-    dur: 2.0 + r * 0.45, r: 34 + r * 4,
+    dur: T.emberLife + r * 0.45, r: T.emberSize + r * 4,
   });
   if (game.embers.length > 40) game.embers.shift();
 }
@@ -443,13 +445,13 @@ function frost(game, p, dt) {
       if (d < was - 20 || d > g.at + m.radius) continue;
       g.hit.push(m);
       strike(game, m, 0.09 * dmgOf('frostDmg'), 'frost', 'cold');
-      applySlow(m, Math.min(0.55, 0.22 + g.rank * 0.05), 1.2 + g.rank * 0.25);
+      applySlow(m, Math.min(0.9, (0.22 + g.rank * 0.05) * T.frostSlow), 1.2 + g.rank * 0.25);
     }
     if (g.t >= g.dur) game.rings.splice(i, 1);
   }
   if (r <= 0) return;
   if (!due(game, 'frost', dt, Math.max(1.1, 3.4 - r * 0.38) / rateOf('frostRate'))) return;
-  const radius = 150 + r * 26;
+  const radius = T.frostSize + r * 26;
   game.rings.push({ x: p.pos.x, y: p.pos.y, t: 0, dur: 0.5, r: radius, at: 0, rank: r, hit: [] });
   game.novas.push({ x: p.pos.x, y: p.pos.y, t: 0, dur: 0.5, r: radius, color: '#8fd8f4' });
 }
@@ -494,7 +496,8 @@ function cairn(game, p, dt) {
     const spread = n === 1 ? 0 : (i - 0.5) * 0.5;
     game.boulders.push({
       x: p.pos.x, y: p.pos.y, a: p.facing + spread, spin: 0,
-      speed: 300, life: 1.5 + r * 0.12, r: 22 + r * 2, /** @type {any[]} */ hit: [],
+      speed: T.cairnSpeed, life: 1.5 + r * 0.12, r: T.cairnSize + r * 2,
+      /** @type {any[]} */ hit: [],
     });
   }
 }
@@ -531,7 +534,7 @@ function gale(game, p, dt) {
   if (!due(game, 'gale', dt, Math.max(2.2, 6.5 - r * 0.7) / rateOf('galeRate'))) return;
   game.gales.push({
     x: p.pos.x, y: p.pos.y, a: p.facing + rng.range(-0.5, 0.5), spin: 0,
-    turn: rng.range(-0.7, 0.7), speed: 110, pull: 55 + r * 8,
-    t: 0, dur: 3.5 + r * 0.5, r: 92 + r * 9,
+    turn: rng.range(-0.7, 0.7), speed: 110, pull: T.galePull + r * 8,
+    t: 0, dur: 3.5 + r * 0.5, r: T.galeSize + r * 9,
   });
 }
