@@ -2,6 +2,12 @@
 import { KNOBS, T, DEFAULTS, setKnob, resetKnobs, isTuned, changedValues } from '../systems/tuning.js';
 import { ZONE_DEFS } from '../systems/world.js';
 import { escape } from './tooltip.js';
+import { RELICS } from '../systems/autoweapons.js';
+
+/** Short names for the panel's buttons. */
+const WEAPON_LABEL = /** @type {Record<string,string>} */ ({
+  axes: 'Axes', javelin: 'Javelins', thunder: 'Miller',
+});
 
 /**
  * The tuning panel, on `F3`.
@@ -76,11 +82,14 @@ function build(game) {
   const relics = document.createElement('div');
   relics.className = 'tn-jump';
   relics.innerHTML = '<span class="tn-lab">Weapons</span>';
-  for (const id of ['axes', 'javelin']) {
+  // Taken from the relic list rather than written out here. The list was
+  // written out, and the Miller was added to the game without appearing in this
+  // panel — the one place you would go to try it.
+  for (const id of RELICS) {
     const b = document.createElement('button');
     const paint = () => {
       const r = game.player.boons[id] ?? 0;
-      b.textContent = `${id === 'axes' ? 'Axes' : 'Javelins'} ${r || 'off'}`;
+      b.textContent = `${WEAPON_LABEL[id] ?? id} ${r || 'off'}`;
     };
     b.onclick = () => {
       const p = game.player;
