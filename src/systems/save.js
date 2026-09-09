@@ -120,7 +120,8 @@ export function saveGame(game) {
   const rec = {
     v: 1, id: game.charId, t: Date.now(),
     name: p.name, level: p.level, xp: p.xp,
-    boons: p.boons, boonPicks: p.boonPicks, relics: p.relics ?? {},
+    boons: p.boons, boonPicks: p.boonPicks, milestonePicks: p.milestonePicks ?? 0,
+    relics: p.relics ?? {},
     skills: p.skills, hotbar: p.hotbar,
     potions: p.potions, gold: p.gold, kills: p.kills, deaths: p.deaths,
     equipment, inventory: p.inventory.map(packItem),
@@ -148,6 +149,7 @@ export function playerFromSave(d) {
   p.xpNext = xpToNext(p.level);
   p.boons = d.boons ?? {};
   p.relics = d.relics ?? {};
+  p.milestonePicks = d.milestonePicks ?? 0;
   p.boonPicks = d.boonPicks ?? 0;
   p.skills = d.skills ?? {};
   // Characters saved before the rework carry attribute and skill points that no

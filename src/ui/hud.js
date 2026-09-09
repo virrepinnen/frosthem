@@ -5,7 +5,7 @@ import { canBuy } from '../systems/skillshop.js';
 import { HOTBAR_SIZE } from '../entities/player.js';
 import { showTextTooltip, hideTooltip, escape } from './tooltip.js';
 import { panels, togglePanel, closeAllPanels } from './panels.js';
-import { drawBoons, takeBoon, boonRank } from '../systems/boons.js';
+import { drawBoons, drawMilestone, takeBoon, takeBoonMax, boonRank } from '../systems/boons.js';
 import { ROMAN } from '../data/boons.js';
 import { glyph } from './glyphs.js';
 import { saveGame } from '../systems/save.js';
@@ -327,18 +327,20 @@ export function showLevelUp(game, levels) {
   const box = $('levelup');
 
   const render = () => {
-    $('lvl-badge').textContent = `Level ${p.level}`;
+    // A milestone spends the same pick, but the card arrives fully grown.
+    const milestone = (p.milestonePicks ?? 0) > 0;
+    $('lvl-badge').textContent = milestone ? `Level ${p.level} — milestone` : `Level ${p.level}`;
     const left = p.boonPicks;
-    $('lvl-sub').textContent = left > 1
-      ? `Choose a blessing — ${left} to pick`
-      : 'Choose a blessing';
+    $('lvl-sub').textContent = milestone
+      ? 'Whatever you take arrives at its highest rank'
+      : left > 1 ? `Choose a blessing — ${left} to pick` : 'Choose a blessing';
 
     const host = $('lvl-stats');
     host.innerHTML = '';
     const row = document.createElement('div');
     row.className = 'boon-row';
 
-    const hand = drawBoons(p);
+    const hand = milestone ? drawMilestone(p) : drawBoons(p);
     if (!hand.length) {
       // Everything available is maxed. Rather than deal a blank hand, bank the
       // pick: a later level opens higher ranks and it becomes spendable again.
@@ -350,16 +352,18 @@ export function showLevelUp(game, levels) {
     }
 
     for (const b of hand) {
-      const next = boonRank(p, b.id) + 1;
+      const next = milestone ? b.at.length : boonRank(p, b.id) + 1;
       const card = document.createElement('div');
-      card.className = 'boon-card ' + b.group;
+      card.className = 'boon-card ' + b.group + (milestone ? ' milestone' : '');
       card.innerHTML =
         `<div class="bc-ico">${glyph(b.icon, 1.4)}</div>` +
         `<div class="bc-name">${escape(b.name)}</div>` +
         `<div class="bc-rank">${ROMAN[next] ?? next}</div>` +
-        `<div class="bc-line">${escape(b.line(next))}</div>`;
+        `<div class="bc-line">${escape(b.line(next))}</div>` +
+        (milestone ? '<div class="bc-max">full rank</div>' : '');
       card.onclick = () => {
-        takeBoon(p, b.id);
+        if (milestone) { takeBoonMax(p, b.id); p.milestonePicks = Math.max(0, p.milestonePicks - 1); }
+        else takeBoon(p, b.id);
         p.boonPicks = Math.max(0, p.boonPicks - 1);
         game.dirtyUI = true;
         if (p.boonPicks > 0) render();
@@ -378,7 +382,7 @@ export function showLevelUp(game, levels) {
     const done = document.createElement('button');
     done.className = skips ? '' : 'primary';
     done.textContent = label;
-    done.onclick = () => { if (skips) p.boonPicks = 0; close(); };
+    done.onclick = () => { if (skips) { p.boonPicks = 0; p.milestonePicks = 0; } close(); };
     actions.appendChild(done);
   };
 
@@ -459,6 +463,8 @@ const RELIC_CHOICES = [
     line: 'Axes circle you and strike whatever they pass through. They reward walking into a pack.' },
   { id: 'javelin', name: 'Hurled Javelins', icon: 'polearm',
     line: 'You throw a javelin at whatever you can see, on your own. It reaches what your arm cannot.' },
+  { id: 'thunder', name: 'The Miller', icon: 'lightning',
+    line: 'Lightning falls somewhere in the fight. It is the one that hits a crowd rather than a body.' },
 ];
 
 export function hideLevelUp() { $('levelup').classList.add('hidden'); }

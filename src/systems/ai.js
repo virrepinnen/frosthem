@@ -23,12 +23,17 @@ const aggroFar = () => T.aggro * AGGRO_FAR_MULT;
 /**
  * How far from the player a monster still thinks.
  *
- * Three maps are loaded at once now, which is three times the monsters, and the
- * crowding pass compares every monster with every other one. Anything this far
- * away is off screen and has nobody to crowd, so it simply waits — the cost of
- * a frame stays what it was when only one map existed.
+ * Three maps are loaded at once, which is three times the monsters, and the
+ * crowding pass compares every active monster with every other one — so the
+ * cost of a frame grows with the square of this number. Anything beyond it is
+ * off screen and has nobody to crowd, so it simply waits.
+ *
+ * The screen reaches about 675 units sideways and 670 up and down, so this is
+ * still a comfortable margin beyond what you can see. It was 1700, which at
+ * three times the pack size meant 241 monsters thinking at once and a crowding
+ * pass of 58,000 comparisons a frame.
  */
-const SIM_RANGE = 1700;
+const SIM_RANGE = 1050;
 
 /** @param {any} game @param {number} dt */
 export function updateMonsters(game, dt) {

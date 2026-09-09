@@ -154,6 +154,7 @@ export function render(ctx, game, dt) {
   for (const e of list) e.f();
 
   drawAimTarget(ctx, game);
+  drawBolts(ctx, game);
   drawJavelins(ctx, game);
   drawProjectiles(ctx, game);
   drawInteractPrompt(ctx, game);
@@ -1445,6 +1446,40 @@ function drawJavelins(ctx, game) {
     ctx.beginPath(); ctx.moveTo(-17, 0); ctx.lineTo(9, 0); ctx.stroke();
     ctx.fillStyle = '#d8e4f2';
     ctx.beginPath(); ctx.moveTo(9, -3.4); ctx.lineTo(18, 0); ctx.lineTo(9, 3.4); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+}
+
+/**
+ * Lightning coming down. Drawn upright out of the ground plane because it has
+ * height; the flash on the snow is a nova and belongs to the ground pass.
+ * @param {CanvasRenderingContext2D} ctx @param {any} game
+ */
+function drawBolts(ctx, game) {
+  for (const b of game.bolts ?? []) {
+    const fade = 1 - b.t / b.dur;
+    ctx.save();
+    ctx.translate(b.x, PY(b.y));
+    ctx.globalAlpha = Math.min(1, fade * 2.2);
+    for (const pass of [{ w: 7, c: 'rgba(215,194,255,0.30)' }, { w: 2.6, c: '#f2ecff' }]) {
+      ctx.strokeStyle = pass.c; ctx.lineWidth = pass.w;
+      ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      const h = 460;
+      for (let i = 1; i <= 6; i++) {
+        const t = i / 6;
+        const jag = (hashNoise(Math.round(b.x) + i, Math.round(b.y), 5) - 0.5) * 34 * (1 - t * 0.4);
+        ctx.lineTo(jag, -h * t);
+      }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = fade * 0.85;
+    const g = ctx.createRadialGradient(0, 0, 2, 0, 0, b.r * 1.1);
+    g.addColorStop(0, 'rgba(240,234,255,0.85)');
+    g.addColorStop(1, 'rgba(160,120,255,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.ellipse(0, 0, b.r * 1.1, b.r * 1.1 * PROJ, 0, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
 }

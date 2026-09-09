@@ -27,7 +27,7 @@ import { T } from './tuning.js';
  */
 
 /** Ids of the relics, and the boon each one unlocks. */
-export const RELICS = /** @type {const} */ (['axes', 'javelin']);
+export const RELICS = /** @type {const} */ (['axes', 'javelin', 'thunder']);
 
 /**
  * How hard one axe hits, as a share of a weapon swing.
@@ -38,11 +38,22 @@ export const RELICS = /** @type {const} */ (['axes', 'javelin']);
  * damage at rank one to half of it at rank five, which is the point at which
  * standing still becomes a strategy.
  */
-const AXE_MULT = 0.13;
+const AXE_MULT = 0.18;
 /** How long before the same monster can be caught by an axe again. */
 const AXE_RECOVER = 0.62;
 /** How hard a javelin hits, as a share of a weapon swing. Fixed, like the axe. */
-const JAV_MULT = 0.26;
+const JAV_MULT = 0.50;
+/**
+ * How hard one bolt hits everything under it.
+ *
+ * A fraction of what the others do per hit, because it does not hit once. It
+ * catches everything standing in a circle, so its worth scales with how crowded
+ * the ground is — and the ground is now three times as crowded as it was. At a
+ * third of a swing it was doing half of all the damage in the game on its own.
+ */
+const BOLT_MULT = 0.075;
+/** How wide the strike is. */
+const BOLT_R = 62;
 
 /** @param {Player} p @param {string} id */
 export const hasRelic = (p, id) => !!p.relics?.[id];
@@ -58,8 +69,10 @@ const rank = (p, id) => (hasRelic(p, id) ? (p.boons[id] || 0) : 0);
 export function resetAutoWeapons(game) {
   game.axes = [];
   game.javelins = [];
+  game.bolts = [];
   game.autoSpin = 0;
   game.javCd = 0;
+  game.boltCd = 0;
 }
 
 /** @param {any} game @param {number} dt */
@@ -68,6 +81,71 @@ export function updateAutoWeapons(game, dt) {
   if (!game.axes) resetAutoWeapons(game);
   updateAxes(game, p, dt);
   updateJavelins(game, p, dt);
+  updateThunder(game, p, dt);
+}
+
+/**
+ * The miller's relic: lightning out of the sky.
+ *
+ * It picks its own target and it does not care where you are facing or whether
+ * anything is in reach — which is the point of it. The axes reward walking into
+ * a pack and the javelin reaches what your arm cannot; this one simply keeps
+ * happening, somewhere in the fight, and it is the only one of the three that
+ * hits a group rather than a body.
+ * @param {any} game @param {Player} p @param {number} dt
+ */
+function updateThunder(game, p, dt) {
+  const r = rank(p, 'thunder');
+  game.bolts ??= [];
+
+  for (let i = game.bolts.length - 1; i >= 0; i--) {
+    const b = game.bolts[i];
+    b.t += dt;
+    if (b.t >= b.dur) game.bolts.splice(i, 1);
+  }
+
+  if (r <= 0) return;
+  game.boltCd -= dt;
+  if (game.boltCd > 0) return;
+
+  // Somewhere in the fight, not necessarily the nearest thing: a strike that
+  // always lands on whatever you are already hitting adds nothing you can see.
+  const range = 420 + r * 30;
+  /** @type {any[]} */
+  const inRange = [];
+  for (const m of game.monsters) {
+    if (m.dead || m.dormant) continue;
+    if (Math.hypot(m.pos.x - p.pos.x, m.pos.y - p.pos.y) > range) continue;
+    inRange.push(m);
+  }
+  if (!inRange.length) return;
+
+  game.boltCd = Math.max(0.7, 2.8 - r * 0.32) / T.autoRate;
+  // Ranks buy how often it falls, not how much ground it swallows. A second
+  // bolt and a wider circle both multiply against a crowd, and the crowd is
+  // already three deep — letting all three grow together had one relic doing
+  // half the damage in the game.
+  const strikes = 1;
+  const radius = BOLT_R + r * 3;
+
+  for (let s = 0; s < strikes && inRange.length; s++) {
+    const at = inRange[Math.floor(rng.next() * inRange.length)];
+    const x = at.pos.x, y = at.pos.y;
+    game.bolts.push({ x, y, t: 0, dur: 0.42, r: radius });
+    game.novas.push({ x, y, t: 0, dur: 0.4, r: radius, color: '#d7c2ff' });
+    for (const m of game.monsters) {
+      if (m.dead || m.dormant) continue;
+      if (Math.hypot(m.pos.x - x, m.pos.y - y) > radius + m.radius) continue;
+      const crit = rng.chance(p.critChance / 100);
+      const roll = rng.range(p.dmgMin, p.dmgMax) * BOLT_MULT * T.autoDmg
+        * (1 + p.dmgBuff + (p.shrineDmg || 0));
+      hitMonster(game, m, {
+        light: crit ? roll * (p.critMult / 100) : roll,
+        phys: 0, crit, src: 'thunder',
+      });
+    }
+    burst(x, y, 12, { color: '#e2d4ff', speed: 210, life: 0.45, size: 2.6, grav: -40 });
+  }
 }
 
 /**
@@ -151,7 +229,7 @@ function updateJavelins(game, p, dt) {
         game.javelins.push({
           x: p.pos.x, y: p.pos.y - 8, a,
           vx: Math.cos(a) * 520, vy: Math.sin(a) * 520,
-          life: 1.1, mult, pierce: r >= 4 ? 2 : 1,
+          life: 1.1, mult, pierce: r >= 2 ? 2 : 1,
           /** @type {any[]} */ hit: [],
         });
       }

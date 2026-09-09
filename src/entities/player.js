@@ -74,6 +74,8 @@ export function createPlayer(name) {
     step: null,
     /** Level-ups whose card has not been picked yet. */
     boonPicks: 0,
+    /** Of those, how many are milestone picks — cards that arrive fully grown. */
+    milestonePicks: 0,
 
     hp: 100, maxHp: 100, mana: 40, maxMana: 40,
     lifeRegen: 0.35, manaRegen: 5,
@@ -138,6 +140,9 @@ export function createPlayer(name) {
   return p;
 }
 
+/** Every this many levels, the card comes at full rank. */
+export const MILESTONE_EVERY = 5;
+
 /**
  * Grants XP and handles level-ups (there can be several at once).
  * @param {Player} p @param {number} amount
@@ -154,6 +159,10 @@ export function grantXp(p, amount) {
     // bought at the hearth with gold, so the fight is never interrupted by an
     // allocation screen.
     p.boonPicks += 1;
+    // Every fifth level the card is not one more step but the whole staircase:
+    // whatever you take arrives at its highest rank. A climb of five small
+    // choices should end in one you can feel.
+    if (p.level % MILESTONE_EVERY === 0) p.milestonePicks = (p.milestonePicks ?? 0) + 1;
     p.xpNext = xpToNext(p.level);
   }
   if (levels) {

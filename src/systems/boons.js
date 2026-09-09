@@ -53,6 +53,46 @@ export function drawBoons(p, n = CARDS) {
  * of the card is that the choice is instant and cheap.
  * @param {Player} p @param {string} id
  */
+/**
+ * Which boons a milestone card may offer.
+ *
+ * Looser than the ordinary rule: the intermediate level gates exist to pace a
+ * climb rank by rank, and a milestone is not a climb — it hands you the top. So
+ * anything unlocked at all and not already maxed can appear.
+ * @param {Player} p @param {BoonDef} b
+ */
+export function milestoneAvailable(p, b) {
+  if (boonRank(p, b.id) >= b.at.length) return false;
+  if (b.needs && !p.relics?.[b.needs]) return false;
+  return p.level >= b.at[0];
+}
+
+/** @param {Player} p @param {number} [n] @returns {BoonDef[]} */
+export function drawMilestone(p, n = CARDS) {
+  const left = BOONS.filter(b => milestoneAvailable(p, b));
+  /** @type {BoonDef[]} */
+  const out = [];
+  while (out.length < n && left.length) {
+    const pick = rng.weighted(left, b => b.weight ?? 10);
+    out.push(pick);
+    left.splice(left.indexOf(pick), 1);
+  }
+  return out;
+}
+
+/**
+ * Takes a boon at its highest rank, all at once.
+ * @param {Player} p @param {string} id
+ */
+export function takeBoonMax(p, id) {
+  const def = BOON_BY_ID.get(id);
+  if (!def) return false;
+  p.boons[id] = def.at.length;
+  recalc(p);
+  return true;
+}
+
+/** @param {Player} p @param {string} id */
 export function takeBoon(p, id) {
   const def = BOON_BY_ID.get(id);
   if (!def) return false;

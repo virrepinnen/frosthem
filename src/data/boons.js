@@ -35,8 +35,9 @@ const HIGH = [10, 16, 24];
 /**
  * A weapon that fights on its own is not part of the pool you start with. Its
  * relic drops from an elite or the jarl and stays with the character; only then
- * do its ranks turn up among the cards, and more rarely than the rest — they
- * should feel like something the run handed you, not a lane you can plan on.
+ * do its ranks turn up among the cards. They are weighted *above* an ordinary
+ * blessing: a relic is a rare thing to find, and once found it should be the
+ * thing the run is about rather than a card you see twice an act.
  */
 const RELIC_RANKS = [1, 1, 1, 1, 1];
 
@@ -45,17 +46,24 @@ export const BOONS = [
   // ---- weapons that fight on their own -------------------------------------
   {
     id: 'axes', name: 'Whirling Axes', icon: 'axe', group: 'offence',
-    at: RELIC_RANKS, weight: 4, needs: 'axes', per: {},
+    at: RELIC_RANKS, weight: 14, needs: 'axes', per: {},
     line: (r) => r <= 1
       ? 'An axe circles you, striking whatever it passes through.'
       : `Faster, wider, heavier${r % 2 === 1 ? ' — and one axe more' : ''} (rank ${r}).`,
   },
   {
     id: 'javelin', name: 'Hurled Javelins', icon: 'polearm', group: 'offence',
-    at: RELIC_RANKS, weight: 4, needs: 'javelin', per: {},
+    at: RELIC_RANKS, weight: 14, needs: 'javelin', per: {},
     line: (r) => r <= 1
       ? 'You throw a javelin at whatever you can see, on your own.'
       : `Thrown harder and more often${r >= 4 ? ', and through two' : ''} (rank ${r}).`,
+  },
+  {
+    id: 'thunder', name: 'The Miller', icon: 'lightning', group: 'offence',
+    at: RELIC_RANKS, weight: 14, needs: 'thunder', per: {},
+    line: (r) => r <= 1
+      ? 'Lightning falls somewhere in the fight, and everything under it burns.'
+      : `Falls more often, wider, and further out (rank ${r}).`,
   },
 
   // ---- offence -------------------------------------------------------------
